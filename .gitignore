@@ -1,0 +1,13 @@
+Library/
+Temp/
+Logs/
+UserSettings/
+Packages/
+Assets/Aquarius Fantasy - Fae Pack/
+*.fbx
+*.obj
+*.mat
+*.mp4
+*.gif
+*.png
+*.jpg
