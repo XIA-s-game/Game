@@ -1,0 +1,1 @@
+By Session 6, I will add all game audio (background music and sound effects) and improve the UI visuals to make it cleaner and more player-friendly, and I will show evidence by committing the updated assets and UI scenes to GitHub.
