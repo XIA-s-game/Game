@@ -28696,10 +28696,74 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 9a1f12723944d58419d25b0e3df1d6c7, type: 3}
+--- !u!1 &910260101
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 910260102}
+  - component: {fileID: 910260103}
+  m_Layer: 0
+  m_Name: MiniMapHUD
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &910260102
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 910260101}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &910260103
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 910260101}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ec8931c50f047ec8c8f3c1b1e3b7c5d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  player: {fileID: 0}
+  playerCamera: {fileID: 0}
+  sceneNames:
+  - Enchanted Forest A
+  - Fae Homes Demo
+  - my scene
+  mapAreas: []
+  calculateSceneSize: 1
+  worldPadding: 10
+  mapSize: 190
+  margin: 24
+  border: 10
+  showTrail: 1
+  maxTrailPoints: 80
+  trailSpacing: 2.5
+  mapColor: {r: 0.03, g: 0.08, b: 0.08, a: 0.82}
+  gridColor: {r: 1, g: 1, b: 1, a: 0.12}
+  trailColor: {r: 0.45, g: 0.95, b: 1, a: 0.55}
+  playerColor: {r: 1, g: 0.85, b: 0.2, a: 1}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
+  - {fileID: 910260102}
   - {fileID: 100001}
   - {fileID: 2044998181}
   - {fileID: 300000}
