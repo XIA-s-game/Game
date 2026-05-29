@@ -1,0 +1,14 @@
+Strength
+The video is very engaging. It captures the player's attention right from the start and sets a strong emotional tone for the game.
+
+Risk
+Some details are not fully polished. For example, the hero sometimes clips through the ground, which breaks the immersion and makes the world feel less solid.
+
+Question about contribution
+How did you approach the video production, and what is your plan for fixing the ground clipping issue?
+
+My answer
+I edited the video myself using clips and AI-generated images. For the clipping issue, I plan to adjust the hero's collider and check the ground mesh in the areas where it happens most often.
+
+Practical suggestion
+Fix the most obvious clipping spots first, especially near key interactive objects like the cage, the piano, and the bridge. Also, consider adding a simple camera shake or subtle effect when the hero lands on the ground to make the contact feel more real.
