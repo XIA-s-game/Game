@@ -1,3 +1,5 @@
+// Main function: Controls the crying NPC and witch quest flow, including feather collection, the key, ladder, portal visibility, dialogue, and prompts.
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -130,6 +132,7 @@ public class NpcCryInteraction : MonoBehaviour
     private GUIStyle hintStyle;
     private GUIStyle promptStyle;
 
+    // Function: Initializes component references, cached state, and default runtime data.
     private void Awake()
     {
         if (witchName == LegacyWitchName)
@@ -142,6 +145,7 @@ public class NpcCryInteraction : MonoBehaviour
         FindSceneObjects();
     }
 
+    // Function: Runs one-time setup after the scene has started.
     private void Start()
     {
         featherCollected = new bool[featherNames.Length];
@@ -152,6 +156,7 @@ public class NpcCryInteraction : MonoBehaviour
         PlayWitchStand();
     }
 
+    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         if (player == null || witch == null || lunaHome == null || FeathersNeedRefresh())
@@ -177,6 +182,7 @@ public class NpcCryInteraction : MonoBehaviour
         UpdateInteractions();
     }
 
+    // Function: Finds scene objects objects or component references.
     private void FindSceneObjects()
     {
         bool featherReferencesChanged = false;
@@ -251,6 +257,7 @@ public class NpcCryInteraction : MonoBehaviour
         }
     }
 
+    // Function: Runs the feathers need refresh logic.
     private bool FeathersNeedRefresh()
     {
         if (feathers == null || feathers.Length != featherNames.Length)
@@ -269,6 +276,7 @@ public class NpcCryInteraction : MonoBehaviour
         return false;
     }
 
+    // Function: Checks whether feather quest active is true.
     private bool IsFeatherQuestActive()
     {
         return state == QuestState.NeedFeathers ||
@@ -276,6 +284,7 @@ public class NpcCryInteraction : MonoBehaviour
                state == QuestState.ReturnToWitch;
     }
 
+    // Function: Updates interactions state, input, or presentation.
     private void UpdateInteractions()
     {
         if (state == QuestState.NotStarted && IsNear(transform, interactDistance) && Input.GetKeyDown(interactKey))
@@ -331,6 +340,7 @@ public class NpcCryInteraction : MonoBehaviour
         }
     }
 
+    // Function: Starts the Luna intro flow.
     private void StartLunaIntro()
     {
         SetLunaStand();
@@ -342,6 +352,7 @@ public class NpcCryInteraction : MonoBehaviour
         });
     }
 
+    // Function: Runs the talk to witch logic.
     private void TalkToWitch()
     {
         if (state == QuestState.GoAskWitch)
@@ -375,6 +386,7 @@ public class NpcCryInteraction : MonoBehaviour
         });
     }
 
+    // Function: Sets Luna stand.
     private void SetLunaStand()
     {
         if (animator == null)
@@ -389,6 +401,7 @@ public class NpcCryInteraction : MonoBehaviour
         }
     }
 
+    // Function: Moves Luna home toward its target position or state.
     private void MoveLunaHome()
     {
         if (lunaHome == null)
@@ -399,6 +412,7 @@ public class NpcCryInteraction : MonoBehaviour
         transform.position = lunaHome.position + Vector3.up * lunaFlyHeight;
     }
 
+    // Function: Plays witch stand animation, audio, or cutscene behavior.
     private void PlayWitchStand()
     {
         EnsureWitchAnimator();
@@ -418,6 +432,7 @@ public class NpcCryInteraction : MonoBehaviour
         }
     }
 
+    // Function: Ensures witch animator exists, is configured, or is ready to use.
     private void EnsureWitchAnimator()
     {
         if (witch == null)
@@ -454,6 +469,7 @@ public class NpcCryInteraction : MonoBehaviour
 #endif
     }
 
+    // Function: Tries to get nearby feather and returns whether it was found.
     private bool TryGetNearbyFeather(out int featherIndex)
     {
         featherIndex = -1;
@@ -479,6 +495,7 @@ public class NpcCryInteraction : MonoBehaviour
         return false;
     }
 
+    // Function: Collects feather and updates counters or cached references.
     private void CollectFeather(int featherIndex)
     {
         if (featherIndex < 0 || featherIndex >= feathers.Length || feathers[featherIndex] == null)
@@ -500,6 +517,7 @@ public class NpcCryInteraction : MonoBehaviour
         }
     }
 
+    // Function: Collects ed feather count and updates counters or cached references.
     private int CollectedFeatherCount()
     {
         int count = 0;
@@ -519,6 +537,7 @@ public class NpcCryInteraction : MonoBehaviour
         return count;
     }
 
+    // Function: Runs the climb ladder logic.
     private IEnumerator ClimbLadder()
     {
         isClimbing = true;
@@ -549,6 +568,7 @@ public class NpcCryInteraction : MonoBehaviour
         isClimbing = false;
     }
 
+    // Function: Picks up key and updates quest state.
     private void PickUpKey()
     {
         if (keyObject != null)
@@ -560,6 +580,7 @@ public class NpcCryInteraction : MonoBehaviour
         state = QuestState.ReturnToLuna;
     }
 
+    // Function: Checks whether nearby key is true.
     private bool IsNearKey()
     {
         if (keyObject == null)
@@ -576,6 +597,7 @@ public class NpcCryInteraction : MonoBehaviour
                IsNearObjectBounds(keyObject, keyPickupDistance);
     }
 
+    // Function: Completes quest and applies its result or reward.
     private void CompleteQuest()
     {
         GlobalBackpackUI.RemoveAll(keyItemName);
@@ -584,6 +606,7 @@ public class NpcCryInteraction : MonoBehaviour
         state = QuestState.Complete;
     }
 
+    // Function: Sets portal visible.
     private void SetPortalVisible(bool visible)
     {
         if (portal == null)
@@ -601,6 +624,7 @@ public class NpcCryInteraction : MonoBehaviour
         }
     }
 
+    // Function: Sets ladder visible.
     private void SetLadderVisible(bool visible)
     {
         if (ladder == null)
@@ -618,6 +642,7 @@ public class NpcCryInteraction : MonoBehaviour
         }
     }
 
+    // Function: Sets feather highlights.
     private void SetFeatherHighlights(bool highlighted)
     {
         if (feathers == null)
@@ -638,6 +663,7 @@ public class NpcCryInteraction : MonoBehaviour
 
     }
 
+    // Function: Applies feather highlight effects to the scene or target object.
     private void ApplyFeatherHighlight(Transform featherTransform, bool highlighted)
     {
         if (featherTransform == null)
@@ -670,6 +696,7 @@ public class NpcCryInteraction : MonoBehaviour
         }
     }
 
+    // Function: Ensures highlight material exists, is configured, or is ready to use.
     private void EnsureHighlightMaterial()
     {
         if (highlightMaterial != null)
@@ -681,6 +708,7 @@ public class NpcCryInteraction : MonoBehaviour
         highlightMaterial.color = featherHighlightColor;
     }
 
+    // Function: Starts the dialogue flow.
     private void StartDialogue(string[] lines, Action onComplete)
     {
         dialogueLines = lines;
@@ -689,6 +717,7 @@ public class NpcCryInteraction : MonoBehaviour
         isDialogueOpen = true;
     }
 
+    // Function: Shows next dialogue line.
     private void ShowNextDialogueLine()
     {
         dialogueIndex++;
@@ -705,6 +734,7 @@ public class NpcCryInteraction : MonoBehaviour
         complete?.Invoke();
     }
 
+    // Function: Draws this script's IMGUI prompts, panels, and dialogue.
     private void OnGUI()
     {
 
@@ -726,6 +756,7 @@ public class NpcCryInteraction : MonoBehaviour
         }
     }
 
+    // Function: Gets or calculates prompt text.
     private string GetPromptText()
     {
         if (player == null || isClimbing)
@@ -772,6 +803,7 @@ public class NpcCryInteraction : MonoBehaviour
         return null;
     }
 
+    // Function: Draws the UI elements for dialogue.
     private void DrawDialogue()
     {
         string text = dialogueLines != null && dialogueIndex < dialogueLines.Length ? dialogueLines[dialogueIndex] : string.Empty;
@@ -782,6 +814,7 @@ public class NpcCryInteraction : MonoBehaviour
         GUI.Label(new Rect(rect.x + 24f, rect.yMax - 46f, rect.width - 48f, 28f), "Press C to continue", GameUiStyle.LabelStyle(ref hintStyle, 22, TextAnchor.MiddleRight));
     }
 
+    // Function: Draws the UI elements for prompt.
     private void DrawPrompt(string text)
     {
         Rect rect = GameUiStyle.InteractionPromptRect();
@@ -789,6 +822,7 @@ public class NpcCryInteraction : MonoBehaviour
         GUI.Label(rect, text, GameUiStyle.LabelStyle(ref promptStyle, 28, TextAnchor.MiddleCenter));
     }
 
+    // Function: Draws the UI elements for feather progress.
     private void DrawFeatherProgress()
     {
         Rect rect = GameUiStyle.SideQuestRect(320f, 86f);
@@ -798,6 +832,7 @@ public class NpcCryInteraction : MonoBehaviour
     }
 
 
+    // Function: Checks whether nearby is true.
     private bool IsNear(Transform target, float distance)
     {
         if (target == null || player == null)
@@ -812,6 +847,7 @@ public class NpcCryInteraction : MonoBehaviour
         return Vector3.Distance(targetPosition, playerPosition) <= distance;
     }
 
+    // Function: Checks whether nearby object bounds is true.
     private bool IsNearObjectBounds(Transform target, float distance)
     {
         if (target == null || player == null)
@@ -856,6 +892,7 @@ public class NpcCryInteraction : MonoBehaviour
         return false;
     }
 
+    // Function: Runs the horizontal distance to bounds logic.
     private float HorizontalDistanceToBounds(Bounds bounds, Vector3 position)
     {
         Vector3 closestPoint = bounds.ClosestPoint(position);
@@ -864,6 +901,7 @@ public class NpcCryInteraction : MonoBehaviour
         return Vector3.Distance(closestPoint, position);
     }
 
+    // Function: Finds scene game object objects or component references.
     private GameObject FindSceneGameObject(string objectName)
     {
         if (string.IsNullOrEmpty(objectName))
@@ -894,6 +932,7 @@ public class NpcCryInteraction : MonoBehaviour
         return null;
     }
 
+    // Function: Loads editor controllers resources or controllers.
     private void LoadEditorControllers()
     {
 #if UNITY_EDITOR

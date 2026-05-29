@@ -1,3 +1,5 @@
+// Main function: Runs the fairy memory side quest, including memory collection, the sliding puzzle, memory showcase, quest completion, and backpack rewards.
+
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -68,11 +70,13 @@ public class FairyMemorySideQuest : MonoBehaviour
         get { return completed; }
     }
 
+    // Function: Initializes component references, cached state, and default runtime data.
     private void Awake()
     {
         PrepareArrays();
     }
 
+    // Function: Runs the activate logic.
     public void Activate()
     {
         if (completed)
@@ -95,6 +99,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         collected = new bool[memories.Length];
     }
 
+    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         UpdateMessageQueue();
@@ -127,6 +132,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Collects memory and updates counters or cached references.
     private void CollectMemory(int index)
     {
         if (index < 0 || index >= collected.Length || collected[index])
@@ -147,6 +153,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Starts the puzzle flow.
     private void StartPuzzle()
     {
         puzzleActive = true;
@@ -158,6 +165,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         QueueMessage(unlockText);
     }
 
+    // Function: Completes puzzle and applies its result or reward.
     private void CompletePuzzle()
     {
         puzzleActive = false;
@@ -168,6 +176,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         QueueMessage(completedText);
     }
 
+    // Function: Starts the memory showcase flow.
     private void StartMemoryShowcase()
     {
         memoryShowcaseActive = true;
@@ -175,6 +184,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         LoadMemoryShowcaseTextures();
     }
 
+    // Function: Finishes the side quest flow and performs cleanup.
     private void FinishSideQuest()
     {
         memoryShowcaseActive = false;
@@ -183,6 +193,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         nearbyMemoryIndex = -1;
     }
 
+    // Function: Updates puzzle input state, input, or presentation.
     private void UpdatePuzzleInput()
     {
         if (Input.GetKeyDown(KeyCode.W))
@@ -208,6 +219,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Tries to move empty and returns whether it succeeded.
     private void TryMoveEmpty(int sourceOffsetX, int sourceOffsetY)
     {
         int emptyX = emptyIndex % GridSize;
@@ -226,6 +238,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         emptyIndex = sourceIndex;
     }
 
+    // Function: Checks whether board solved is true.
     private bool IsBoardSolved()
     {
         for (int i = 0; i < board.Length; i++)
@@ -239,6 +252,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         return true;
     }
 
+    // Function: Creates the objects, textures, or UI needed for solvable board.
     private void CreateSolvableBoard()
     {
         board = new int[TileCount];
@@ -270,6 +284,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Gets or calculates movable tile indices.
     private List<int> GetMovableTileIndices()
     {
         List<int> candidates = new List<int>();
@@ -282,6 +297,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         return candidates;
     }
 
+    // Function: Adds candidate.
     private static void AddCandidate(List<int> candidates, int x, int y)
     {
         if (x >= 0 && x < GridSize && y >= 0 && y < GridSize)
@@ -290,6 +306,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Finds nearby memory index objects or component references.
     private int FindNearbyMemoryIndex()
     {
         if (player == null || memories == null)
@@ -323,6 +340,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         return bestIndex;
     }
 
+    // Function: Runs the prepare arrays logic.
     private void PrepareArrays()
     {
         int count = memories != null ? memories.Length : 0;
@@ -342,6 +360,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Queues message for later display.
     private void QueueMessage(string text)
     {
         if (!string.IsNullOrEmpty(text))
@@ -350,6 +369,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Updates message queue state, input, or presentation.
     private void UpdateMessageQueue()
     {
         if (!string.IsNullOrEmpty(currentMessage) && Time.time < messageEndsAt)
@@ -373,6 +393,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         messageEndsAt = Time.time + 3f;
     }
 
+    // Function: Loads puzzle texture resources or controllers.
     private void LoadPuzzleTexture()
     {
         if (puzzleTexture != null)
@@ -396,6 +417,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Loads memory showcase textures resources or controllers.
     private void LoadMemoryShowcaseTextures()
     {
         if (memoryShowcaseTextures != null && memoryShowcaseTextures.Length == memoryImageCount)
@@ -424,6 +446,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Draws this script's IMGUI prompts, panels, and dialogue.
     private void OnGUI()
     {
         if (!active)
@@ -459,6 +482,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Gets or calculates memory prompt.
     private string GetMemoryPrompt(int index)
     {
         if (index < 0 || index >= memoryNames.Length || string.IsNullOrEmpty(memoryNames[index]))
@@ -469,6 +493,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         return interactPrompt + ": " + memoryNames[index];
     }
 
+    // Function: Draws the UI elements for quest panel.
     private void DrawQuestPanel()
     {
         float width = 430f;
@@ -500,6 +525,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         GUI.Label(new Rect(rect.x + 14f, rect.y + 96f, rect.width - 28f, 28f), "Memory fragments: " + visibleFragmentCount + "/" + memoryCount, taskStyle);
     }
 
+    // Function: Draws the UI elements for backpack panel.
     private void DrawBackpackPanel()
     {
         Rect panelRect = GameUiStyle.BackpackRect(180f, 94f);
@@ -527,6 +553,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         GUI.Label(new Rect(slotRect.x + 8f, slotRect.y + 26f, slotRect.width - 16f, 20f), "x" + availableFragmentCount, labelStyle);
     }
 
+    // Function: Draws the UI elements for puzzle.
     private void DrawPuzzle()
     {
         if (board == null)
@@ -583,6 +610,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Draws the UI elements for reference image.
     private void DrawReferenceImage(Rect panel, Rect grid, float referenceSize, bool sideBySide)
     {
         if (puzzleTexture == null)
@@ -606,6 +634,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         GUI.DrawTexture(new Rect(referenceRect.x + 4f, referenceRect.y + 4f, referenceRect.width - 8f, referenceRect.height - 8f), puzzleTexture, ScaleMode.ScaleToFit, true);
     }
 
+    // Function: Draws the UI elements for memory showcase.
     private void DrawMemoryShowcase()
     {
         if (memoryShowcaseTextures == null || memoryShowcaseTextures.Length == 0)
@@ -641,6 +670,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Sets player movement paused.
     private void SetPlayerMovementPaused(bool paused)
     {
         if (paused)
@@ -678,22 +708,26 @@ public class FairyMemorySideQuest : MonoBehaviour
         disabledPlayerControllers.Clear();
     }
 
+    // Function: Checks whether player controller is true.
     private static bool IsPlayerController(MonoBehaviour behaviour)
     {
         string typeName = behaviour.GetType().Name;
         return typeName == "PlayerCharacterController" || typeName == "DemoCharacter";
     }
 
+    // Function: Stops running routines, unregisters events, and restores temporary state when disabled.
     private void OnDisable()
     {
         SetPlayerMovementPaused(false);
     }
 
+    // Function: Cleans up temporary state when this object is destroyed.
     private void OnDestroy()
     {
         SetPlayerMovementPaused(false);
     }
 
+    // Function: Draws the UI elements for message box.
     private static void DrawMessageBox(string text)
     {
         Rect rect = GameUiStyle.SystemPromptRect(760f, 92f);
@@ -709,6 +743,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         GUI.Label(new Rect(rect.x + 18f, rect.y + 12f, rect.width - 36f, rect.height - 24f), text, style);
     }
 
+    // Function: Draws the UI elements for centered label.
     private static void DrawCenteredLabel(string text, float y, int fontSize)
     {
         GUIStyle style = new GUIStyle(GUI.skin.label)

@@ -1,3 +1,5 @@
+// Main function: Draws the exploration compass HUD with player heading, tick marks, and direction labels.
+
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -31,6 +33,7 @@ public class CompassNavigationHUD : MonoBehaviour
     private GUIStyle degreeLabelStyle;
     private GUIStyle centerLabelStyle;
 
+    // Function: Initializes component references, cached state, and default runtime data.
     private void Awake()
     {
         if (instance != null && instance != this)
@@ -45,21 +48,25 @@ public class CompassNavigationHUD : MonoBehaviour
         CreateTextures();
     }
 
+    // Function: Registers events or restores listeners when the script is enabled.
     private void OnEnable()
     {
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
+    // Function: Stops running routines, unregisters events, and restores temporary state when disabled.
     private void OnDisable()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
+    // Function: Runs the on scene loaded logic.
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         RefreshReferences();
     }
 
+    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         if (targetCamera == null || !targetCamera.gameObject.activeInHierarchy)
@@ -68,6 +75,7 @@ public class CompassNavigationHUD : MonoBehaviour
         }
     }
 
+    // Function: Draws this script's IMGUI prompts, panels, and dialogue.
     private void OnGUI()
     {
         if (IsMenuScene(SceneManager.GetActiveScene().name))
@@ -83,6 +91,7 @@ public class CompassNavigationHUD : MonoBehaviour
         DrawCenterMarker(panel, heading);
     }
 
+    // Function: Gets or calculates heading.
     private float GetHeading()
     {
         Transform basis = targetCamera != null ? targetCamera.transform : player;
@@ -102,12 +111,14 @@ public class CompassNavigationHUD : MonoBehaviour
         return Mathf.Repeat(heading, 360f);
     }
 
+    // Function: Gets or calculates panel rect.
     private Rect GetPanelRect()
     {
         float width = Mathf.Clamp(Screen.width * widthRatio, 420f, Screen.width - 32f);
         return new Rect((Screen.width - width) * 0.5f, topOffset, width, panelHeight);
     }
 
+    // Function: Draws the UI elements for ticks.
     private void DrawTicks(Rect panel, float heading)
     {
         float centerX = panel.x + panel.width * 0.5f;
@@ -151,6 +162,7 @@ public class CompassNavigationHUD : MonoBehaviour
         GUI.EndGroup();
     }
 
+    // Function: Draws the UI elements for center marker.
     private void DrawCenterMarker(Rect panel, float heading)
     {
         float centerX = panel.x + panel.width * 0.5f;
@@ -161,12 +173,14 @@ public class CompassNavigationHUD : MonoBehaviour
         GUI.Label(new Rect(centerX - 70f, panel.y + panel.height - 24f, 140f, 22f), label, style);
     }
 
+    // Function: Gets or calculates direction label.
     private string GetDirectionLabel(float degree)
     {
         int index = Mathf.RoundToInt(Mathf.Repeat(degree, 360f) / 45f) % directionLabels.Length;
         return directionLabels[index];
     }
 
+    // Function: Gets or calculates label style.
     private GUIStyle GetLabelStyle(ref GUIStyle style, int fontSize, TextAnchor alignment, Color color)
     {
         if (style == null)
@@ -181,11 +195,13 @@ public class CompassNavigationHUD : MonoBehaviour
         return style;
     }
 
+    // Function: Refreshes cached references or state for references.
     private void RefreshReferences()
     {
         targetCamera = Camera.main;
     }
 
+    // Function: Creates the objects, textures, or UI needed for textures.
     private void CreateTextures()
     {
         panelTexture = CreateSolidTexture(panelColor);
@@ -193,6 +209,7 @@ public class CompassNavigationHUD : MonoBehaviour
         centerTexture = CreateSolidTexture(centerColor);
     }
 
+    // Function: Creates the objects, textures, or UI needed for solid texture.
     private static Texture2D CreateSolidTexture(Color color)
     {
         Texture2D texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
@@ -202,6 +219,7 @@ public class CompassNavigationHUD : MonoBehaviour
         return texture;
     }
 
+    // Function: Checks whether menu scene is true.
     private static bool IsMenuScene(string sceneName)
     {
         return string.Equals(sceneName, "MainMenu", System.StringComparison.OrdinalIgnoreCase) ||

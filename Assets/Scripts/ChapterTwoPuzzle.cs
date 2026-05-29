@@ -1,3 +1,5 @@
+// Main function: Controls the Chapter Two Fae Homes flow, including virtue quizzes, the dice board game, the honey side quest, key collection, maze progression, and rewards.
+
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -157,6 +159,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         public readonly int correctIndex;
         public readonly string reason;
 
+        // Function: Stores one quiz question, its options, correct answer index, and explanation.
         public Question(string virtue, string text, string[] options, int correctIndex, string reason)
         {
             this.virtue = virtue;
@@ -280,6 +283,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
     private readonly List<Question> quizQuestions = new List<Question>();
     private readonly List<string> inventoryItems = new List<string>();
 
+    // Function: Adds an item to the Chapter Two inventory from another script.
     public static void AddItemToInventory(string itemName)
     {
         if (instance != null)
@@ -289,6 +293,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
     }
 
 
+    // Function: Initializes component references, cached state, and default runtime data.
     private void Awake()
     {
         if (instance != null && instance != this)
@@ -303,6 +308,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         RefreshReferences();
     }
 
+    // Function: Stops running routines, unregisters events, and restores temporary state when disabled.
     private void OnDisable()
     {
         AquariusMax.Fae.demo.DemoCharacter.LockPlayerInput = false;
@@ -312,6 +318,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         AquariusMax.Fae.demo.DemoCharacter.LookPadInput = Vector2.zero;
     }
 
+    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         if (!IsTargetScene())
@@ -364,6 +371,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         UpdateExplorationInput();
     }
 
+    // Function: Draws this script's IMGUI prompts, panels, and dialogue.
     private void OnGUI()
     {
         if (!IsTargetScene())
@@ -393,6 +401,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         DrawInteractPrompts();
     }
 
+    // Function: Updates exploration input state, input, or presentation.
     private void UpdateExplorationInput()
     {
         if (!hasPass && IsNearStartTile() && Input.GetKeyDown(interactKey))
@@ -484,6 +493,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Handles baker interaction interaction or progression.
     private void HandleBakerInteraction()
     {
         if (bakerQuestCompleted)
@@ -522,6 +532,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         StartDialogue(bakerRewardDialogue, null);
     }
 
+    // Function: Handles bear interaction interaction or progression.
     private void HandleBearInteraction()
     {
         if (hasFullHoneyBottle || bakerQuestCompleted)
@@ -557,6 +568,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         StartDialogue(bearPourDialogue, null);
     }
 
+    // Function: Picks up or selects honey bottle.
     private void PickHoneyBottle()
     {
         hasHoneyBottle = true;
@@ -565,6 +577,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         ShowSystemPrompt(honeyFoundPrompt, 3f);
     }
 
+    // Function: Picks up or selects silver leaf.
     private void PickSilverLeaf()
     {
         hasSilverLeaf = true;
@@ -577,6 +590,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         ShowSystemPrompt(silverLeafFoundPrompt, 3f);
     }
 
+    // Function: Runs the pour honey logic.
     private void PourHoney()
     {
         hasFullHoneyBottle = true;
@@ -586,6 +600,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         ShowSystemPrompt(fullHoneyFoundPrompt, 3f);
     }
 
+    // Function: Runs the open locked house logic.
     private IEnumerator OpenLockedHouse()
     {
         if (unlockingHouse || lockedHouseOpened)
@@ -692,6 +707,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         ShowSystemPrompt(doorUnlockedPrompt, 3f);
     }
 
+    // Function: Picks up or selects fourth page.
     private void PickFourthPage()
     {
         fourthPagePicked = true;
@@ -707,6 +723,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         ShowSystemPrompt(thirdPageFoundPrompt, 3f);
     }
 
+    // Function: Unlocks third page portal and restores normal interaction.
     private void UnlockThirdPagePortal()
     {
         thirdPagePortalUnlocked = true;
@@ -717,6 +734,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Hides rock bear.
     private void HideRockBear()
     {
         if (rockBearObject != null)
@@ -730,6 +748,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Shows silver leaf.
     private void ShowSilverLeaf()
     {
         if (silverLeafObject != null)
@@ -738,6 +757,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Handles guard interaction interaction or progression.
     private void HandleGuardInteraction()
     {
         if (quizCompleted)
@@ -769,6 +789,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Starts the board game flow.
     private void StartBoardGame()
     {
         RefreshBoardReferences();
@@ -780,6 +801,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         ShowSystemPrompt(GetRollPrompt(), 3f);
     }
 
+    // Function: Updates board game input state, input, or presentation.
     private void UpdateBoardGameInput()
     {
         if (boardGamePhase == BoardGamePhase.WaitingToRoll && Input.GetKeyDown(interactKey))
@@ -789,6 +811,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Runs the roll dice and move logic.
     private IEnumerator RollDiceAndMove()
     {
         boardGamePhase = BoardGamePhase.Rolling;
@@ -832,6 +855,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         boardRoutine = null;
     }
 
+    // Function: Runs the throw dice logic.
     private IEnumerator ThrowDice(int result)
     {
         if (dice == null)
@@ -869,6 +893,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         dice.rotation = finalRotation;
     }
 
+    // Function: Gets or calculates dice result rotation.
     private Quaternion GetDiceResultRotation(int result)
     {
         result = Mathf.Clamp(result, 1, 6);
@@ -877,6 +902,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         return Quaternion.AngleAxis(Random.Range(0, 4) * 90f, Vector3.up) * faceUp;
     }
 
+    // Function: Gets or calculates face pointing up.
     private int GetFacePointingUp()
     {
         if (dice == null)
@@ -900,6 +926,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         return bestFace;
     }
 
+    // Function: Moves along board toward its target position or state.
     private IEnumerator MoveAlongBoard(int from, int to)
     {
         int index = from;
@@ -916,6 +943,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Moves player to board index toward its target position or state.
     private IEnumerator MovePlayerToBoardIndex(int index)
     {
         if (index <= 0)
@@ -928,6 +956,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         yield return MovePlayerToTransform(boardTiles[index]);
     }
 
+    // Function: Moves player to transform toward its target position or state.
     private IEnumerator MovePlayerToTransform(Transform targetTransform)
     {
         if (player == null || targetTransform == null)
@@ -967,6 +996,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
 
     }
 
+    // Function: Begins the board move phase.
     private void BeginBoardMove()
     {
         if (player == null || boardMoveController != null)
@@ -982,6 +1012,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Ends the board move phase and restores follow-up state.
     private void EndBoardMove()
     {
         if (boardMoveController != null)
@@ -994,6 +1025,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         AquariusMax.Fae.demo.DemoCharacter.ForceWalkAnimation = false;
     }
 
+    // Function: Sets board walk animation.
     private void SetBoardWalkAnimation(Animator animator, bool walking)
     {
         if (animator == null)
@@ -1018,6 +1050,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Sets animator bool.
     private void SetAnimatorBool(Animator animator, string parameterName, bool value)
     {
         foreach (AnimatorControllerParameter parameter in animator.parameters)
@@ -1030,6 +1063,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Sets animator float.
     private void SetAnimatorFloat(Animator animator, string parameterName, float value)
     {
         foreach (AnimatorControllerParameter parameter in animator.parameters)
@@ -1042,6 +1076,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Gets or calculates board adjustment.
     private int GetBoardAdjustment(int position)
     {
         switch (position)
@@ -1059,6 +1094,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Completes board game and applies its result or reward.
     private void CompleteBoardGame()
     {
         hasPass = true;
@@ -1068,6 +1104,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         ShowSystemPrompt(boardWonPrompt, 3f);
     }
 
+    // Function: Runs the stop board routine logic.
     private void StopBoardRoutine()
     {
         if (boardRoutine != null)
@@ -1079,6 +1116,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         EndBoardMove();
     }
 
+    // Function: Starts the welcome if needed flow.
     private void StartWelcomeIfNeeded()
     {
         if (welcomeStarted || player == null)
@@ -1091,6 +1129,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         StartDialogue(welcomeDialogue, null);
     }
 
+    // Function: Starts the quiz intro flow.
     private void StartQuizIntro()
     {
         if (quizStarted)
@@ -1103,6 +1142,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         StartDialogue(quizIntroDialogue, StartQuiz);
     }
 
+    // Function: Starts the quiz flow.
     private void StartQuiz()
     {
         BuildQuizQuestions();
@@ -1116,6 +1156,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         state = FlowState.Quiz;
     }
 
+    // Function: Builds the data or scene objects needed for quiz questions.
     private void BuildQuizQuestions()
     {
         quizQuestions.Clear();
@@ -1126,6 +1167,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         AddQuestionsForVirtue("Patience", 2);
     }
 
+    // Function: Adds questions for virtue.
     private void AddQuestionsForVirtue(string virtue, int count)
     {
         int added = 0;
@@ -1145,6 +1187,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Updates quiz input state, input, or presentation.
     private void UpdateQuizInput()
     {
         if (showingQuizFeedback)
@@ -1221,6 +1264,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         showingQuizFeedback = true;
     }
 
+    // Function: Resets maze after wrong answer to its starting state.
     private void ResetMazeAfterWrongAnswer()
     {
         state = FlowState.Exploring;
@@ -1251,6 +1295,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         ShowSystemPrompt(quizFailedPrompt, 3f);
     }
 
+    // Function: Completes second page reward and applies its result or reward.
     private void CompleteSecondPageReward()
     {
         quizCompleted = true;
@@ -1260,6 +1305,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         DropAirWallTwo();
     }
 
+    // Function: Runs the drop air wall two logic.
     private void DropAirWallTwo()
     {
         if (airWallTwoDropped)
@@ -1281,6 +1327,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         airWallTwoRoutine = StartCoroutine(MoveAirWallTwoDown());
     }
 
+    // Function: Moves air wall two down toward its target position or state.
     private IEnumerator MoveAirWallTwoDown()
     {
         Vector3 start = airWallTwo.position;
@@ -1300,6 +1347,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         airWallTwoRoutine = null;
     }
 
+    // Function: Moves player to maze start toward its target position or state.
     private void MovePlayerToMazeStart()
     {
         if (player == null || guardInteract == null)
@@ -1324,6 +1372,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Runs the open maze logic.
     private void OpenMaze()
     {
         if (!mazeOpened)
@@ -1345,6 +1394,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Hides maze block.
     private void HideMazeBlock()
     {
         if (mazeBlock != null)
@@ -1353,6 +1403,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Starts the dialogue flow.
     private void StartDialogue(string[] lines, System.Action onFinished)
     {
         activeLines = lines;
@@ -1361,6 +1412,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         state = FlowState.Dialogue;
     }
 
+    // Function: Runs the advance dialogue logic.
     private void AdvanceDialogue()
     {
         lineIndex++;
@@ -1381,6 +1433,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Draws the UI elements for system prompt.
     private void DrawSystemPrompt()
     {
         if (string.IsNullOrEmpty(currentSystemPrompt) || Time.time >= systemPromptEndsAt)
@@ -1393,6 +1446,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         GUI.Label(rect, currentSystemPrompt, GetStyle(ref promptStyle, 30, TextAnchor.MiddleCenter, FontStyle.Bold));
     }
 
+    // Function: Draws the UI elements for dialogue.
     private void DrawDialogue()
     {
         string line = activeLines != null && lineIndex >= 0 && lineIndex < activeLines.Length ? activeLines[lineIndex] : string.Empty;
@@ -1402,6 +1456,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         GUI.Label(new Rect(rect.x + 26f, rect.y + rect.height - 48f, rect.width - 52f, 28f), continuePrompt, GetStyle(ref hintStyle, 22, TextAnchor.MiddleRight, FontStyle.Normal));
     }
 
+    // Function: Draws the UI elements for quiz.
     private void DrawQuiz()
     {
         Rect rect = new Rect(70f, 70f, Screen.width - 140f, Screen.height - 140f);
@@ -1425,6 +1480,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Draws the UI elements for interact prompts.
     private void DrawInteractPrompts()
     {
         if (!hasPass && IsNearStartTile())
@@ -1481,6 +1537,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Draws the UI elements for prompt.
     private void DrawPrompt(string text)
     {
         Rect rect = GameUiStyle.InteractionPromptRect(440f, 60f);
@@ -1488,6 +1545,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         GUI.Label(rect, text, GetStyle(ref promptStyle, 30, TextAnchor.MiddleCenter, FontStyle.Bold));
     }
 
+    // Function: Draws the UI elements for board game.
     private void DrawBoardGame()
     {
         string text;
@@ -1513,6 +1571,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         GUI.Label(rect, text, GetStyle(ref promptStyle, 30, TextAnchor.MiddleCenter, FontStyle.Bold));
     }
 
+    // Function: Draws the UI elements for inventory.
     private void DrawInventory()
     {
         float width = inventoryOpen ? 230f : 118f;
@@ -1539,11 +1598,13 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Draws a reusable dark UI panel background.
     private void DrawPanel(Rect rect)
     {
         GameUiStyle.DrawPanel(rect);
     }
 
+    // Function: Draws the UI elements for look pad.
     private void DrawLookPad()
     {
         if (state == FlowState.Quiz)
@@ -1562,6 +1623,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         GUI.color = previous;
     }
 
+    // Function: Updates look pad input state, input, or presentation.
     private void UpdateLookPadInput()
     {
         if (state == FlowState.Quiz)
@@ -1598,11 +1660,13 @@ public class ChapterTwoPuzzle : MonoBehaviour
         AquariusMax.Fae.demo.DemoCharacter.LookPadInput = new Vector2(lookPadDirection.x, -lookPadDirection.y) * lookPadSensitivity;
     }
 
+    // Function: Gets or calculates look pad center.
     private Vector2 GetLookPadCenter()
     {
         return new Vector2(Screen.width - lookPadRadius - 34f, Screen.height - lookPadRadius - 34f);
     }
 
+    // Function: Ensures look pad textures exists, is configured, or is ready to use.
     private void EnsureLookPadTextures()
     {
         if (lookPadTexture == null)
@@ -1616,6 +1680,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Creates the objects, textures, or UI needed for circle texture.
     private Texture2D CreateCircleTexture(int size, Color fill, Color edge, float edgeWidth)
     {
         Texture2D texture = new Texture2D(size, size, TextureFormat.ARGB32, false);
@@ -1646,6 +1711,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         return texture;
     }
 
+    // Function: Gets or calculates style.
     private GUIStyle GetStyle(ref GUIStyle style, int fontSize, TextAnchor alignment, FontStyle fontStyle, bool wordWrap = false)
     {
         if (style == null)
@@ -1661,17 +1727,20 @@ public class ChapterTwoPuzzle : MonoBehaviour
         return style;
     }
 
+    // Function: Shows system prompt.
     private void ShowSystemPrompt(string text, float seconds)
     {
         currentSystemPrompt = text;
         systemPromptEndsAt = Time.time + seconds;
     }
 
+    // Function: Gets or calculates roll prompt.
     private string GetRollPrompt()
     {
         return string.Format(boardRollPromptFormat, boardRound);
     }
 
+    // Function: Refreshes cached references or state for references.
     private void RefreshReferences()
     {
         if (!IsTargetScene())
@@ -1702,6 +1771,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Refreshes cached references or state for board references.
     private void RefreshBoardReferences()
     {
         FixReferenceArraySizes();
@@ -1725,6 +1795,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         boardReferencesReady = allReady;
     }
 
+    // Function: Runs the fix reference array sizes logic.
     private void FixReferenceArraySizes()
     {
         if (boardTiles == null || boardTiles.Length != BoardTileCount)
@@ -1738,6 +1809,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Caches the initial state or references for dice original transform.
     private void CacheDiceOriginalTransform()
     {
         if (dice == null)
@@ -1759,6 +1831,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Applies honey quest object visibility effects to the scene or target object.
     private void ApplyHoneyQuestObjectVisibility()
     {
         if (silverLeafObject != null)
@@ -1777,6 +1850,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Ensures maze colliders exists, is configured, or is ready to use.
     private void EnsureMazeColliders()
     {
         if (mazeCollidersReady)
@@ -1810,6 +1884,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         mazeCollidersReady = true;
     }
 
+    // Function: Checks whether inside maze collider area is true.
     private bool IsInsideMazeColliderArea(Vector3 point)
     {
         Vector3 delta = point - mazeColliderCenter;
@@ -1818,6 +1893,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
                Mathf.Abs(delta.z) <= mazeColliderExtents.z;
     }
 
+    // Function: Runs the should skip runtime collider logic.
     private bool ShouldSkipRuntimeCollider(Transform transform)
     {
         if (transform == null)
@@ -1838,6 +1914,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
                objectName.Contains("Light");
     }
 
+    // Function: Ensures solid collider exists, is configured, or is ready to use.
     private void EnsureSolidCollider(Renderer renderer)
     {
         Collider existing = renderer.GetComponent<Collider>();
@@ -1858,6 +1935,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Ensures box collider exists, is configured, or is ready to use.
     private void EnsureBoxCollider(GameObject target)
     {
         if (target == null)
@@ -1875,6 +1953,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         boxCollider.enabled = true;
     }
 
+    // Function: Sets colliders enabled.
     private void SetCollidersEnabled(GameObject target, bool enabled)
     {
         if (target == null)
@@ -1895,6 +1974,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Ensures guard stand animation exists, is configured, or is ready to use.
     private void EnsureGuardStandAnimation()
     {
         if (guard == null || guardStandController == null)
@@ -1918,51 +1998,61 @@ public class ChapterTwoPuzzle : MonoBehaviour
         animator.enabled = true;
     }
 
+    // Function: Checks whether nearby guard is true.
     private bool IsNearGuard()
     {
         return player != null && guardInteract != null && Vector3.Distance(player.position, guardInteract.position) <= interactDistance;
     }
 
+    // Function: Checks whether nearby baker is true.
     private bool IsNearBaker()
     {
         return player != null && bakerInteract != null && Vector3.Distance(player.position, bakerInteract.position) <= interactDistance;
     }
 
+    // Function: Checks whether nearby listener is true.
     private bool IsNearListener()
     {
         return player != null && listenerInteract != null && Vector3.Distance(player.position, listenerInteract.position) <= interactDistance;
     }
 
+    // Function: Checks whether nearby locked house is true.
     private bool IsNearLockedHouse()
     {
         return player != null && lockedHouse != null && Vector3.Distance(player.position, lockedHouse.position) <= interactDistance;
     }
 
+    // Function: Checks whether nearby box is true.
     private bool IsNearBox()
     {
         return player != null && box != null && Vector3.Distance(player.position, box.position) <= interactDistance;
     }
 
+    // Function: Checks whether nearby honey is true.
     private bool IsNearHoney()
     {
         return player != null && honeyObject != null && honeyObject.activeInHierarchy && Vector3.Distance(player.position, honeyObject.transform.position) <= interactDistance;
     }
 
+    // Function: Checks whether nearby bear is true.
     private bool IsNearBear()
     {
         return player != null && bearInteract != null && Vector3.Distance(player.position, bearInteract.position) <= interactDistance;
     }
 
+    // Function: Checks whether nearby honey give is true.
     private bool IsNearHoneyGive()
     {
         return player != null && honeyGive != null && Vector3.Distance(player.position, honeyGive.position) <= interactDistance;
     }
 
+    // Function: Checks whether nearby silver leaf is true.
     private bool IsNearSilverLeaf()
     {
         return player != null && silverLeafObject != null && silverLeafObject.activeInHierarchy && Vector3.Distance(player.position, silverLeafObject.transform.position) <= interactDistance;
     }
 
+    // Function: Checks whether nearby third page portal is true.
     private bool IsNearThirdPagePortal()
     {
         return player != null &&
@@ -1971,6 +2061,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
                Vector3.Distance(player.position, thirdPagePortalObject.transform.position) <= interactDistance;
     }
 
+    // Function: Adds inventory item.
     private void AddInventoryItem(string itemName)
     {
         if (!inventoryItems.Contains(itemName))
@@ -1980,6 +2071,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Removes inventory item.
     private void RemoveInventoryItem(string itemName)
     {
         if (inventoryItems.Remove(itemName))
@@ -1988,6 +2080,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
         }
     }
 
+    // Function: Checks whether all four keys already exists or is available.
     private bool HasAllFourKeys()
     {
         return inventoryItems.Contains(redKeyItemName) &&
@@ -1996,6 +2089,7 @@ public class ChapterTwoPuzzle : MonoBehaviour
                inventoryItems.Contains(yellowKeyItemName);
     }
 
+    // Function: Checks whether nearby start tile is true.
     private bool IsNearStartTile()
     {
         if (hasPass || player == null)
@@ -2006,16 +2100,19 @@ public class ChapterTwoPuzzle : MonoBehaviour
         return startTile != null && Vector3.Distance(player.position, startTile.position) <= boardInteractDistance;
     }
 
+    // Function: Checks whether nearby exit is true.
     private bool IsNearExit()
     {
         return player != null && exitInteract != null && Vector3.Distance(player.position, exitInteract.position) <= exitDistance;
     }
 
+    // Function: Checks whether target scene is true.
     private bool IsTargetScene()
     {
         return SceneManager.GetActiveScene().name == targetSceneName;
     }
 
+    // Function: Builds the data or scene objects needed for questions.
     private void BuildQuestions()
     {
         questions.Clear();

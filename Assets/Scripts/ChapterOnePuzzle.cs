@@ -1,3 +1,5 @@
+// Main function: Controls the Chapter One forest puzzle flow, including block pushing, rescue outcomes, enemy ambushes, hero combat, portal unlocking, and on-screen prompts.
+
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -144,11 +146,13 @@ public class ChapterOnePuzzle : MonoBehaviour
     private GameObject heroTargetEnemy;
     private readonly HashSet<GameObject> defeatedEnemies = new HashSet<GameObject>();
 
+    // Function: Initializes component references, cached state, and default runtime data.
     private void Awake()
     {
         RefreshReferences();
     }
 
+    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         RotateResultIndicators();
@@ -192,6 +196,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         StartPushingBlock(hoveredIndex);
     }
 
+    // Function: Draws this script's IMGUI prompts, panels, and dialogue.
     private void OnGUI()
     {
         if (helpDialogueActive)
@@ -229,6 +234,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         DrawPromptBox(hasResultPrompt ? resultPrompt : pushPrompt, Screen.height * 0.72f);
     }
 
+    // Function: Draws the UI elements for prompt box.
     private void DrawPromptBox(string text, float y)
     {
         Rect rect = y <= 60f
@@ -245,6 +251,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         GUI.Label(new Rect(rect.x + 14f, rect.y + 8f, rect.width - 28f, rect.height - 16f), text, style);
     }
 
+    // Function: Draws the UI elements for dialogue box.
     private void DrawDialogueBox()
     {
         Rect rect = GameUiStyle.DialogueRect(220f);
@@ -272,6 +279,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         GUI.Label(new Rect(rect.x + 24f, rect.y + rect.height - 42f, rect.width - 48f, 24f), activeDialogueContinueHint, hintStyle);
     }
 
+    // Function: Refreshes cached references or state for references.
     private void RefreshReferences()
     {
         if (hero != null && heroAnimator == null)
@@ -304,6 +312,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         referencesReady = player != null && puzzleRoot != null && center != null && pushBlocks.Count == expectedPushCount;
     }
 
+    // Function: Starts the pushing block flow.
     private void StartPushingBlock(int index)
     {
         if (index < 0 || index >= pushBlocks.Count || pushBlocks[index] == null)
@@ -318,6 +327,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         promptVisible = false;
     }
 
+    // Function: Updates help story state, input, or presentation.
     private void UpdateHelpStory()
     {
         if (helpDialogueActive)
@@ -362,6 +372,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         }
     }
 
+    // Function: Starts the dialogue flow.
     private void StartDialogue(string[] lines, KeyCode continueKey, string continueHint)
     {
         if (lines == null || lines.Length == 0)
@@ -377,6 +388,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         helpDialogueIndex = 0;
     }
 
+    // Function: Finishes the active dialogue flow and performs cleanup.
     private void FinishActiveDialogue()
     {
         string[] finishedLines = activeDialogueLines;
@@ -408,6 +420,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         }
     }
 
+    // Function: Adds first page to backpack.
     private void AddFirstPageToBackpack()
     {
         if (firstPageAddedToBackpack)
@@ -419,6 +432,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         GlobalBackpackUI.AddItem(firstPageItemName);
     }
 
+    // Function: Moves active block toward its target position or state.
     private void MoveActiveBlock()
     {
         if (movingBlockIndex < 0 || movingBlockIndex >= pushBlocks.Count || pushBlocks[movingBlockIndex] == null)
@@ -453,6 +467,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         }
     }
 
+    // Function: Applies rescue result effects to the scene or target object.
     private void ApplyRescueResult()
     {
         if (rescueApplied)
@@ -473,6 +488,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         }
     }
 
+    // Function: Runs the prepare delayed enemies logic.
     private void PrepareDelayedEnemies()
     {
         if (enemiesPrepared)
@@ -506,6 +522,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         enemiesPrepared = true;
     }
 
+    // Function: Hides delayed enemy.
     private void HideDelayedEnemy(GameObject enemy)
     {
         Renderer[] renderers = enemy.GetComponentsInChildren<Renderer>(true);
@@ -549,6 +566,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         }
     }
 
+    // Function: Updates enemy ambush state, input, or presentation.
     private void UpdateEnemyAmbush()
     {
         if (enemiesActivated || !forestAttackDialogueFinished)
@@ -564,6 +582,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         ActivateDelayedEnemies();
     }
 
+    // Function: Runs the activate delayed enemies logic.
     private void ActivateDelayedEnemies()
     {
         PrepareDelayedEnemies();
@@ -624,6 +643,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         StartHeroCombat();
     }
 
+    // Function: Starts the hero combat flow.
     private void StartHeroCombat()
     {
         if (hero == null)
@@ -657,6 +677,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         PlayHeroAnimation(heroWalkController, heroWalkStateName);
     }
 
+    // Function: Sets hero visible.
     private void SetHeroVisible(bool visible)
     {
         if (hero == null)
@@ -693,6 +714,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         }
     }
 
+    // Function: Finishes the hero combat flow and performs cleanup.
     private void FinishHeroCombat()
     {
         heroCombatActive = false;
@@ -706,6 +728,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         }
     }
 
+    // Function: Updates hero story state, input, or presentation.
     private void UpdateHeroStory()
     {
         heroPromptVisible = false;
@@ -738,12 +761,14 @@ public class ChapterOnePuzzle : MonoBehaviour
         }
     }
 
+    // Function: Unlocks portal and restores normal interaction.
     private void UnlockPortal()
     {
         portalUnlocked = true;
         SetPortalVisible(true);
     }
 
+    // Function: Updates portal interaction state, input, or presentation.
     private void UpdatePortalInteraction()
     {
         portalPromptVisible = false;
@@ -766,6 +791,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         }
     }
 
+    // Function: Sets portal visible.
     private void SetPortalVisible(bool visible)
     {
         if (portalTrigger != null && portalTrigger.gameObject.activeSelf != visible)
@@ -779,6 +805,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         }
     }
 
+    // Function: Updates hero combat state, input, or presentation.
     private void UpdateHeroCombat()
     {
         if (!heroCombatActive || hero == null)
@@ -841,6 +868,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         KeepHeroAtCombatHeight();
     }
 
+    // Function: Runs the keep hero at combat height logic.
     private void KeepHeroAtCombatHeight()
     {
         Vector3 position = hero.position;
@@ -853,6 +881,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         hero.position = position;
     }
 
+    // Function: Finds next hero target objects or component references.
     private GameObject FindNextHeroTarget()
     {
         GameObject bestEnemy = null;
@@ -878,6 +907,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         return bestEnemy;
     }
 
+    // Function: Turns the object to face hero toward.
     private void FaceHeroToward(Vector3 targetPosition)
     {
         Vector3 toTarget = targetPosition - hero.position;
@@ -891,6 +921,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         hero.rotation = Quaternion.RotateTowards(hero.rotation, targetRotation, heroTurnSpeed * Time.deltaTime);
     }
 
+    // Function: Runs the defeat enemy logic.
     private void DefeatEnemy(GameObject enemy)
     {
         if (enemy == null)
@@ -908,6 +939,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         enemy.SetActive(false);
     }
 
+    // Function: Plays hero animation animation, audio, or cutscene behavior.
     private void PlayHeroAnimation(RuntimeAnimatorController controller, string stateName)
     {
         if (heroAnimator == null)
@@ -937,6 +969,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         }
     }
 
+    // Function: Gets or calculates hovered push index.
     private int GetHoveredPushIndex()
     {
         for (int i = 0; i < pushMarkers.Count; i++)
@@ -955,6 +988,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         return -1;
     }
 
+    // Function: Checks whether player in push area is true.
     private bool IsPlayerInPushArea(int index)
     {
         Vector3 playerPosition = Flatten(player.position);
@@ -985,11 +1019,13 @@ public class ChapterOnePuzzle : MonoBehaviour
         return true;
     }
 
+    // Function: Gets or calculates current push marker.
     private Transform GetCurrentPushMarker()
     {
         return currentIndex >= 0 && currentIndex < pushMarkers.Count ? pushMarkers[currentIndex] : null;
     }
 
+    // Function: Refreshes cached references or state for push references.
     private void RefreshPushReferences()
     {
         pushBlocks.Clear();
@@ -1014,6 +1050,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         }
     }
 
+    // Function: Moves block toward local target toward its target position or state.
     private bool MoveBlockTowardLocalTarget(Transform block, Vector3 targetLocalPosition)
     {
         block.localPosition = Vector3.MoveTowards(
@@ -1030,6 +1067,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         return false;
     }
 
+    // Function: Gets or calculates solved local position.
     private Vector3 GetSolvedLocalPosition(Transform block, int index)
     {
         if (runtimeSolvedLocalPositions != null &&
@@ -1042,6 +1080,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         return block.localPosition;
     }
 
+    // Function: Builds the data or scene objects needed for runtime solved local positions.
     private void BuildRuntimeSolvedLocalPositions()
     {
         runtimeSolvedLocalPositions = new Vector3[pushBlocks.Count];
@@ -1061,6 +1100,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         }
     }
 
+    // Function: Gets or calculates configured or generated solved local position.
     private Vector3 GetConfiguredOrGeneratedSolvedLocalPosition(Transform block, int index)
     {
         if (pushSteps != null &&
@@ -1074,6 +1114,7 @@ public class ChapterOnePuzzle : MonoBehaviour
 
         return block.localPosition;
     }
+    // Function: Handles failure for and reset, including prompts, reset, or penalty.
     private void FailAndReset()
     {
         for (int i = 0; i < pushBlocks.Count; i++)
@@ -1101,18 +1142,21 @@ public class ChapterOnePuzzle : MonoBehaviour
         SetIndicatorVisible(greenIndicator, false);
     }
 
+    // Function: Shows result.
     private void ShowResult(string text)
     {
         resultPrompt = text;
         resultPromptEndsAt = Time.time + 3f;
     }
 
+    // Function: Rotates result indicators or calculates a rotation result.
     private void RotateResultIndicators()
     {
         RotateIndicator(redIndicator);
         RotateIndicator(greenIndicator);
     }
 
+    // Function: Rotates indicator or calculates a rotation result.
     private void RotateIndicator(Transform indicator)
     {
         if (indicator != null && indicator.gameObject.activeSelf)
@@ -1121,6 +1165,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         }
     }
 
+    // Function: Sets indicator visible.
     private static void SetIndicatorVisible(Transform indicator, bool visible)
     {
         if (indicator != null && indicator.gameObject.activeSelf != visible)
@@ -1128,6 +1173,7 @@ public class ChapterOnePuzzle : MonoBehaviour
             indicator.gameObject.SetActive(visible);
         }
     }
+    // Function: Gets or calculates move input direction.
     private Vector3 GetMoveInputDirection()
     {
         float horizontal = Input.GetAxisRaw("Horizontal");
@@ -1149,12 +1195,14 @@ public class ChapterOnePuzzle : MonoBehaviour
         return (right * horizontal + forward * vertical).normalized;
     }
 
+    // Function: Runs the flatten logic.
     private static Vector3 Flatten(Vector3 value)
     {
         value.y = 0f;
         return value;
     }
 
+    // Function: Gets or calculates horizontal distance to object.
     private static float GetHorizontalDistanceToObject(Vector3 flatPoint, Transform target)
     {
         if (TryGetWorldBounds(target, out Bounds bounds))
@@ -1166,6 +1214,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         return Vector3.Distance(flatPoint, Flatten(target.position));
     }
 
+    // Function: Checks whether player nearby transform is true.
     private bool IsPlayerNearTransform(Transform target, float distance)
     {
         return player != null &&
@@ -1173,6 +1222,7 @@ public class ChapterOnePuzzle : MonoBehaviour
             GetHorizontalDistanceToObject(Flatten(player.position), target) <= distance;
     }
 
+    // Function: Checks whether player on trigger is true.
     private bool IsPlayerOnTrigger(Transform target, float fallbackDistance)
     {
         if (player == null || target == null)
@@ -1192,6 +1242,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         return GetHorizontalDistanceToObject(Flatten(player.position), target) <= fallbackDistance;
     }
 
+    // Function: Tries to get detection bounds and returns whether it was found.
     private static bool TryGetDetectionBounds(Transform target, out Bounds bounds)
     {
         Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
@@ -1224,6 +1275,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         return TryGetWorldBounds(target, out bounds);
     }
 
+    // Function: Ensures solid collider exists, is configured, or is ready to use.
     private void EnsureSolidCollider(Transform target)
     {
         if (target == null || colliderReadyTargets.Contains(target))
@@ -1244,6 +1296,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         }
     }
 
+    // Function: Checks whether solid collider already exists or is available.
     private static bool HasSolidCollider(Transform target)
     {
         Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
@@ -1258,6 +1311,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         return false;
     }
 
+    // Function: Adds mesh colliders.
     private static bool AddMeshColliders(Transform target)
     {
         bool addedAny = false;
@@ -1278,6 +1332,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         return addedAny;
     }
 
+    // Function: Adds renderer box colliders.
     private static bool AddRendererBoxColliders(Transform target)
     {
         bool addedAny = false;
@@ -1298,6 +1353,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         return addedAny;
     }
 
+    // Function: Gets or calculates closest distance.
     private static float GetClosestDistance(Vector3 point, Transform target)
     {
         Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
@@ -1333,6 +1389,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         return Vector3.Distance(point, target.position);
     }
 
+    // Function: Tries to get world bounds and returns whether it was found.
     private static bool TryGetWorldBounds(Transform target, out Bounds bounds)
     {
         Renderer[] renderers = target.GetComponentsInChildren<Renderer>(true);
@@ -1360,6 +1417,7 @@ public class ChapterOnePuzzle : MonoBehaviour
         return hasBounds;
     }
 
+    // Function: Safely converts by lossy scale through object scale.
     private static Vector3 DivideByLossyScale(Vector3 size, Vector3 lossyScale)
     {
         return new Vector3(
@@ -1368,6 +1426,7 @@ public class ChapterOnePuzzle : MonoBehaviour
             DivideByScale(size.z, lossyScale.z));
     }
 
+    // Function: Safely converts by scale through object scale.
     private static float DivideByScale(float value, float scale)
     {
         return Mathf.Abs(scale) > 0.0001f ? value / Mathf.Abs(scale) : value;

@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+// Main function: Adds or updates runtime colliders for mushroom objects and disables unsuitable original colliders.
+
+using System.Collections.Generic;
 using UnityEngine;
 
 public static class MushroomRuntimeColliders
@@ -6,6 +8,7 @@ public static class MushroomRuntimeColliders
     private const string CapName = "Cap Collider";
     private const string BodyName = "Body Blocker";
 
+    // Function: Adds scene mushroom colliders.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void AddSceneMushroomColliders()
     {
@@ -52,6 +55,7 @@ public static class MushroomRuntimeColliders
         }
     }
 
+    // Function: Adds mushroom colliders or updates the existing setup.
     private static void AddOrUpdateMushroomColliders(GameObject rootObject)
     {
         if (HasExistingGeneratedColliders(rootObject.transform))
@@ -85,6 +89,7 @@ public static class MushroomRuntimeColliders
         AddOrUpdateBox(rootObject, BodyName, bodyCenter, bodySize);
     }
 
+    // Function: Disables original colliders.
     private static void DisableOriginalColliders(GameObject rootObject)
     {
         Collider[] colliders = rootObject.GetComponentsInChildren<Collider>();
@@ -104,11 +109,13 @@ public static class MushroomRuntimeColliders
         }
     }
 
+    // Function: Checks whether mushroom named object is true.
     private static bool IsMushroomNamedObject(GameObject rootObject)
     {
         return rootObject.name.IndexOf("Mushroom", System.StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
+    // Function: Checks whether bounce mushroom part is true.
     private static bool IsBounceMushroomPart(GameObject rootObject)
     {
         string objectName = rootObject.name;
@@ -119,6 +126,7 @@ public static class MushroomRuntimeColliders
         return isBounceMushroomName && rootObject.GetComponentsInChildren<Renderer>().Length > 0;
     }
 
+    // Function: Checks whether bounce mushroom ancestor already exists or is available.
     private static bool HasBounceMushroomAncestor(Transform transform)
     {
         Transform current = transform.parent;
@@ -135,6 +143,7 @@ public static class MushroomRuntimeColliders
         return false;
     }
 
+    // Function: Checks whether bounce mushroom part ancestor already exists or is available.
     private static bool HasBounceMushroomPartAncestor(Transform transform)
     {
         Transform current = transform.parent;
@@ -151,22 +160,26 @@ public static class MushroomRuntimeColliders
         return false;
     }
 
+    // Function: Checks whether generated collider is true.
     private static bool IsGeneratedCollider(Transform transform)
     {
         return transform.name == CapName || transform.name == BodyName;
     }
 
+    // Function: Checks whether existing generated colliders already exists or is available.
     private static bool HasExistingGeneratedColliders(Transform root)
     {
         return root.Find(CapName) != null || root.Find(BodyName) != null;
     }
 
+    // Function: Enables existing generated colliders.
     private static void EnableExistingGeneratedColliders(Transform root)
     {
         EnableColliderChild(root, CapName);
         EnableColliderChild(root, BodyName);
     }
 
+    // Function: Enables collider child.
     private static void EnableColliderChild(Transform root, string childName)
     {
         Transform child = root.Find(childName);
@@ -182,12 +195,14 @@ public static class MushroomRuntimeColliders
         }
     }
 
+    // Function: Removes generated collider children.
     private static void RemoveGeneratedColliderChildren(Transform root)
     {
         RemoveGeneratedColliderChild(root, CapName);
         RemoveGeneratedColliderChild(root, BodyName);
     }
 
+    // Function: Removes generated collider child.
     private static void RemoveGeneratedColliderChild(Transform root, string childName)
     {
         Transform child = root.Find(childName);
@@ -197,6 +212,7 @@ public static class MushroomRuntimeColliders
         }
     }
 
+    // Function: Adds box or updates the existing setup.
     private static void AddOrUpdateBox(GameObject rootObject, string name, Vector3 worldCenter, Vector3 worldSize)
     {
         Transform existing = rootObject.transform.Find(name);
@@ -226,6 +242,7 @@ public static class MushroomRuntimeColliders
         collider.enabled = true;
     }
 
+    // Function: Runs the to local size logic.
     private static Vector3 ToLocalSize(Transform root, Vector3 worldSize)
     {
         Vector3 scale = root.lossyScale;
@@ -235,6 +252,7 @@ public static class MushroomRuntimeColliders
             SafeDivide(worldSize.z, scale.z));
     }
 
+    // Function: Performs safe division and avoids zero-scale errors.
     private static float SafeDivide(float size, float scale)
     {
         float absScale = Mathf.Abs(scale);

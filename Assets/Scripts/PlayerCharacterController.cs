@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+// Main function: Controls player movement and look behavior, including walking, running, jumping, crouching, camera pitch, and animator parameters.
+
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(CharacterController))]
@@ -55,6 +57,7 @@ public class PlayerCharacterController : MonoBehaviour
     private bool isCrouching;
     private float crouchEndsAt = -1f;
 
+    // Function: Initializes component references, cached state, and default runtime data.
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
@@ -83,6 +86,7 @@ public class PlayerCharacterController : MonoBehaviour
         }
     }
 
+    // Function: Runs one-time setup after the scene has started.
     private void Start()
     {
         if (!lockCursorOnStart)
@@ -94,6 +98,7 @@ public class PlayerCharacterController : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
     }
 
+    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         ReadInput();
@@ -102,6 +107,7 @@ public class PlayerCharacterController : MonoBehaviour
         UpdateAnimator();
     }
 
+    // Function: Reads movement, jump, run, and crouch input for the player controller.
     private void ReadInput()
     {
         moveInput = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
@@ -136,6 +142,7 @@ public class PlayerCharacterController : MonoBehaviour
         isRunning = !isCrouching && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift));
     }
 
+    // Function: Updates player yaw and camera pitch from mouse input.
     private void UpdateLook()
     {
         if (!rotateWithMouse)
@@ -156,6 +163,7 @@ public class PlayerCharacterController : MonoBehaviour
         playerCamera.transform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
     }
 
+    // Function: Applies grounded movement, jumping, crouch speed, gravity, and CharacterController motion.
     private void UpdateMovement()
     {
         bool grounded = controller.isGrounded;
@@ -183,6 +191,7 @@ public class PlayerCharacterController : MonoBehaviour
         controller.Move(horizontalVelocity * Time.deltaTime);
     }
 
+    // Function: Calculates the desired movement direction from input and camera orientation.
     private Vector3 GetMoveDirection()
     {
         if (moveInput.sqrMagnitude <= 0.001f)
@@ -215,6 +224,7 @@ public class PlayerCharacterController : MonoBehaviour
         return direction;
     }
 
+    // Function: Sends movement, running, grounded, vertical velocity, and action values to the animator.
     private void UpdateAnimator()
     {
         if (animator == null)
@@ -237,6 +247,7 @@ public class PlayerCharacterController : MonoBehaviour
         }
     }
 
+    // Function: Caches animator parameter hashes so missing parameters can be skipped safely.
     private void CacheAnimatorParameters()
     {
         animatorParameters.Clear();
@@ -252,12 +263,14 @@ public class PlayerCharacterController : MonoBehaviour
         }
     }
 
+    // Function: Checks whether the configured animator contains a parameter.
     private bool HasParameter(string parameterName)
     {
         return !string.IsNullOrEmpty(parameterName) &&
                animatorParameters.Contains(Animator.StringToHash(parameterName));
     }
 
+    // Function: Safely writes a float parameter to the animator.
     private void SetFloat(string parameterName, float value)
     {
         if (HasParameter(parameterName))
@@ -266,6 +279,7 @@ public class PlayerCharacterController : MonoBehaviour
         }
     }
 
+    // Function: Safely writes a bool parameter to the animator.
     private void SetBool(string parameterName, bool value)
     {
         if (HasParameter(parameterName))
@@ -274,6 +288,7 @@ public class PlayerCharacterController : MonoBehaviour
         }
     }
 
+    // Function: Safely fires a trigger parameter on the animator.
     private void SetTrigger(string parameterName)
     {
         if (HasParameter(parameterName))
@@ -282,6 +297,7 @@ public class PlayerCharacterController : MonoBehaviour
         }
     }
 
+    // Function: Plays an action by firing its trigger and crossfading to its state when available.
     private void PlayAction(string triggerParameter, string stateName)
     {
         if (animator == null)
@@ -300,6 +316,7 @@ public class PlayerCharacterController : MonoBehaviour
         }
     }
 
+    // Function: Checks whether the animator contains the requested state.
     private bool HasState(string stateName)
     {
         if (animator == null || string.IsNullOrEmpty(stateName))
@@ -311,6 +328,7 @@ public class PlayerCharacterController : MonoBehaviour
             animator.HasState(0, Animator.StringToHash("Base Layer." + stateName));
     }
 
+    // Function: Converts an angle into the -180 to 180 degree range.
     private static float NormalizeAngle(float angle)
     {
         return angle > 180f ? angle - 360f : angle;

@@ -1,3 +1,5 @@
+// Main function: Configures the player, camera, visible hero model, movement scripts, and animation state when the Fae Homes scene starts.
+
 using System.Collections;
 using UnityEngine;
 
@@ -33,6 +35,7 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
     private Vector3 lastPlayerPosition;
     private bool lastPlayerPositionReady;
 
+    // Function: Runs one-time setup after the scene has started.
     private void Start()
     {
         if (player == null)
@@ -44,11 +47,13 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
         StartCoroutine(SetupPlayerNextFrame());
     }
 
+    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         UpdateHeroAnimation();
     }
 
+    // Function: Sets up player next frame.
     private IEnumerator SetupPlayerNextFrame()
     {
         yield return null;
@@ -59,6 +64,7 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
         }
     }
 
+    // Function: Sets up player.
     private void SetupPlayer()
     {
         player.SetActive(true);
@@ -68,6 +74,7 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
         MovePlayerToSpawn();
     }
 
+    // Function: Sets up camera.
     private void SetupCamera()
     {
         if (playerCamera == null)
@@ -92,6 +99,7 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
         }
     }
 
+    // Function: Sets up hero.
     private void SetupHero()
     {
         if (visibleHero == null)
@@ -113,6 +121,7 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
         SetupHeroAnimator();
     }
 
+    // Function: Disables hero cameras.
     private void DisableHeroCameras()
     {
         Camera[] cameras = visibleHero.GetComponentsInChildren<Camera>(true);
@@ -134,6 +143,7 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
         }
     }
 
+    // Function: Sets up hero animator.
     private void SetupHeroAnimator()
     {
         heroAnimator = visibleHero.GetComponentInChildren<Animator>(true);
@@ -153,6 +163,7 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
         lastPlayerPositionReady = true;
     }
 
+    // Function: Sets up movement scripts.
     private void SetupMovementScripts()
     {
         AquariusMax.Fae.demo.DemoCharacter demoCharacter = player.GetComponentInChildren<AquariusMax.Fae.demo.DemoCharacter>(true);
@@ -168,6 +179,7 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
         }
     }
 
+    // Function: Updates hero animation state, input, or presentation.
     private void UpdateHeroAnimation()
     {
         if (player == null)
@@ -203,6 +215,7 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
         SetAnimatorBool(runningParameter, false);
     }
 
+    // Function: Sets animator float.
     private void SetAnimatorFloat(string parameterName, float value)
     {
         if (HasAnimatorParameter(parameterName, AnimatorControllerParameterType.Float))
@@ -211,6 +224,7 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
         }
     }
 
+    // Function: Sets animator bool.
     private void SetAnimatorBool(string parameterName, bool value)
     {
         if (HasAnimatorParameter(parameterName, AnimatorControllerParameterType.Bool))
@@ -219,6 +233,7 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
         }
     }
 
+    // Function: Checks whether animator parameter already exists or is available.
     private bool HasAnimatorParameter(string parameterName, AnimatorControllerParameterType type)
     {
         if (heroAnimator == null || string.IsNullOrEmpty(parameterName))
@@ -237,6 +252,7 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
         return false;
     }
 
+    // Function: Moves player to spawn toward its target position or state.
     private void MovePlayerToSpawn()
     {
         if (spawnPoint == null)
@@ -260,6 +276,7 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
         }
     }
 
+    // Function: Snaps to ground to the target position or ground.
     private Vector3 SnapToGround(Vector3 position, CharacterController controller)
     {
         float footOffset = controller != null ? controller.center.y - controller.height * 0.5f : 0f;

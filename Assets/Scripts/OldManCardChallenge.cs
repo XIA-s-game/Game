@@ -1,3 +1,5 @@
+// Main function: Runs the old man card challenge, including dialogue, shuffle animations, player choice checks, camera switching, and control locking.
+
 using System.Collections;
 using System.Collections.Generic;
 using AquariusMax.Fae.demo;
@@ -64,6 +66,7 @@ public class OldManCardChallenge : MonoBehaviour
         public readonly GameObject obj;
         public int slotIndex;
 
+        // Function: Stores one card's type, display name, and scene object reference.
         public CardData(CardType type, string displayName, GameObject obj, int slotIndex)
         {
             this.type = type;
@@ -81,6 +84,7 @@ public class OldManCardChallenge : MonoBehaviour
         public readonly int c;
         public readonly int d;
 
+        // Function: Stores one card shuffle animation step and its affected slots.
         private ShuffleStep(StepKind kind, int a, int b, int c, int d)
         {
             this.kind = kind;
@@ -90,21 +94,25 @@ public class OldManCardChallenge : MonoBehaviour
             this.d = d;
         }
 
+        // Function: Creates a shuffle step that swaps two card slots.
         public static ShuffleStep Swap(int a, int b)
         {
             return new ShuffleStep(StepKind.Swap, a, b, -1, -1);
         }
 
+        // Function: Creates a shuffle step that swaps two pairs of card slots at the same time.
         public static ShuffleStep DoubleSwap(int a, int b, int c, int d)
         {
             return new ShuffleStep(StepKind.DoubleSwap, a, b, c, d);
         }
 
+        // Function: Creates a shuffle step that rotates card slots to the right.
         public static ShuffleStep RotateRight()
         {
             return new ShuffleStep(StepKind.RotateRight, -1, -1, -1, -1);
         }
 
+        // Function: Creates a shuffle step that rotates card slots to the left.
         public static ShuffleStep RotateLeft()
         {
             return new ShuffleStep(StepKind.RotateLeft, -1, -1, -1, -1);
@@ -208,6 +216,7 @@ public class OldManCardChallenge : MonoBehaviour
     private Quaternion savedCameraRotation;
     private Coroutine runningChallenge;
 
+    // Function: Initializes component references, cached state, and default runtime data.
     private void Awake()
     {
         if (playerCamera == null)
@@ -216,6 +225,7 @@ public class OldManCardChallenge : MonoBehaviour
         }
     }
 
+    // Function: Stops running routines, unregisters events, and restores temporary state when disabled.
     private void OnDisable()
     {
         if (state != State.Exploring)
@@ -225,6 +235,7 @@ public class OldManCardChallenge : MonoBehaviour
         }
     }
 
+    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         EnsureCards();
@@ -249,6 +260,7 @@ public class OldManCardChallenge : MonoBehaviour
         }
     }
 
+    // Function: Updates exploring state, input, or presentation.
     private void UpdateExploring()
     {
         bool nearOldMan = IsNearOldMan();
@@ -273,6 +285,7 @@ public class OldManCardChallenge : MonoBehaviour
         }
     }
 
+    // Function: Starts the intro dialogue flow.
     private void StartIntroDialogue()
     {
         StartDialogue(new[]
@@ -293,6 +306,7 @@ public class OldManCardChallenge : MonoBehaviour
         });
     }
 
+    // Function: Starts the retry dialogue flow.
     private void StartRetryDialogue()
     {
         StartDialogue(new[] { "Old Man: Try the card test again?" }, () =>
@@ -304,6 +318,7 @@ public class OldManCardChallenge : MonoBehaviour
         });
     }
 
+    // Function: Starts the accepted challenge flow.
     private void StartAcceptedChallenge()
     {
         StartDialogue(new[] { "Old Man: Good. Watch carefully." }, () =>
@@ -317,6 +332,7 @@ public class OldManCardChallenge : MonoBehaviour
         });
     }
 
+    // Function: Runs the run challenge logic.
     private IEnumerator RunChallenge()
     {
         state = State.Shuffling;
@@ -347,6 +363,7 @@ public class OldManCardChallenge : MonoBehaviour
         });
     }
 
+    // Function: Updates choice state, input, or presentation.
     private void UpdateChoice()
     {
         if (Input.GetKeyDown(KeyCode.A))
@@ -363,6 +380,7 @@ public class OldManCardChallenge : MonoBehaviour
         }
     }
 
+    // Function: Updates card choice state, input, or presentation.
     private void UpdateCardChoice()
     {
         if (hasSubmittedChoice)
@@ -391,6 +409,7 @@ public class OldManCardChallenge : MonoBehaviour
         StartCoroutine(RevealAndFinish(chosenCard));
     }
 
+    // Function: Runs the reveal and finish logic.
     private IEnumerator RevealAndFinish(CardData chosenCard)
     {
         state = State.Shuffling;
@@ -412,6 +431,7 @@ public class OldManCardChallenge : MonoBehaviour
         }
     }
 
+    // Function: Ends the challenge phase and restores follow-up state.
     private void EndChallenge()
     {
         runningChallenge = null;
@@ -420,6 +440,7 @@ public class OldManCardChallenge : MonoBehaviour
         EndConversation();
     }
 
+    // Function: Ends the conversation phase and restores follow-up state.
     private void EndConversation()
     {
         activeLines = null;
@@ -431,6 +452,7 @@ public class OldManCardChallenge : MonoBehaviour
         SetUi(string.Empty, string.Empty);
     }
 
+    // Function: Starts the dialogue flow.
     private void StartDialogue(string[] lines, System.Action onFinished)
     {
         activeLines = lines;
@@ -440,6 +462,7 @@ public class OldManCardChallenge : MonoBehaviour
         DrawCurrentDialogueLine();
     }
 
+    // Function: Runs the advance dialogue logic.
     private void AdvanceDialogue()
     {
         lineIndex++;
@@ -457,12 +480,14 @@ public class OldManCardChallenge : MonoBehaviour
         finished?.Invoke();
     }
 
+    // Function: Draws the UI elements for current dialogue line.
     private void DrawCurrentDialogueLine()
     {
         string line = activeLines != null && lineIndex >= 0 && lineIndex < activeLines.Length ? activeLines[lineIndex] : string.Empty;
         SetUi(line, "Press C to continue");
     }
 
+    // Function: Starts the choice flow.
     private void StartChoice(string accept, string decline, System.Action onAccept, System.Action onDecline)
     {
         acceptChoice = onAccept;
@@ -471,6 +496,7 @@ public class OldManCardChallenge : MonoBehaviour
         SetUi(accept + "\n" + decline, string.Empty);
     }
 
+    // Function: Clears choice.
     private void ClearChoice()
     {
         acceptChoice = null;
@@ -478,6 +504,7 @@ public class OldManCardChallenge : MonoBehaviour
         SetUi(string.Empty, string.Empty);
     }
 
+    // Function: Runs the flip cards logic.
     private IEnumerator FlipCards(bool toBack)
     {
         if (cards.Count < 4)
@@ -512,6 +539,7 @@ public class OldManCardChallenge : MonoBehaviour
         }
     }
 
+    // Function: Runs the run preset sequence logic.
     private IEnumerator RunPresetSequence(ShuffleStep[] sequence)
     {
         for (int i = 0; i < sequence.Length; i++)
@@ -520,6 +548,7 @@ public class OldManCardChallenge : MonoBehaviour
         }
     }
 
+    // Function: Runs the run shuffle step logic.
     private IEnumerator RunShuffleStep(ShuffleStep step)
     {
         switch (step.kind)
@@ -539,6 +568,7 @@ public class OldManCardChallenge : MonoBehaviour
         }
     }
 
+    // Function: Runs the swap slots logic.
     private IEnumerator SwapSlots(int firstSlot, int secondSlot, float duration)
     {
         CardData first = GetCardAtSlot(firstSlot);
@@ -560,6 +590,7 @@ public class OldManCardChallenge : MonoBehaviour
         SnapAllCardsToSlots(true);
     }
 
+    // Function: Runs the double swap slots logic.
     private IEnumerator DoubleSwapSlots(int firstA, int firstB, int secondA, int secondB, float duration)
     {
         CardData cardOne = GetCardAtSlot(firstA);
@@ -596,6 +627,7 @@ public class OldManCardChallenge : MonoBehaviour
         SnapAllCardsToSlots(true);
     }
 
+    // Function: Rotates slots or calculates a rotation result.
     private IEnumerator RotateSlots(bool right, float duration)
     {
         CardData[] slotCards =
@@ -651,6 +683,7 @@ public class OldManCardChallenge : MonoBehaviour
         SnapAllCardsToSlots(true);
     }
 
+    // Function: Runs the animate cards logic.
     private IEnumerator AnimateCards(CardData[] movingCards, Vector3[] starts, Vector3[] targets, float duration)
     {
         float elapsed = 0f;
@@ -672,6 +705,7 @@ public class OldManCardChallenge : MonoBehaviour
         }
     }
 
+    // Function: Resets cards to default to its starting state.
     private void ResetCardsToDefault()
     {
         EnsureCards();
@@ -687,6 +721,7 @@ public class OldManCardChallenge : MonoBehaviour
         SnapAllCardsToSlots(false);
     }
 
+    // Function: Sets card to slot.
     private void SetCardToSlot(CardType type, int slot)
     {
         CardData card = GetCardByType(type);
@@ -701,6 +736,7 @@ public class OldManCardChallenge : MonoBehaviour
         card.obj.transform.rotation = slotRotations[slot];
     }
 
+    // Function: Snaps all cards to slots to the target position or ground.
     private void SnapAllCardsToSlots(bool backSide)
     {
         for (int i = 0; i < cards.Count; i++)
@@ -711,6 +747,7 @@ public class OldManCardChallenge : MonoBehaviour
         }
     }
 
+    // Function: Gets or calculates card at slot.
     private CardData GetCardAtSlot(int slot)
     {
         for (int i = 0; i < cards.Count; i++)
@@ -724,6 +761,7 @@ public class OldManCardChallenge : MonoBehaviour
         return null;
     }
 
+    // Function: Gets or calculates card by type.
     private CardData GetCardByType(CardType type)
     {
         for (int i = 0; i < cards.Count; i++)
@@ -737,6 +775,7 @@ public class OldManCardChallenge : MonoBehaviour
         return null;
     }
 
+    // Function: Gets or calculates display name.
     private string GetDisplayName(CardType type)
     {
         switch (type)
@@ -754,6 +793,7 @@ public class OldManCardChallenge : MonoBehaviour
         }
     }
 
+    // Function: Switches to challenge camera.
     private void SwitchToChallengeCamera()
     {
         if (playerCamera == null)
@@ -772,6 +812,7 @@ public class OldManCardChallenge : MonoBehaviour
         playerCamera.transform.SetPositionAndRotation(challengeCameraPosition, Quaternion.Euler(challengeCameraEuler));
     }
 
+    // Function: Restores camera to its original or usable state.
     private void RestoreCamera()
     {
         if (playerCamera != null && cameraWasSaved)
@@ -782,6 +823,7 @@ public class OldManCardChallenge : MonoBehaviour
         cameraWasSaved = false;
     }
 
+    // Function: Locks player control so the current flow cannot be interrupted by player input.
     private void LockPlayerControl()
     {
         disabledControllers.Clear();
@@ -810,6 +852,7 @@ public class OldManCardChallenge : MonoBehaviour
         OnLockPlayerControl();
     }
 
+    // Function: Disables controller.
     private void DisableController(MonoBehaviour behaviour)
     {
         if (behaviour == null || behaviour == this || !behaviour.enabled)
@@ -821,6 +864,7 @@ public class OldManCardChallenge : MonoBehaviour
         disabledControllers.Add(behaviour);
     }
 
+    // Function: Unlocks player control and restores normal interaction.
     private void UnlockPlayerControl()
     {
         for (int i = 0; i < disabledControllers.Count; i++)
@@ -836,14 +880,17 @@ public class OldManCardChallenge : MonoBehaviour
         OnUnlockPlayerControl();
     }
 
+    // Function: Runs the on lock player control logic.
     protected virtual void OnLockPlayerControl()
     {
     }
 
+    // Function: Runs the on unlock player control logic.
     protected virtual void OnUnlockPlayerControl()
     {
     }
 
+    // Function: Ensures cards exists, is configured, or is ready to use.
     private void EnsureCards()
     {
         if (initializedCards)
@@ -873,17 +920,20 @@ public class OldManCardChallenge : MonoBehaviour
         ResetCardsToDefault();
     }
 
+    // Function: Checks whether nearby old man is true.
     private bool IsNearOldMan()
     {
         return player != null && oldMan != null && Vector3.Distance(player.position, oldMan.position) <= interactDistance;
     }
 
+    // Function: Sets UI.
     private void SetUi(string dialogue, string hint)
     {
         SetTextVisible(dialogueText, dialogue);
         SetTextVisible(hintText, hint);
     }
 
+    // Function: Sets text visible.
     private void SetTextVisible(Text text, string value)
     {
         if (text == null)
