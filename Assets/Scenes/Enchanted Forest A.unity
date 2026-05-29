@@ -1293,6 +1293,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -1312,6 +1313,7 @@ MonoBehaviour:
   animator: {fileID: 48343366}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &48343365
 Animation:
   m_ObjectHideFlags: 0
@@ -3410,6 +3412,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -3429,6 +3432,7 @@ MonoBehaviour:
   animator: {fileID: 128298454}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &128298453
 Animation:
   m_ObjectHideFlags: 0
@@ -4741,6 +4745,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -4760,6 +4765,7 @@ MonoBehaviour:
   animator: {fileID: 168231674}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: mixamo_com
+  logDebugInfo: 1
 --- !u!111 &168231673
 Animation:
   m_ObjectHideFlags: 0
@@ -6798,6 +6804,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -6817,6 +6824,7 @@ MonoBehaviour:
   animator: {fileID: 236960159}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &236960158
 Animation:
   m_ObjectHideFlags: 0
@@ -7567,6 +7575,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -7586,6 +7595,7 @@ MonoBehaviour:
   animator: {fileID: 277550459}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &277550458
 Animation:
   m_ObjectHideFlags: 0
@@ -11770,6 +11780,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -11789,6 +11800,7 @@ MonoBehaviour:
   animator: {fileID: 429201388}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &429201387
 Animation:
   m_ObjectHideFlags: 0
@@ -14799,6 +14811,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -14818,6 +14831,7 @@ MonoBehaviour:
   animator: {fileID: 531158185}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &531158184
 Animation:
   m_ObjectHideFlags: 0
@@ -15083,13 +15097,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 538645680}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.25225097, y: 0.50598395, z: -0.57602865, w: 0.59037346}
-  m_LocalPosition: {x: 617.82, y: 17.25, z: 579.14}
+  m_LocalRotation: {x: 0.2612506, y: 0.5013964, z: -0.58648443, w: 0.57998776}
+  m_LocalPosition: {x: 610.73, y: 15.38, z: 579.14}
   m_LocalScale: {x: 13.585432, y: 24.052015, z: 344.8087}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 61.735, y: 40.386, z: -63.794}
+  m_LocalEulerAnglesHint: {x: 63.02, y: 37.339, z: -67.233}
 --- !u!1001 &541135757
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -16430,6 +16444,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -16449,6 +16464,7 @@ MonoBehaviour:
   animator: {fileID: 586353414}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &586353413
 Animation:
   m_ObjectHideFlags: 0
@@ -19040,6 +19056,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -19059,6 +19076,7 @@ MonoBehaviour:
   animator: {fileID: 693766980}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &693766979
 Animation:
   m_ObjectHideFlags: 0
@@ -20729,6 +20747,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3bbce955a46d47ce929edc9d58a1f83a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  targetSceneName: Enchanted Forest A
+  enemyName: Standing Idle (3)
+  enemyNameBase: Standing Idle
+  enemyNameStartIndex: 3
+  enemyNameEndIndex: 22
   requireForestAttackDialogueBeforeEnemies: 1
   nextSceneName: Fae Homes Demo
   heroWalkController: {fileID: 9100000, guid: 640ba7f64c2cd7542b00b9e70df7c1a7, type: 2}
@@ -20843,21 +20866,6 @@ MonoBehaviour:
   - {fileID: 277550455}
   redIndicator: {fileID: 512633795}
   greenIndicator: {fileID: 682914609}
---- !u!4 &759729728
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 759729726}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 571.6245, y: 14.71, z: 536.0531}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &759729729
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20880,6 +20888,21 @@ MonoBehaviour:
   puzzlePrompt: What is this strange symbol?
   altarPrompt: What is this mysterious altar?
   highlightColor: {r: 1, g: 0.85, b: 0.12, a: 1}
+--- !u!4 &759729728
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 759729726}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 571.6245, y: 14.71, z: 536.0531}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &761934426
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -21642,6 +21665,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -21661,6 +21685,7 @@ MonoBehaviour:
   animator: {fileID: 0}
   walkingController: {fileID: 0}
   walkingStateName: mixamo_com
+  logDebugInfo: 1
 --- !u!111 &785254108
 Animation:
   m_ObjectHideFlags: 0
@@ -23100,6 +23125,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -23119,6 +23145,7 @@ MonoBehaviour:
   animator: {fileID: 856074915}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &856074914
 Animation:
   m_ObjectHideFlags: 0
@@ -24536,71 +24563,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 202a8b844977cd84c9403d51556c6ad3, type: 3}
---- !u!1 &910260201
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 910260202}
-  - component: {fileID: 910260203}
-  m_Layer: 0
-  m_Name: MiniMapHUD
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &910260202
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 910260201}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &910260203
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 910260201}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9ec8931c50f047ec8c8f3c1b1e3b7c5d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  player: {fileID: 601198063}
-  playerCamera: {fileID: 561245722}
-  sceneNames:
-  - Enchanted Forest A
-  - Fae Homes Demo
-  - my scene
-  mapAreas: []
-  calculateSceneSize: 1
-  worldPadding: 10
-  mapSize: 190
-  expandedMapSize: 520
-  margin: 24
-  border: 10
-  toggleKey: 109
-  showTrail: 1
-  maxTrailPoints: 80
-  trailSpacing: 2.5
-  mapColor: {r: 0.03, g: 0.08, b: 0.08, a: 0.82}
-  gridColor: {r: 1, g: 1, b: 1, a: 0.12}
-  trailColor: {r: 0.45, g: 0.95, b: 1, a: 0.55}
-  playerColor: {r: 1, g: 0.85, b: 0.2, a: 1}
 --- !u!1001 &910392237
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -24733,6 +24695,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -24752,6 +24715,7 @@ MonoBehaviour:
   animator: {fileID: 914547567}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &914547566
 Animation:
   m_ObjectHideFlags: 0
@@ -27249,6 +27213,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -27268,6 +27233,7 @@ MonoBehaviour:
   animator: {fileID: 997008236}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: Walk
+  logDebugInfo: 1
 --- !u!111 &997008235
 Animation:
   m_ObjectHideFlags: 0
@@ -28263,6 +28229,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -28282,6 +28249,7 @@ MonoBehaviour:
   animator: {fileID: 1061533594}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &1061533593
 Animation:
   m_ObjectHideFlags: 0
@@ -29448,6 +29416,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -29467,6 +29436,7 @@ MonoBehaviour:
   animator: {fileID: 1111302712}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &1111302711
 Animation:
   m_ObjectHideFlags: 0
@@ -38296,6 +38266,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -38315,6 +38286,7 @@ MonoBehaviour:
   animator: {fileID: 1454422886}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &1454422885
 Animation:
   m_ObjectHideFlags: 0
@@ -48588,6 +48560,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -48607,6 +48580,7 @@ MonoBehaviour:
   animator: {fileID: 1798035471}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &1798035470
 Animation:
   m_ObjectHideFlags: 0
@@ -48913,6 +48887,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -48932,6 +48907,7 @@ MonoBehaviour:
   animator: {fileID: 1805098273}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &1805098272
 Animation:
   m_ObjectHideFlags: 0
@@ -54679,6 +54655,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -54698,6 +54675,7 @@ MonoBehaviour:
   animator: {fileID: 0}
   walkingController: {fileID: 0}
   walkingStateName: mixamo_com
+  logDebugInfo: 1
 --- !u!114 &2001606828
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -54711,6 +54689,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -54730,6 +54709,7 @@ MonoBehaviour:
   animator: {fileID: 2001606830}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &2001606829
 Animation:
   m_ObjectHideFlags: 0
@@ -58131,6 +58111,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -58150,6 +58131,7 @@ MonoBehaviour:
   animator: {fileID: 2117581367}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &2117581366
 Animation:
   m_ObjectHideFlags: 0
@@ -58204,6 +58186,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   routeRoot: {fileID: 0}
+  routeRootName: EnemyRoute_BlackDoor_ToForest
   routePoints:
   - {fileID: 1588325316}
   - {fileID: 5083529}
@@ -58223,6 +58206,7 @@ MonoBehaviour:
   animator: {fileID: 2119001622}
   walkingController: {fileID: 9100000, guid: a9c5fab65d815ea449625c80b33f1c47, type: 2}
   walkingStateName: walk
+  logDebugInfo: 1
 --- !u!111 &2119001621
 Animation:
   m_ObjectHideFlags: 0
@@ -59332,6 +59316,69 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d281df875612b0543bceb4035b508d83, type: 3}
+--- !u!1 &910260201
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 910260202}
+  - component: {fileID: 910260203}
+  m_Layer: 0
+  m_Name: MiniMapHUD
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &910260202
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 910260201}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &910260203
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 910260201}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ec8931c50f047ec8c8f3c1b1e3b7c5d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  player: {fileID: 601198063}
+  playerCamera: {fileID: 561245722}
+  sceneNames:
+  - Enchanted Forest A
+  - Fae Homes Demo
+  - my scene
+  mapAreas: []
+  calculateSceneSize: 1
+  worldPadding: 10
+  mapSize: 190
+  margin: 24
+  border: 10
+  showTrail: 1
+  maxTrailPoints: 80
+  trailSpacing: 2.5
+  mapColor: {r: 0.03, g: 0.08, b: 0.08, a: 0.82}
+  gridColor: {r: 1, g: 1, b: 1, a: 0.12}
+  trailColor: {r: 0.45, g: 0.95, b: 1, a: 0.55}
+  playerColor: {r: 1, g: 0.85, b: 0.2, a: 1}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
