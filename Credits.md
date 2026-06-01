@@ -1,5 +1,7 @@
 # Credits / Asset References
 
+本项目为课程作业（2D Game Improvement Assignment），以下列出所有借用或引用的外部资源。
+
 ---
 
 ## Unity Asset Pack
@@ -76,15 +78,17 @@
 
 ## Audio / Sound Effects
 
-### Main Source: Game Sound Factory 
+### Main Source: Game Sound Factory
 
 - Most sound effects used in the game
 - Source: https://gamersounds.com/library
-- License: **Non-Commercial Use Only** 
+- License: **Non-Commercial Use Only** (个人学习与交流使用，不得用于商业用途)
 
-### Additional Source: SoundDino
+### Additional Source: Freesound
 
-- Crying sound effect
-- Monster roar sound effect
-- Source: https://sounddino.com
-- License: Free use for personal/educational projects (verify per individual asset)
+- Source: https://freesound.org
+
+| Sound Effect | Author | License |
+| :--- | :--- | :--- |
+| Monster Roar_8.mp3 | mitchanary | **CC BY 4.0** |
+| Plors.mp3 (crying) | Aurinko2222 | **CC0 (Public Domain)** |
