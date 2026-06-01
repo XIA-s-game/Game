@@ -1,0 +1,17 @@
+Peer Feedback
+
+Strength
+Sound effects have been added to the game, which makes interactions feel more responsive and the world more alive compared to the previous version.
+
+Risk
+The amount of sound effects is still limited. Some important actions still have no audio feedback, and in certain moments, one sound gets completely covered by another, making it hard to hear either of them clearly.
+
+Question about contribution
+How did you choose which actions should have sound effects, and do you have a plan for managing audio mixing?
+
+My answer
+I prioritized the most frequent interactions first, like picking up items and completing tasks. For the overlapping issue, I haven't looked into audio mixing yet, but I realize it needs to be fixed.
+
+Practical suggestion
+Add sound effects for the remaining key actions (such as opening the cage, flipping cards, and getting the key). Also, use Unity's Audio Mixer to group sounds (e.g., UI, environment, feedback) and adjust their volumes so important sounds are never fully covered by others.
+
