@@ -1,0 +1,13 @@
+Next Action
+
+I will complete all of the following tasks and show evidence by committing everything to GitHub and recording a final playthrough video:
+
+Refine all game instructions – Make sure every interactive object has clear and concise UI prompts so players always know what to do.
+
+Complete all audio implementation – Add missing sound effects for key actions (opening the cage, flipping cards, getting keys, completing tasks) and fix overlapping sound issues using Unity Audio Mixer.
+
+Improve interaction smoothness – Optimize button response times, adjust trigger areas, and ensure player inputs feel immediate and satisfying.
+
+Make the ending more touching – Extend the final dialogue with Granny Meriel, add brief flashbacks of the characters the player helped, and ensure the pacing allows players to fully absorb the emotional moment.
+
+Polish the cover screen – Complete the instruction page (how to play) and the credits page (acknowledging asset sources, AI-generated images, and team contributions).
