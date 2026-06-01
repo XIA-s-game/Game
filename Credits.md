@@ -1,5 +1,7 @@
 # Credits / Asset References
 
+---
+
 ## Unity Asset Pack
 
 **Aquarius Fantasy - Fae Pack** (Unity Asset Store)
@@ -27,10 +29,11 @@
 **License for all models below:** Royalty Free License (no AI)
 
 | Chapter | Asset |
-| All chapter | Magic door (scene transition) |
+| :--- | :--- |
+| (All chapter) | Magic door (scene transition) |
 | Chapter 3 | Bird nest and eggs |
 | Chapter 3 | Golden key (inside bird nest) |
-| Chapter 3 | Old tree face |
+| (All chapter) | Old tree face |
 | Chapter 3 | Feathers |
 | Chapter 3 | Witch's workbench |
 | Chapter 2 | Maze |
@@ -51,6 +54,7 @@
 **Source:** https://sketchfab.com
 
 | Chapter | Asset | License |
+| :--- | :--- | :--- |
 | Chapter 1 | Trapped elf | CC Attribution |
 | Chapter 1 | Fox at elf's home | CC Attribution |
 | Chapter 1 | Colored pens at elf's home | CC Attribution |
@@ -72,16 +76,15 @@
 
 ## Audio / Sound Effects
 
-**Game Sound Factory**
+### Main Source: Game Sound Factory 
 
-- All sound effects used in the game
+- Most sound effects used in the game
 - Source: https://gamersounds.com/library
-- License: **Non-Commercial Use Only**
-- Note: This project is a course assignment and falls under "personal learning and communication" as permitted by the license.
+- License: **Non-Commercial Use Only** 
 
----
+### Additional Source: SoundDino
 
-## Notes
-
-- All borrowed assets are used under their respective licenses as noted above.
-- This project is for educational purposes only and is not intended for commercial use.
+- Crying sound effect
+- Monster roar sound effect
+- Source: https://sounddino.com
+- License: Free use for personal/educational projects (verify per individual asset)
