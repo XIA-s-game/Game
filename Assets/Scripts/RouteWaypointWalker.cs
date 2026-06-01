@@ -1,5 +1,4 @@
-// Main function: Moves an NPC or object along route waypoints while updating facing direction, walking animation, and ground snapping.
-
+// Moves an NPC or prop along route waypoints while keeping it grounded.
 using System;
 using UnityEngine;
 
@@ -22,7 +21,6 @@ public class RouteWaypointWalker : MonoBehaviour
     private int targetIndex;
     private bool hasRoute;
 
-    // Function: Initializes component references, cached state, and default runtime data.
     private void Awake()
     {
         if (animator == null)
@@ -37,7 +35,6 @@ public class RouteWaypointWalker : MonoBehaviour
         }
     }
 
-    // Function: Runs one-time setup after the scene has started.
     private void Start()
     {
         LoadRoutePointsFromRoot();
@@ -55,7 +52,6 @@ public class RouteWaypointWalker : MonoBehaviour
         PlayWalkingAnimation();
     }
 
-    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         if (!hasRoute || targetIndex >= routePoints.Length)
@@ -86,7 +82,6 @@ public class RouteWaypointWalker : MonoBehaviour
         SnapToGround();
     }
 
-    // Function: Gets or calculates forward target index.
     private int GetForwardTargetIndex(Vector3 position)
     {
         if (routePoints.Length == 1)
@@ -130,7 +125,6 @@ public class RouteWaypointWalker : MonoBehaviour
         return Mathf.Clamp(bestSegmentStart + 1, 0, routePoints.Length - 1);
     }
 
-    // Function: Plays walking animation animation, audio, or cutscene behavior.
     private void PlayWalkingAnimation()
     {
         if (animator == null)
@@ -158,7 +152,6 @@ public class RouteWaypointWalker : MonoBehaviour
         }
     }
 
-    // Function: Loads route points from root resources or controllers.
     private void LoadRoutePointsFromRoot()
     {
         if (routePoints != null && routePoints.Length > 0)
@@ -178,7 +171,6 @@ public class RouteWaypointWalker : MonoBehaviour
         }
     }
 
-    // Function: Runs the compact route points logic.
     private void CompactRoutePoints()
     {
         if (routePoints == null || routePoints.Length == 0)
@@ -214,7 +206,6 @@ public class RouteWaypointWalker : MonoBehaviour
         routePoints = validPoints;
     }
 
-    // Function: Snaps to ground to the target position or ground.
     private void SnapToGround()
     {
         if (!followGround)
@@ -247,7 +238,6 @@ public class RouteWaypointWalker : MonoBehaviour
         }
     }
 
-    // Function: Tries to process snap to terrain and returns whether it succeeded.
     private bool TrySnapToTerrain(ref Vector3 position)
     {
         Terrain[] terrains = Terrain.activeTerrains;

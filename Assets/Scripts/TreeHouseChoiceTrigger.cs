@@ -1,5 +1,4 @@
-// Main function: Shows the tree house side-quest choice and applies the selected branch when the player is inside the trigger area.
-
+// Shows the tree house choice prompt and loads the selected route.
 using UnityEngine;
 
 public class TreeHouseChoiceTrigger : MonoBehaviour
@@ -21,7 +20,6 @@ public class TreeHouseChoiceTrigger : MonoBehaviour
     private bool choiceVisible;
     private bool choiceResolved;
 
-    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         if (fairyMemorySideQuest != null && fairyMemorySideQuest.IsCompleted)
@@ -56,7 +54,6 @@ public class TreeHouseChoiceTrigger : MonoBehaviour
         }
     }
 
-    // Function: Draws this script's IMGUI prompts, panels, and dialogue.
     private void OnGUI()
     {
         if (!choiceVisible || choiceResolved)
@@ -97,7 +94,6 @@ public class TreeHouseChoiceTrigger : MonoBehaviour
         GUI.Label(new Rect(rect.x + 24f, rect.y + rect.height - 42f, rect.width - 48f, 24f), hint, hintStyle);
     }
 
-    // Function: Handles the player choice for side quest.
     private void ChooseSideQuest()
     {
         if (fairyMemorySideQuest != null)
@@ -109,14 +105,12 @@ public class TreeHouseChoiceTrigger : MonoBehaviour
         choiceVisible = false;
     }
 
-    // Function: Runs the skip choice logic.
     private void SkipChoice()
     {
         choiceResolved = true;
         choiceVisible = false;
     }
 
-    // Function: Checks whether player inside tree house is true.
     private bool IsPlayerInsideTreeHouse()
     {
         Vector3 toPlayer = player.position - treeHouse.position;

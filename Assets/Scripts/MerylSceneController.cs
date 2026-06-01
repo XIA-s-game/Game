@@ -1,5 +1,4 @@
-// Main function: Controls the Meryl cutscene and ending scene, including player setup, walkable ground fixes, video audio playback, prompts, and ending triggers.
-
+// Sets up the final Meryl scene, book interaction, cutscene, and ending handoff.
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -69,9 +68,13 @@ public class MerylSceneController : MonoBehaviour
     private Text promptText;
     private Image blackOverlay;
     private Text endingText;
+    private GameObject videoOverlayObject;
+    private RawImage videoImage;
+    private AspectRatioFitter videoAspectFitter;
 
     private VideoPlayer videoPlayer;
     private AudioSource videoAudioSource;
+    private RenderTexture activeVideoTexture;
     private bool videoFinished;
     private bool lt1Triggered;
     private bool endingStarted;
@@ -90,7 +93,6 @@ public class MerylSceneController : MonoBehaviour
 
     private FlowState flowState = FlowState.Bootstrapping;
 
-    // Function: Initializes component references, cached state, and default runtime data.
     private void Awake()
     {
         activeScene = SceneManager.GetActiveScene();
@@ -100,7 +102,6 @@ public class MerylSceneController : MonoBehaviour
         SetInitialSceneVisibility();
     }
 
-    // Function: Runs one-time setup after the scene has started.
     private IEnumerator Start()
     {
         yield return null;
@@ -122,7 +123,6 @@ public class MerylSceneController : MonoBehaviour
         bootstrapComplete = true;
     }
 
-    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         if (!bootstrapComplete || player == null)
@@ -157,7 +157,6 @@ public class MerylSceneController : MonoBehaviour
         UpdateBookPrompt();
     }
 
-    // Function: Caches the initial state or references for scene references.
     private void CacheSceneReferences()
     {
         startObject = FindSceneObject("start");
@@ -170,7 +169,6 @@ public class MerylSceneController : MonoBehaviour
         bookObject = FindSceneObject("book");
     }
 
-    // Function: Sets initial scene visibility.
     private void SetInitialSceneVisibility()
     {
         if (pictureObject != null)
@@ -189,9 +187,9 @@ public class MerylSceneController : MonoBehaviour
         }
     }
 
-    // Function: Builds the data or scene objects needed for walkable ground.
     private void BuildWalkableGround()
     {
+        // The imported props have messy collision, so this scene uses clean invisible floors instead.
         ClearGeneratedFloors();
         walkableGroundByCollider.Clear();
 
@@ -218,7 +216,6 @@ public class MerylSceneController : MonoBehaviour
         }
     }
 
-    // Function: Clears generated floors.
     private void ClearGeneratedFloors()
     {
         for (int i = generatedFloorObjects.Count - 1; i >= 0; i--)
@@ -232,7 +229,6 @@ public class MerylSceneController : MonoBehaviour
         generatedFloorObjects.Clear();
     }
 
-    // Function: Creates the objects, textures, or UI needed for walkable floor.
     private void CreateWalkableFloor(GameObject sourceObject, string groundName)
     {
         if (sourceObject == null)
@@ -262,7 +258,6 @@ public class MerylSceneController : MonoBehaviour
         generatedFloorObjects.Add(floorObject);
     }
 
-    // Function: Tries to get walkable floor bounds and returns whether it was found.
     private bool TryGetWalkableFloorBounds(GameObject target, out Bounds bounds)
     {
         if (TryGetColliderBounds(target, out bounds))
@@ -273,7 +268,6 @@ public class MerylSceneController : MonoBehaviour
         return TryGetRendererBounds(target, out bounds);
     }
 
-    // Function: Tries to get collider bounds and returns whether it was found.
     private bool TryGetColliderBounds(GameObject target, out Bounds bounds)
     {
         Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
@@ -302,7 +296,6 @@ public class MerylSceneController : MonoBehaviour
         return hasBounds;
     }
 
-    // Function: Tries to get renderer bounds and returns whether it was found.
     private bool TryGetRendererBounds(GameObject target, out Bounds bounds)
     {
         Renderer[] renderers = target.GetComponentsInChildren<Renderer>(true);
@@ -331,7 +324,6 @@ public class MerylSceneController : MonoBehaviour
         return hasBounds;
     }
 
-    // Function: Sets up player for Meryl.
     private void SetupPlayerForMeryl()
     {
         player = FindExistingPlayer();
@@ -357,7 +349,6 @@ public class MerylSceneController : MonoBehaviour
         visibleHero = FindChildByName(player.transform, visibleHeroName);
     }
 
-    // Function: Finds existing player objects or component references.
     private GameObject FindExistingPlayer()
     {
         Transform[] transforms = Resources.FindObjectsOfTypeAll<Transform>();
@@ -378,7 +369,6 @@ public class MerylSceneController : MonoBehaviour
         return null;
     }
 
-    // Function: Runs the instantiate player prefab logic.
     private GameObject InstantiatePlayerPrefab()
     {
 #if UNITY_EDITOR
@@ -395,7 +385,6 @@ public class MerylSceneController : MonoBehaviour
 #endif
     }
 
-    // Function: Disables duplicate players.
     private void DisableDuplicatePlayers(GameObject keepPlayer)
     {
         Transform[] transforms = Resources.FindObjectsOfTypeAll<Transform>();
@@ -414,7 +403,6 @@ public class MerylSceneController : MonoBehaviour
         }
     }
 
-    // Function: Ensures visible hero exists, is configured, or is ready to use.
     private void EnsureVisibleHero(GameObject playerObject)
     {
         Transform hero = FindChildByName(playerObject.transform, visibleHeroName);
@@ -450,7 +438,6 @@ public class MerylSceneController : MonoBehaviour
         AlignVisibleHeroFeetToController(playerObject, hero);
     }
 
-    // Function: Runs the configure visible hero animator logic.
     private void ConfigureVisibleHeroAnimator(GameObject heroObject)
     {
         Animator animator = heroObject.GetComponent<Animator>();
@@ -471,7 +458,6 @@ public class MerylSceneController : MonoBehaviour
         animator.enabled = true;
     }
 
-    // Function: Disables nested cameras.
     private void DisableNestedCameras(GameObject heroObject)
     {
         Camera[] cameras = heroObject.GetComponentsInChildren<Camera>(true);
@@ -493,7 +479,6 @@ public class MerylSceneController : MonoBehaviour
         }
     }
 
-    // Function: Applies player camera effects to the scene or target object.
     private void ApplyPlayerCamera(GameObject playerObject)
     {
         Camera playerCamera = playerObject.GetComponentInChildren<Camera>(true);
@@ -514,7 +499,6 @@ public class MerylSceneController : MonoBehaviour
         }
     }
 
-    // Function: Runs the use demo character movement logic.
     private void UseDemoCharacterMovement(GameObject playerObject)
     {
         MonoBehaviour[] behaviours = playerObject.GetComponentsInChildren<MonoBehaviour>(true);
@@ -543,7 +527,6 @@ public class MerylSceneController : MonoBehaviour
         }
     }
 
-    // Function: Resets demo character state to its starting state.
     private void ResetDemoCharacterState()
     {
         DemoCharacter.LockPlayerInput = false;
@@ -555,7 +538,6 @@ public class MerylSceneController : MonoBehaviour
         ClearPlayerMotionState();
     }
 
-    // Function: Clears player motion state.
     private void ClearPlayerMotionState()
     {
         if (demoCharacterBehaviour == null)
@@ -570,7 +552,6 @@ public class MerylSceneController : MonoBehaviour
         SetPrivateField(demoCharacterBehaviour, "isCrouching", false);
     }
 
-    // Function: Sets player locked.
     private void SetPlayerLocked(bool locked)
     {
         DemoCharacter.LockPlayerInput = locked;
@@ -585,7 +566,6 @@ public class MerylSceneController : MonoBehaviour
         }
     }
 
-    // Function: Respawns or returns player to start to the start point.
     private void RespawnPlayerToStart()
     {
         if (player == null || startObject == null)
@@ -610,7 +590,6 @@ public class MerylSceneController : MonoBehaviour
         }
     }
 
-    // Function: Teleports player to the requested position.
     private void TeleportPlayer(Vector3 targetPosition)
     {
         if (player == null)
@@ -639,7 +618,6 @@ public class MerylSceneController : MonoBehaviour
         }
     }
 
-    // Function: Gets or calculates grounded position at.
     private Vector3 GetGroundedPositionAt(Vector3 worldPosition)
     {
         Vector3 position = worldPosition;
@@ -666,7 +644,6 @@ public class MerylSceneController : MonoBehaviour
         return position;
     }
 
-    // Function: Checks whether standing on ground is true.
     private bool IsStandingOnGround(string groundName)
     {
         if (player == null)
@@ -680,7 +657,6 @@ public class MerylSceneController : MonoBehaviour
                currentGroundName == groundName;
     }
 
-    // Function: Gets or calculates ground below player.
     private Collider GetGroundBelowPlayer()
     {
         if (player == null)
@@ -713,7 +689,6 @@ public class MerylSceneController : MonoBehaviour
         return null;
     }
 
-    // Function: Handles lt 1 sequence interaction or progression.
     private IEnumerator HandleLt1Sequence()
     {
         lt1Triggered = true;
@@ -738,7 +713,7 @@ public class MerylSceneController : MonoBehaviour
             SetPlayerLocked(true);
         }
 
-        yield return StartCoroutine(PlayVideoAudioOnly());
+        yield return StartCoroutine(PlayVideoCutscene());
 
         if (magicBoxLowObject != null)
         {
@@ -750,20 +725,33 @@ public class MerylSceneController : MonoBehaviour
         canInteractWithBook = true;
     }
 
-    // Function: Plays video audio only animation, audio, or cutscene behavior.
-    private IEnumerator PlayVideoAudioOnly()
+    private IEnumerator PlayVideoCutscene()
     {
+        // Keep the cutscene self-contained: load it, wait for it, then let cleanup handle the texture.
         string videoPath = Path.Combine(Application.dataPath, "new/final/video.mp4");
         if (!File.Exists(videoPath) || videoPlayer == null)
         {
             yield break;
         }
 
+        EnsureVideoSurface();
+        if (videoImage == null)
+        {
+            yield break;
+        }
+
         videoFinished = false;
+        ReleaseActiveVideoTexture();
+        activeVideoTexture = new RenderTexture(1920, 1080, 0, RenderTextureFormat.ARGB32);
+        activeVideoTexture.Create();
+        videoImage.texture = activeVideoTexture;
+        videoOverlayObject.SetActive(true);
+
         videoPlayer.Stop();
         videoPlayer.source = VideoSource.Url;
         videoPlayer.url = videoPath;
-        videoPlayer.renderMode = VideoRenderMode.APIOnly;
+        videoPlayer.renderMode = VideoRenderMode.RenderTexture;
+        videoPlayer.targetTexture = activeVideoTexture;
         videoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
         videoPlayer.EnableAudioTrack(0, true);
         videoPlayer.SetTargetAudioSource(0, videoAudioSource);
@@ -777,7 +765,13 @@ public class MerylSceneController : MonoBehaviour
 
         if (!videoPlayer.isPrepared)
         {
+            CleanupVideoPlayback();
             yield break;
+        }
+
+        if (videoPlayer.width > 0 && videoPlayer.height > 0 && videoAspectFitter != null)
+        {
+            videoAspectFitter.aspectRatio = (float)videoPlayer.width / videoPlayer.height;
         }
 
         videoPlayer.Play();
@@ -800,9 +794,9 @@ public class MerylSceneController : MonoBehaviour
         }
 
         videoPlayer.Stop();
+        CleanupVideoPlayback();
     }
 
-    // Function: Ensures video player exists, is configured, or is ready to use.
     private void EnsureVideoPlayer()
     {
         videoPlayer = gameObject.GetComponent<VideoPlayer>();
@@ -830,19 +824,90 @@ public class MerylSceneController : MonoBehaviour
         videoPlayer.errorReceived += HandleVideoError;
     }
 
-    // Function: Handles video finished interaction or progression.
+    private void EnsureVideoSurface()
+    {
+        if (videoOverlayObject != null)
+        {
+            return;
+        }
+
+        EnsureUi();
+        if (uiCanvas == null)
+        {
+            return;
+        }
+
+        videoOverlayObject = new GameObject("VideoOverlay");
+        videoOverlayObject.transform.SetParent(uiCanvas.transform, false);
+
+        Image background = videoOverlayObject.AddComponent<Image>();
+        background.color = Color.black;
+        RectTransform overlayRect = background.rectTransform;
+        overlayRect.anchorMin = Vector2.zero;
+        overlayRect.anchorMax = Vector2.one;
+        overlayRect.offsetMin = Vector2.zero;
+        overlayRect.offsetMax = Vector2.zero;
+
+        GameObject imageObject = new GameObject("VideoImage");
+        imageObject.transform.SetParent(videoOverlayObject.transform, false);
+        videoImage = imageObject.AddComponent<RawImage>();
+        videoImage.color = Color.white;
+
+        RectTransform imageRect = videoImage.rectTransform;
+        imageRect.anchorMin = Vector2.zero;
+        imageRect.anchorMax = Vector2.one;
+        imageRect.offsetMin = Vector2.zero;
+        imageRect.offsetMax = Vector2.zero;
+
+        videoAspectFitter = imageObject.AddComponent<AspectRatioFitter>();
+        videoAspectFitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+        videoAspectFitter.aspectRatio = 16f / 9f;
+
+        videoOverlayObject.SetActive(false);
+    }
+
+    private void CleanupVideoPlayback()
+    {
+        if (videoOverlayObject != null)
+        {
+            videoOverlayObject.SetActive(false);
+        }
+
+        if (videoImage != null)
+        {
+            videoImage.texture = null;
+        }
+
+        if (videoPlayer != null)
+        {
+            videoPlayer.targetTexture = null;
+        }
+
+        ReleaseActiveVideoTexture();
+    }
+
+    private void ReleaseActiveVideoTexture()
+    {
+        if (activeVideoTexture == null)
+        {
+            return;
+        }
+
+        activeVideoTexture.Release();
+        Destroy(activeVideoTexture);
+        activeVideoTexture = null;
+    }
+
     private void HandleVideoFinished(VideoPlayer source)
     {
         videoFinished = true;
     }
 
-    // Function: Handles video error interaction or progression.
     private void HandleVideoError(VideoPlayer source, string message)
     {
         videoFinished = true;
     }
 
-    // Function: Updates book prompt state, input, or presentation.
     private void UpdateBookPrompt()
     {
         if (promptText == null)
@@ -872,11 +937,11 @@ public class MerylSceneController : MonoBehaviour
 
         if (isNear && Input.GetKeyDown(KeyCode.E))
         {
+            GameAudioManager.PlayFetch();
             StartCoroutine(PlayEndingSequence());
         }
     }
 
-    // Function: Plays ending sequence animation, audio, or cutscene behavior.
     private IEnumerator PlayEndingSequence()
     {
         if (endingStarted)
@@ -908,7 +973,6 @@ public class MerylSceneController : MonoBehaviour
         endingText.text = string.Empty;
     }
 
-    // Function: Ensures UI exists, is configured, or is ready to use.
     private void EnsureUi()
     {
         if (uiCanvas != null)
@@ -969,7 +1033,6 @@ public class MerylSceneController : MonoBehaviour
         endingText.text = string.Empty;
     }
 
-    // Function: Creates the objects, textures, or UI needed for text.
     private Text CreateText(string objectName, Transform parent, int fontSize, TextAnchor anchor)
     {
         GameObject textObject = new GameObject(objectName);
@@ -1008,7 +1071,6 @@ public class MerylSceneController : MonoBehaviour
         return text;
     }
 
-    // Function: Sets prompt text.
     private void SetPromptText(string value)
     {
         if (promptText != null)
@@ -1022,7 +1084,6 @@ public class MerylSceneController : MonoBehaviour
         }
     }
 
-    // Function: Finds scene object objects or component references.
     private GameObject FindSceneObject(string objectName)
     {
         Transform[] transforms = Resources.FindObjectsOfTypeAll<Transform>();
@@ -1043,7 +1104,6 @@ public class MerylSceneController : MonoBehaviour
         return null;
     }
 
-    // Function: Finds child by name objects or component references.
     private Transform FindChildByName(Transform root, string childName)
     {
         if (root == null)
@@ -1063,7 +1123,6 @@ public class MerylSceneController : MonoBehaviour
         return null;
     }
 
-    // Function: Runs the align visible hero feet to controller logic.
     private void AlignVisibleHeroFeetToController(GameObject playerObject, Transform hero)
     {
         if (playerObject == null || hero == null)
@@ -1112,7 +1171,6 @@ public class MerylSceneController : MonoBehaviour
         hero.position += Vector3.up * deltaY;
     }
 
-    // Function: Sets private bool.
     private void SetPrivateBool(MonoBehaviour behaviour, string fieldName, bool value)
     {
         FieldInfo field = behaviour.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
@@ -1122,7 +1180,6 @@ public class MerylSceneController : MonoBehaviour
         }
     }
 
-    // Function: Sets private field.
     private void SetPrivateField(MonoBehaviour behaviour, string fieldName, object value)
     {
         FieldInfo field = behaviour.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);

@@ -1,5 +1,4 @@
-// Main function: Runs the magic cube color challenge, including arena creation, round checks, failure animation, win state, and challenge UI.
-
+// Runs the magic cube timing challenge and awards the blue key.
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -72,7 +71,6 @@ public class MagicCubeChallenge : MonoBehaviour
     private GUIStyle promptStyle;
     private GUIStyle titleStyle;
 
-    // Function: Initializes component references, cached state, and default runtime data.
     private void Awake()
     {
         if (arenaRoot != null)
@@ -81,7 +79,6 @@ public class MagicCubeChallenge : MonoBehaviour
         }
     }
 
-    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         if (!active)
@@ -125,7 +122,6 @@ public class MagicCubeChallenge : MonoBehaviour
         }
     }
 
-    // Function: Draws this script's IMGUI prompts, panels, and dialogue.
     private void OnGUI()
     {
         if (!active && IsNearInteractObject())
@@ -156,7 +152,6 @@ public class MagicCubeChallenge : MonoBehaviour
         DrawPrompt(text);
     }
 
-    // Function: Starts the challenge flow.
     private void StartChallenge()
     {
         if (player == null)
@@ -177,7 +172,6 @@ public class MagicCubeChallenge : MonoBehaviour
         StartRound();
     }
 
-    // Function: Starts the round flow.
     private void StartRound()
     {
         BuildGrid();
@@ -185,7 +179,6 @@ public class MagicCubeChallenge : MonoBehaviour
         roundEndsAt = Time.time + roundSeconds[Mathf.Clamp(currentRound, 0, roundSeconds.Length - 1)];
     }
 
-    // Function: Runs the resolve round logic.
     private void ResolveRound()
     {
         waitingForRound = false;
@@ -208,7 +201,6 @@ public class MagicCubeChallenge : MonoBehaviour
         StartCoroutine(NextRoundAfterDelay());
     }
 
-    // Function: Runs the next round after delay logic.
     private IEnumerator NextRoundAfterDelay()
     {
         yield return new WaitForSeconds(1.2f);
@@ -218,10 +210,10 @@ public class MagicCubeChallenge : MonoBehaviour
         }
     }
 
-    // Function: Handles failure for challenge, including prompts, reset, or penalty.
     private void FailChallenge()
     {
         failed = true;
+        GameAudioManager.PlayFail();
         waitingForRound = false;
         if (fallRoutine != null)
         {
@@ -231,10 +223,10 @@ public class MagicCubeChallenge : MonoBehaviour
         fallRoutine = StartCoroutine(PlayFallAnimation());
     }
 
-    // Function: Handles success for challenge, including rewards and exit state.
     private void WinChallenge()
     {
         won = true;
+        GameAudioManager.PlaySuccess();
         showingResult = true;
         waitingForRound = false;
         if (!rewardGiven)
@@ -244,7 +236,6 @@ public class MagicCubeChallenge : MonoBehaviour
         }
     }
 
-    // Function: Runs the restart challenge logic.
     private void RestartChallenge()
     {
         failed = false;
@@ -255,7 +246,6 @@ public class MagicCubeChallenge : MonoBehaviour
         StartRound();
     }
 
-    // Function: Exits challenge and restores exploration state.
     private void ExitChallenge()
     {
         active = false;
@@ -278,7 +268,6 @@ public class MagicCubeChallenge : MonoBehaviour
         MovePlayer(returnPosition, returnRotation);
     }
 
-    // Function: Plays fall animation animation, audio, or cutscene behavior.
     private IEnumerator PlayFallAnimation()
     {
         if (player == null)
@@ -315,7 +304,6 @@ public class MagicCubeChallenge : MonoBehaviour
         fallRoutine = null;
     }
 
-    // Function: Ensures arena exists, is configured, or is ready to use.
     private void EnsureArena()
     {
         EnsureMaterials();
@@ -331,7 +319,6 @@ public class MagicCubeChallenge : MonoBehaviour
         }
     }
 
-    // Function: Builds the data or scene objects needed for grid.
     private void BuildGrid()
     {
         ClearTiles();
@@ -360,7 +347,6 @@ public class MagicCubeChallenge : MonoBehaviour
         }
     }
 
-    // Function: Clears tiles.
     private void ClearTiles()
     {
         for (int i = 0; i < tiles.Count; i++)
@@ -375,7 +361,6 @@ public class MagicCubeChallenge : MonoBehaviour
         tileColorIndices.Clear();
     }
 
-    // Function: Removes wrong tiles.
     private void RemoveWrongTiles(int targetColor)
     {
         for (int i = 0; i < tiles.Count; i++)
@@ -387,7 +372,6 @@ public class MagicCubeChallenge : MonoBehaviour
         }
     }
 
-    // Function: Checks whether player on target color is true.
     private bool IsPlayerOnTargetColor(int targetColor)
     {
         if (player == null)
@@ -422,7 +406,6 @@ public class MagicCubeChallenge : MonoBehaviour
         return bestIndex >= 0 && tileColorIndices[bestIndex] == targetColor;
     }
 
-    // Function: Moves player toward its target position or state.
     private void MovePlayer(Vector3 position, Quaternion rotation)
     {
         if (player == null)
@@ -445,7 +428,6 @@ public class MagicCubeChallenge : MonoBehaviour
         }
     }
 
-    // Function: Gets or calculates arena player start position.
     private Vector3 GetArenaPlayerStartPosition()
     {
         Vector3 position = arenaCenter;
@@ -453,7 +435,6 @@ public class MagicCubeChallenge : MonoBehaviour
         return position;
     }
 
-    // Function: Gets or calculates controller foot offset.
     private float GetControllerFootOffset()
     {
         if (player == null)
@@ -470,7 +451,6 @@ public class MagicCubeChallenge : MonoBehaviour
         return controller.center.y - controller.height * 0.5f;
     }
 
-    // Function: Draws the UI elements for prompt.
     private void DrawPrompt(string text)
     {
         Rect rect = GameUiStyle.InteractionPromptRect(560f, 64f);
@@ -478,7 +458,6 @@ public class MagicCubeChallenge : MonoBehaviour
         GUI.Label(rect, text, GetStyle(ref promptStyle, 26, TextAnchor.MiddleCenter, FontStyle.Bold));
     }
 
-    // Function: Draws the UI elements for result panel.
     private void DrawResultPanel(string title)
     {
         Rect rect = GameUiStyle.SystemPromptRect(480f, 220f);
@@ -489,13 +468,11 @@ public class MagicCubeChallenge : MonoBehaviour
         GUI.Label(new Rect(rect.x + 20f, rect.y + 132f, rect.width - 40f, 34f), "Press B to exit", GetStyle(ref promptStyle, 22, TextAnchor.MiddleCenter, FontStyle.Bold));
     }
 
-    // Function: Draws a reusable dark UI panel background.
     private void DrawPanel(Rect rect)
     {
         GameUiStyle.DrawPanel(rect);
     }
 
-    // Function: Gets or calculates style.
     private GUIStyle GetStyle(ref GUIStyle style, int fontSize, TextAnchor alignment, FontStyle fontStyle)
     {
         if (style == null)
@@ -510,7 +487,6 @@ public class MagicCubeChallenge : MonoBehaviour
         return style;
     }
 
-    // Function: Ensures materials exists, is configured, or is ready to use.
     private void EnsureMaterials()
     {
         if (colorMaterials != null && whiteMaterial != null)
@@ -530,7 +506,6 @@ public class MagicCubeChallenge : MonoBehaviour
         whiteMaterial.color = Color.white;
     }
 
-    // Function: Checks whether nearby interact object is true.
     private bool IsNearInteractObject()
     {
         return player != null && interactObject != null && Vector3.Distance(player.position, interactObject.position) <= interactDistance;

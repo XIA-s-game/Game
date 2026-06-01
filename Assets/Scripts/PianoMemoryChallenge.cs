@@ -1,5 +1,4 @@
-// Main function: Runs the piano memory mini-game, including sequence playback, player note input, round validation, generated audio, and piano UI.
-
+// Runs the piano memory mini-game and awards the red key.
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -62,7 +61,6 @@ public class PianoMemoryChallenge : MonoBehaviour
     private GUIStyle promptStyle;
     private GUIStyle titleStyle;
 
-    // Function: Initializes component references, cached state, and default runtime data.
     private void Awake()
     {
         if (audioSource == null)
@@ -71,7 +69,6 @@ public class PianoMemoryChallenge : MonoBehaviour
         }
     }
 
-    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         if (!active)
@@ -123,7 +120,6 @@ public class PianoMemoryChallenge : MonoBehaviour
         }
     }
 
-    // Function: Draws this script's IMGUI prompts, panels, and dialogue.
     private void OnGUI()
     {
         if (!active)
@@ -139,7 +135,6 @@ public class PianoMemoryChallenge : MonoBehaviour
         DrawPianoPanel();
     }
 
-    // Function: Starts the challenge flow.
     private void StartChallenge()
     {
         EnsureAudioSource();
@@ -151,7 +146,6 @@ public class PianoMemoryChallenge : MonoBehaviour
         StartCoroutine(PlayCurrentRound());
     }
 
-    // Function: Runs the restart challenge logic.
     private void RestartChallenge()
     {
         StopAllCoroutines();
@@ -162,7 +156,6 @@ public class PianoMemoryChallenge : MonoBehaviour
         StartCoroutine(PlayCurrentRound());
     }
 
-    // Function: Exits challenge and restores exploration state.
     private void ExitChallenge()
     {
         StopAllCoroutines();
@@ -172,7 +165,6 @@ public class PianoMemoryChallenge : MonoBehaviour
         playingSequence = false;
     }
 
-    // Function: Plays current round animation, audio, or cutscene behavior.
     private IEnumerator PlayCurrentRound()
     {
         playingSequence = true;
@@ -189,7 +181,6 @@ public class PianoMemoryChallenge : MonoBehaviour
         playingSequence = false;
     }
 
-    // Function: Handles player note interaction or progression.
     private void HandlePlayerNote(int noteIndex)
     {
         PlayNote(noteIndex);
@@ -197,6 +188,7 @@ public class PianoMemoryChallenge : MonoBehaviour
         if (noteIndex != sequence[inputIndex])
         {
             failed = true;
+            GameAudioManager.PlayFail();
             return;
         }
 
@@ -210,6 +202,7 @@ public class PianoMemoryChallenge : MonoBehaviour
         if (roundIndex >= Rounds.Length)
         {
             won = true;
+            GameAudioManager.PlaySuccess();
             if (!rewardGiven)
             {
                 rewardGiven = true;
@@ -221,7 +214,6 @@ public class PianoMemoryChallenge : MonoBehaviour
         StartCoroutine(PlayCurrentRound());
     }
 
-    // Function: Draws the UI elements for piano panel.
     private void DrawPianoPanel()
     {
         Rect panel = GameUiStyle.DialogueRect(230f);
@@ -270,7 +262,6 @@ public class PianoMemoryChallenge : MonoBehaviour
         }
     }
 
-    // Function: Draws the UI elements for prompt.
     private void DrawPrompt(string text)
     {
         Rect rect = GameUiStyle.InteractionPromptRect();
@@ -278,13 +269,11 @@ public class PianoMemoryChallenge : MonoBehaviour
         GUI.Label(rect, text, GetStyle(ref promptStyle, 30, TextAnchor.MiddleCenter, FontStyle.Bold));
     }
 
-    // Function: Draws a reusable dark UI panel background.
     private void DrawPanel(Rect rect)
     {
         GameUiStyle.DrawPanel(rect);
     }
 
-    // Function: Gets or calculates style.
     private GUIStyle GetStyle(ref GUIStyle style, int fontSize, TextAnchor alignment, FontStyle fontStyle)
     {
         if (style == null)
@@ -299,7 +288,6 @@ public class PianoMemoryChallenge : MonoBehaviour
         return style;
     }
 
-    // Function: Plays note animation, audio, or cutscene behavior.
     private void PlayNote(int noteIndex)
     {
         EnsureAudioSource();
@@ -310,7 +298,6 @@ public class PianoMemoryChallenge : MonoBehaviour
         }
     }
 
-    // Function: Gets or calculates or create note clip.
     private AudioClip GetOrCreateNoteClip(int noteIndex)
     {
         if (noteClips.TryGetValue(noteIndex, out AudioClip clip))
@@ -335,7 +322,6 @@ public class PianoMemoryChallenge : MonoBehaviour
         return clip;
     }
 
-    // Function: Ensures audio source exists, is configured, or is ready to use.
     private void EnsureAudioSource()
     {
         if (audioSource == null)
@@ -344,7 +330,6 @@ public class PianoMemoryChallenge : MonoBehaviour
         }
     }
 
-    // Function: Checks whether nearby piano is true.
     private bool IsNearPiano()
     {
         return player != null && piano != null && Vector3.Distance(player.position, piano.position) <= interactDistance;
