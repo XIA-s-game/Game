@@ -1,3 +1,5 @@
+// Main function: Draws the minimap HUD in allowed scenes, including map bounds, grid lines, player direction, and movement trail.
+
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -59,12 +61,14 @@ public class MiniMapHUD : MonoBehaviour
     private bool mapReady;
     private bool expanded;
 
+    // Function: Initializes component references, cached state, and default runtime data.
     private void Awake()
     {
         CreateTextures();
         RefreshScene();
     }
 
+    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         if (!IsAllowedScene())
@@ -82,6 +86,7 @@ public class MiniMapHUD : MonoBehaviour
         }
     }
 
+    // Function: Draws this script's IMGUI prompts, panels, and dialogue.
     private void OnGUI()
     {
         if (!IsAllowedScene())
@@ -108,6 +113,7 @@ public class MiniMapHUD : MonoBehaviour
         DrawLabel(panel);
     }
 
+    // Function: Gets or calculates map rect.
     private Rect GetMapRect()
     {
         if (!expanded)
@@ -119,6 +125,7 @@ public class MiniMapHUD : MonoBehaviour
         return new Rect((Screen.width - size) * 0.5f, (Screen.height - size) * 0.5f, size, size);
     }
 
+    // Function: Refreshes cached references or state for scene.
     private void RefreshScene()
     {
         loadedSceneName = SceneManager.GetActiveScene().name;
@@ -128,6 +135,7 @@ public class MiniMapHUD : MonoBehaviour
         EnsureMapArea();
     }
 
+    // Function: Refreshes cached references or state for references.
     private void RefreshReferences()
     {
         if (playerCamera == null || !playerCamera.gameObject.activeInHierarchy)
@@ -145,6 +153,7 @@ public class MiniMapHUD : MonoBehaviour
         }
     }
 
+    // Function: Ensures map area exists, is configured, or is ready to use.
     private void EnsureMapArea()
     {
         if (mapReady && loadedSceneName == SceneManager.GetActiveScene().name)
@@ -181,6 +190,7 @@ public class MiniMapHUD : MonoBehaviour
         }
     }
 
+    // Function: Tries to get manual area and returns whether it was found.
     private bool TryGetManualArea(string sceneName, out MapArea area)
     {
         if (mapAreas != null)
@@ -201,6 +211,7 @@ public class MiniMapHUD : MonoBehaviour
         return false;
     }
 
+    // Function: Tries to calculate scene area and returns whether the calculation succeeded.
     private bool TryCalculateSceneArea(out Vector2 center, out Vector2 size)
     {
         Bounds bounds = new Bounds(Vector3.zero, Vector3.zero);
@@ -254,6 +265,7 @@ public class MiniMapHUD : MonoBehaviour
         return true;
     }
 
+    // Function: Adds bounds.
     private void AddBounds(ref Bounds bounds, ref bool hasBounds, Bounds next)
     {
         if (!hasBounds)
@@ -267,11 +279,13 @@ public class MiniMapHUD : MonoBehaviour
         }
     }
 
+    // Function: Runs the clamp world size logic.
     private Vector2 ClampWorldSize(Vector2 size)
     {
         return new Vector2(Mathf.Max(1f, size.x), Mathf.Max(1f, size.y));
     }
 
+    // Function: Adds trail point.
     private void AddTrailPoint()
     {
         if (!showTrail || player == null)
@@ -292,6 +306,7 @@ public class MiniMapHUD : MonoBehaviour
         }
     }
 
+    // Function: Draws the UI elements for grid.
     private void DrawGrid(Rect rect)
     {
         for (int i = 1; i < 4; i++)
@@ -303,6 +318,7 @@ public class MiniMapHUD : MonoBehaviour
         }
     }
 
+    // Function: Draws the UI elements for trail.
     private void DrawTrail(Rect rect)
     {
         if (!showTrail)
@@ -317,6 +333,7 @@ public class MiniMapHUD : MonoBehaviour
         }
     }
 
+    // Function: Draws the UI elements for player.
     private void DrawPlayer(Rect rect)
     {
         Transform basis = player != null ? player : (playerCamera != null ? playerCamera.transform : null);
@@ -332,6 +349,7 @@ public class MiniMapHUD : MonoBehaviour
         DrawRotatedTexture(new Rect(mapPoint.x - 1.5f, mapPoint.y - 14f, 3f, 12f), playerTexture, heading - mapRotation);
     }
 
+    // Function: Runs the world to map logic.
     private Vector2 WorldToMap(Rect rect, Vector2 world)
     {
         Vector2 offset = world - mapCenter;
@@ -345,6 +363,7 @@ public class MiniMapHUD : MonoBehaviour
         return new Vector2(rect.x + x * rect.width, rect.yMax - y * rect.height);
     }
 
+    // Function: Gets or calculates heading.
     private float GetHeading(Transform basis)
     {
         Vector3 forward = basis.forward;
@@ -357,6 +376,7 @@ public class MiniMapHUD : MonoBehaviour
         return Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
     }
 
+    // Function: Rotates the current script or calculates a rotation result.
     private Vector2 Rotate(Vector2 value, float degrees)
     {
         float radians = degrees * Mathf.Deg2Rad;
@@ -365,6 +385,7 @@ public class MiniMapHUD : MonoBehaviour
         return new Vector2(value.x * cos - value.y * sin, value.x * sin + value.y * cos);
     }
 
+    // Function: Draws the UI elements for rotated texture.
     private void DrawRotatedTexture(Rect rect, Texture2D texture, float angle)
     {
         Vector2 pivot = new Vector2(rect.x + rect.width * 0.5f, rect.y + rect.height);
@@ -374,12 +395,14 @@ public class MiniMapHUD : MonoBehaviour
         GUI.matrix = oldMatrix;
     }
 
+    // Function: Draws the UI elements for label.
     private void DrawLabel(Rect panel)
     {
         GUIStyle style = GameUiStyle.LabelStyle(ref labelStyle, 12, TextAnchor.UpperLeft, FontStyle.Bold);
         GUI.Label(new Rect(panel.x + 12f, panel.y + 8f, panel.width - 24f, 20f), "MAP", style);
     }
 
+    // Function: Checks whether allowed scene is true.
     private bool IsAllowedScene()
     {
         string sceneName = SceneManager.GetActiveScene().name;
@@ -399,6 +422,7 @@ public class MiniMapHUD : MonoBehaviour
         return false;
     }
 
+    // Function: Creates the objects, textures, or UI needed for textures.
     private void CreateTextures()
     {
         mapTexture = CreateTexture(mapColor);
@@ -407,6 +431,7 @@ public class MiniMapHUD : MonoBehaviour
         playerTexture = CreateTexture(playerColor);
     }
 
+    // Function: Creates the objects, textures, or UI needed for texture.
     private Texture2D CreateTexture(Color color)
     {
         Texture2D texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
@@ -416,6 +441,7 @@ public class MiniMapHUD : MonoBehaviour
         return texture;
     }
 
+    // Function: Checks whether menu scene is true.
     private static bool IsMenuScene(string sceneName)
     {
         return string.Equals(sceneName, "MainMenu", System.StringComparison.OrdinalIgnoreCase) ||

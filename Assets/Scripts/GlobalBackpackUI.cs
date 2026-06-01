@@ -1,3 +1,5 @@
+// Main function: Stores global backpack item counts and draws the backpack panel outside menu scenes.
+
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -14,6 +16,7 @@ public class GlobalBackpackUI : MonoBehaviour
     private bool inventoryOpen;
     private GUIStyle labelStyle;
 
+    // Function: Adds item.
     public static void AddItem(string itemName, int amount = 1)
     {
         if (instance != null)
@@ -22,6 +25,7 @@ public class GlobalBackpackUI : MonoBehaviour
         }
     }
 
+    // Function: Sets item count.
     public static void SetItemCount(string itemName, int count)
     {
         if (instance != null)
@@ -30,6 +34,7 @@ public class GlobalBackpackUI : MonoBehaviour
         }
     }
 
+    // Function: Removes item.
     public static void RemoveItem(string itemName, int amount = 1)
     {
         if (instance != null)
@@ -38,11 +43,13 @@ public class GlobalBackpackUI : MonoBehaviour
         }
     }
 
+    // Function: Removes all.
     public static void RemoveAll(string itemName)
     {
         SetItemCount(itemName, 0);
     }
 
+    // Function: Initializes component references, cached state, and default runtime data.
     private void Awake()
     {
         if (instance != null && instance != this)
@@ -55,6 +62,7 @@ public class GlobalBackpackUI : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
+    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         if (IsMenuScene())
@@ -68,6 +76,7 @@ public class GlobalBackpackUI : MonoBehaviour
         }
     }
 
+    // Function: Draws this script's IMGUI prompts, panels, and dialogue.
     private void OnGUI()
     {
         if (IsMenuScene())
@@ -78,6 +87,7 @@ public class GlobalBackpackUI : MonoBehaviour
         DrawBackpack();
     }
 
+    // Function: Adds the current script.
     private void Add(string itemName, int amount)
     {
         if (string.IsNullOrEmpty(itemName) || amount <= 0)
@@ -94,6 +104,7 @@ public class GlobalBackpackUI : MonoBehaviour
         itemCounts[itemName] += amount;
     }
 
+    // Function: Sets count.
     private void SetCount(string itemName, int count)
     {
         if (string.IsNullOrEmpty(itemName))
@@ -116,6 +127,7 @@ public class GlobalBackpackUI : MonoBehaviour
         itemCounts[itemName] = count;
     }
 
+    // Function: Removes the current script.
     private void Remove(string itemName, int amount)
     {
         if (string.IsNullOrEmpty(itemName) || amount <= 0 || !itemCounts.ContainsKey(itemName))
@@ -126,6 +138,7 @@ public class GlobalBackpackUI : MonoBehaviour
         SetCount(itemName, itemCounts[itemName] - amount);
     }
 
+    // Function: Checks whether menu scene is true.
     private bool IsMenuScene()
     {
         string sceneName = SceneManager.GetActiveScene().name;
@@ -133,6 +146,7 @@ public class GlobalBackpackUI : MonoBehaviour
             string.Equals(sceneName, menuSceneAlias, System.StringComparison.OrdinalIgnoreCase);
     }
 
+    // Function: Draws the UI elements for backpack.
     private void DrawBackpack()
     {
         float width = inventoryOpen ? 250f : 118f;
@@ -166,6 +180,7 @@ public class GlobalBackpackUI : MonoBehaviour
         }
     }
 
+    // Function: Gets or calculates label style.
     private GUIStyle GetLabelStyle(int fontSize, TextAnchor alignment, FontStyle fontStyle)
     {
         return GameUiStyle.LabelStyle(ref labelStyle, fontSize, alignment, fontStyle);

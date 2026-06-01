@@ -1,3 +1,5 @@
+// Main function: Shows one-time system prompts based on player position and briefly highlights prompt targets with runtime collider support.
+
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -26,12 +28,14 @@ public class SystemPromptTrigger : MonoBehaviour
     private bool puzzlePromptShown;
     private bool altarPromptShown;
 
+    // Function: Initializes component references, cached state, and default runtime data.
     private void Awake()
     {
         EnsureSolidCollider(firstPromptMarker);
         EnsureSolidCollider(secondPromptMarker);
     }
 
+    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         UpdatePromptQueue();
@@ -45,6 +49,7 @@ public class SystemPromptTrigger : MonoBehaviour
         TryShowNearPrompt(ref altarPromptShown, secondPromptMarker, altarPrompt, false);
     }
 
+    // Function: Draws this script's IMGUI prompts, panels, and dialogue.
     private void OnGUI()
     {
         if (string.IsNullOrEmpty(currentPrompt) || Time.time >= promptEndsAt)
@@ -66,6 +71,7 @@ public class SystemPromptTrigger : MonoBehaviour
         GUI.Label(new Rect(rect.x + 18f, rect.y + 12f, rect.width - 36f, rect.height - 24f), currentPrompt, style);
     }
 
+    // Function: Tries to process show nearby prompt and returns whether it succeeded.
     private void TryShowNearPrompt(ref bool shown, Transform target, string text, bool highlightTarget)
     {
         if (shown || target == null)
@@ -86,6 +92,7 @@ public class SystemPromptTrigger : MonoBehaviour
         }
     }
 
+    // Function: Shows prompt once.
     private void ShowPromptOnce(ref bool shown, string text)
     {
         if (shown)
@@ -98,6 +105,7 @@ public class SystemPromptTrigger : MonoBehaviour
         UpdatePromptQueue();
     }
 
+    // Function: Updates prompt queue state, input, or presentation.
     private void UpdatePromptQueue()
     {
         if (!string.IsNullOrEmpty(currentPrompt) && Time.time < promptEndsAt)
@@ -115,6 +123,7 @@ public class SystemPromptTrigger : MonoBehaviour
         promptEndsAt = Time.time + promptDuration;
     }
 
+    // Function: Checks whether player standing on target is true.
     private bool IsPlayerStandingOnTarget(Transform target)
     {
         if (player == null || target == null)
@@ -136,6 +145,7 @@ public class SystemPromptTrigger : MonoBehaviour
         return Vector3.Distance(playerFlat, targetFlat) <= triggerDistance;
     }
 
+    // Function: Tries to get detection bounds and returns whether it was found.
     private static bool TryGetDetectionBounds(Transform target, out Bounds bounds)
     {
         Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
@@ -168,6 +178,7 @@ public class SystemPromptTrigger : MonoBehaviour
         return TryGetWorldBounds(target, out bounds);
     }
 
+    // Function: Runs the highlight for seconds logic.
     private IEnumerator HighlightForSeconds(Transform target, float seconds)
     {
         Renderer[] renderers = target.GetComponentsInChildren<Renderer>(true);
@@ -202,6 +213,7 @@ public class SystemPromptTrigger : MonoBehaviour
         }
     }
 
+    // Function: Gets or calculates property block.
     private MaterialPropertyBlock GetPropertyBlock(Renderer renderer)
     {
         if (!propertyBlocks.TryGetValue(renderer, out MaterialPropertyBlock block))
@@ -213,6 +225,7 @@ public class SystemPromptTrigger : MonoBehaviour
         return block;
     }
 
+    // Function: Ensures solid collider exists, is configured, or is ready to use.
     private void EnsureSolidCollider(Transform target)
     {
         if (target == null || colliderReadyTargets.Contains(target))
@@ -233,6 +246,7 @@ public class SystemPromptTrigger : MonoBehaviour
         }
     }
 
+    // Function: Checks whether solid collider already exists or is available.
     private static bool HasSolidCollider(Transform target)
     {
         Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
@@ -247,6 +261,7 @@ public class SystemPromptTrigger : MonoBehaviour
         return false;
     }
 
+    // Function: Adds mesh colliders.
     private static bool AddMeshColliders(Transform target)
     {
         bool addedAny = false;
@@ -273,6 +288,7 @@ public class SystemPromptTrigger : MonoBehaviour
         return addedAny;
     }
 
+    // Function: Adds renderer box colliders.
     private static bool AddRendererBoxColliders(Transform target)
     {
         bool addedAny = false;
@@ -294,6 +310,7 @@ public class SystemPromptTrigger : MonoBehaviour
         return addedAny;
     }
 
+    // Function: Tries to get world bounds and returns whether it was found.
     private static bool TryGetWorldBounds(Transform target, out Bounds bounds)
     {
         Renderer[] renderers = target.GetComponentsInChildren<Renderer>(true);
@@ -321,6 +338,7 @@ public class SystemPromptTrigger : MonoBehaviour
         return hasBounds;
     }
 
+    // Function: Safely converts by lossy scale through object scale.
     private static Vector3 DivideByLossyScale(Vector3 size, Vector3 lossyScale)
     {
         return new Vector3(
@@ -329,6 +347,7 @@ public class SystemPromptTrigger : MonoBehaviour
             DivideByScale(size.z, lossyScale.z));
     }
 
+    // Function: Safely converts by scale through object scale.
     private static float DivideByScale(float value, float scale)
     {
         return Mathf.Abs(scale) > 0.0001f ? value / Mathf.Abs(scale) : value;

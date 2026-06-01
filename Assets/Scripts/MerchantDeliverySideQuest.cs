@@ -1,3 +1,5 @@
+// Main function: Runs the merchant repair and delivery side quest, including dialogue, accepting the task, collecting tools, repairing the cart, merchant animation, and quest UI.
+
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -74,11 +76,13 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         "Merchant: Thank you for helping. Please take this glow berry."
     };
 
+    // Function: Initializes component references, cached state, and default runtime data.
     private void Awake()
     {
         SetupSceneObjects();
     }
 
+    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         UpdateNearFlags();
@@ -86,6 +90,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         UpdateInput();
     }
 
+    // Function: Draws this script's IMGUI prompts, panels, and dialogue.
     private void OnGUI()
     {
         DrawQuestPanel();
@@ -94,6 +99,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         DrawChoicePanel();
     }
 
+    // Function: Updates input state, input, or presentation.
     private void UpdateInput()
     {
         if (merchantChoiceVisible)
@@ -169,6 +175,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Starts the conversation flow.
     private void StartConversation(string[] conversation)
     {
         PlayMerchantStand();
@@ -179,6 +186,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         AdvanceConversation();
     }
 
+    // Function: Runs the advance conversation logic.
     private void AdvanceConversation()
     {
         if (activeConversation != null && conversationIndex < activeConversation.Length)
@@ -217,6 +225,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         activeConversation = null;
     }
 
+    // Function: Runs the accept quest logic.
     private void AcceptQuest()
     {
         questAccepted = true;
@@ -225,6 +234,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         ShowTimedMessage("Side quest started: check the delivery.", 3f, false);
     }
 
+    // Function: Picks up or selects repair tools.
     private void PickRepairTools()
     {
         hasRepairTools = true;
@@ -233,6 +243,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         ShowTimedMessage("Repair tools found.", 3f, false);
     }
 
+    // Function: Runs the repair cart logic.
     private IEnumerator RepairCart()
     {
         repairingCart = true;
@@ -248,12 +259,14 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         StartConversation(workerRepairCompleteConversation);
     }
 
+    // Function: Completes repair task and applies its result or reward.
     private void CompleteRepairTask()
     {
         ShowQuestObjects(false);
         ShowTimedMessage("Side quest complete: cart repaired.", 3f, false);
     }
 
+    // Function: Updates merchant animation state, input, or presentation.
     private void UpdateMerchantAnimation()
     {
         if (merchant == null)
@@ -267,16 +280,19 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Plays merchant move animation, audio, or cutscene behavior.
     private void PlayMerchantMove()
     {
         ApplyMerchantController(merchantMoveController);
     }
 
+    // Function: Plays merchant stand animation, audio, or cutscene behavior.
     private void PlayMerchantStand()
     {
         ApplyMerchantController(merchantStandController);
     }
 
+    // Function: Applies merchant controller effects to the scene or target object.
     private void ApplyMerchantController(RuntimeAnimatorController controller)
     {
         if (merchant == null || controller == null)
@@ -304,6 +320,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         animator.enabled = true;
     }
 
+    // Function: Draws the UI elements for quest panel.
     private void DrawQuestPanel()
     {
         if (!questAccepted || questCompleted)
@@ -328,6 +345,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Draws the UI elements for interact prompt.
     private void DrawInteractPrompt()
     {
         if (merchantChoiceVisible || merchantConversationRunning)
@@ -352,6 +370,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         GUI.Label(rect, text, style);
     }
 
+    // Function: Draws the UI elements for timed message.
     private void DrawTimedMessage()
     {
         if (string.IsNullOrEmpty(timedMessage) || (!timedMessageWaitsForContinue && Time.time >= timedMessageEndsAt))
@@ -374,6 +393,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Draws the UI elements for choice panel.
     private void DrawChoicePanel()
     {
         if (!merchantChoiceVisible)
@@ -393,6 +413,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         GUI.Label(new Rect(rect.x + 48f, rect.y + 112f, rect.width - 96f, 30f), "B: Leave", optionStyle);
     }
 
+    // Function: Shows timed message.
     private void ShowTimedMessage(string message, float seconds, bool waitForContinue)
     {
         timedMessage = message;
@@ -401,6 +422,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         timedMessageEndsAt = string.IsNullOrEmpty(message) || waitForContinue ? 0f : Time.time + seconds;
     }
 
+    // Function: Gets or calculates style.
     private GUIStyle GetStyle(ref GUIStyle style, int fontSize, TextAnchor alignment, FontStyle fontStyle, bool wordWrap = false)
     {
         if (style == null)
@@ -416,6 +438,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         return style;
     }
 
+    // Function: Updates nearby flags state, input, or presentation.
     private void UpdateNearFlags()
     {
         nearMerchant = IsNear(player, merchant);
@@ -428,6 +451,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         nearTools = repairTaskAdded && !hasRepairTools && IsNear(player, tools);
     }
 
+    // Function: Sets up scene objects.
     private void SetupSceneObjects()
     {
         EnsureQuestColliders();
@@ -440,6 +464,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         PlayMerchantMove();
     }
 
+    // Function: Shows quest objects.
     private void ShowQuestObjects(bool show)
     {
         if (cart != null)
@@ -461,6 +486,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Ensures quest colliders exists, is configured, or is ready to use.
     private void EnsureQuestColliders()
     {
         EnsureSolidCollider(merchant);
@@ -481,6 +507,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Ensures solid collider exists, is configured, or is ready to use.
     private void EnsureSolidCollider(Transform target)
     {
         if (target == null || HasSolidCollider(target))
@@ -491,6 +518,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         AddRendererBoxColliders(target);
     }
 
+    // Function: Checks whether solid collider already exists or is available.
     private bool HasSolidCollider(Transform target)
     {
         Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
@@ -505,6 +533,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         return false;
     }
 
+    // Function: Adds renderer box colliders.
     private bool AddRendererBoxColliders(Transform target)
     {
         if (!TryGetWorldBounds(target, out Bounds bounds))
@@ -524,6 +553,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         return true;
     }
 
+    // Function: Tries to get world bounds and returns whether it was found.
     private bool TryGetWorldBounds(Transform target, out Bounds bounds)
     {
         Renderer[] renderers = target.GetComponentsInChildren<Renderer>(true);
@@ -551,6 +581,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         return hasBounds;
     }
 
+    // Function: Safely converts by lossy scale through object scale.
     private Vector3 DivideByLossyScale(Vector3 size, Vector3 lossyScale)
     {
         return new Vector3(
@@ -559,11 +590,13 @@ public class MerchantDeliverySideQuest : MonoBehaviour
             DivideByScale(size.z, lossyScale.z));
     }
 
+    // Function: Safely converts by scale through object scale.
     private float DivideByScale(float value, float scale)
     {
         return Mathf.Abs(scale) > 0.0001f ? value / Mathf.Abs(scale) : value;
     }
 
+    // Function: Hides tool parts.
     private void HideToolParts()
     {
         if (toolParts == null)
@@ -580,6 +613,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         }
     }
 
+    // Function: Checks whether nearby is true.
     private bool IsNear(Transform source, Transform target)
     {
         if (source == null || target == null || !target.gameObject.activeInHierarchy)
@@ -590,6 +624,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         return GetClosestDistance(source.position, target) <= interactDistance;
     }
 
+    // Function: Gets or calculates closest distance.
     private float GetClosestDistance(Vector3 point, Transform target)
     {
         Collider[] colliders = target.GetComponentsInChildren<Collider>(true);

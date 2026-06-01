@@ -1,8 +1,11 @@
+﻿// Handles the old tree encounter in "my scene": dialogue, nest choice, side quest, and attack sequence.
+
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+[RequireComponent(typeof(OldTreeChoice))]
 public class OldTreeInteraction : MonoBehaviour
 {
     private enum DialogueState
@@ -14,9 +17,6 @@ public class OldTreeInteraction : MonoBehaviour
         MovingNest,
         Attacking,
         Answered,
-        EggChallenge,
-        EggChallengeResult,
-        EggChallengeFailed,
         RewardChoosing,
         MushroomGift
     }
@@ -43,28 +43,8 @@ public class OldTreeInteraction : MonoBehaviour
     [SerializeField] private float nestTargetY = 1.89f;
     [SerializeField] private float nestMoveDuration = 4f;
 
-    [Header("Egg Challenge")]
-    [SerializeField] private GameObject eggPrefab;
-    [SerializeField] private GameObject levelOneOddEggPrefab;
-    [SerializeField] private GameObject levelTwoOddEggPrefab;
-    [SerializeField] private GameObject levelThreeOddEggPrefab;
-    [SerializeField] private float eggLevelDuration = 5f;
-    [SerializeField] private float eggGridDistance = 8f;
-    [SerializeField] private float eggGridSpacing = 0.45f;
-    [SerializeField] private float eggScale = 0.28f;
-    [SerializeField] private float eggResultDuration = 1.4f;
-    [SerializeField] private string levelOneTitle = "Level 1";
-    [SerializeField] private string levelTwoTitle = "Level 2";
-    [SerializeField] private string levelThreeTitle = "Level 3";
-    [SerializeField] private string levelOneSuccessText = "Level 1 complete";
-    [SerializeField] private string levelTwoSuccessText = "Level 2 complete";
-    [SerializeField] private string gameSuccessText = "Game complete";
-    [SerializeField] private string gameFailedText = "Game over";
-    [SerializeField] private string rewardGreeting = "You passed my test. Choose one:";
-    [SerializeField] private string rewardChoiceA = "A: Take the egg";
-    [SerializeField] private string rewardChoiceB = "B: Destroy the egg";
-    [SerializeField] private string rewardChoiceC = "C: Leave it there";
-    [SerializeField] private string rewardChoiceD = "D: Move it somewhere safer";
+    [Header("Egg Choice")]
+    [SerializeField] private OldTreeChoice oldTreeChoice;
 
     [Header("Mushroom Gift")]
     [SerializeField] private string mushroomGiftName = "mu";
@@ -191,7 +171,7 @@ public class OldTreeInteraction : MonoBehaviour
     private readonly List<Vector3> attackCylinderMoveAxes = new List<Vector3>();
     private readonly List<float> attackCylinderSeeds = new List<float>();
     private readonly List<MonoBehaviour> disabledPlayerBehaviours = new List<MonoBehaviour>();
-    private readonly List<MonoBehaviour> eggDisabledPlayerBehaviours = new List<MonoBehaviour>();
+    private readonly List<MonoBehaviour> choiceDisabledPlayerBehaviours = new List<MonoBehaviour>();
     private Vector3 originalPlayerPosition;
     private Quaternion originalPlayerRotation;
     private Vector3 originalCameraLocalPosition;
@@ -206,29 +186,18 @@ public class OldTreeInteraction : MonoBehaviour
     private bool hasAnimatorOriginal;
     private bool characterControllerWasEnabled;
     private bool rigidbodyWasKinematic;
-    private bool eggPlayerControlLocked;
+    private bool choiceModeControlLocked;
     private CursorLockMode originalCursorLockMode;
     private bool originalCursorVisible;
     private DialogueState state = DialogueState.Waiting;
+    private readonly OldTreeDialogue dialogue = new OldTreeDialogue();
     private string currentAnswer;
-    private string[] currentLines;
-    private int currentLineIndex;
-    private System.Action currentDialogueComplete;
-    private bool autoCompleteOnLastLine;
     private Coroutine lookCoroutine;
     private Coroutine resetCoroutine;
     private Coroutine nestMoveCoroutine;
     private Coroutine finalInstructionCoroutine;
     private Coroutine cylinderAttackCoroutine;
     private Coroutine playerLaunchCoroutine;
-    private Coroutine eggResultCoroutine;
-    private readonly List<GameObject> spawnedEggs = new List<GameObject>();
-    private GameObject eggGridRoot;
-    private GameObject correctEgg;
-    private int currentEggLevel;
-    private int currentEggGridSize;
-    private float eggTimer;
-    private string eggResultText;
     private Vector3 mushroomTreeExitPosition;
     private Vector3 mushroomTargetPosition;
     private float mushroomGiftStartTime;
@@ -268,6 +237,16 @@ public class OldTreeInteraction : MonoBehaviour
         if (lookRoot == null)
         {
             lookRoot = transform;
+        }
+
+        if (oldTreeChoice == null)
+        {
+            oldTreeChoice = GetComponent<OldTreeChoice>();
+        }
+
+        if (oldTreeChoice == null)
+        {
+            oldTreeChoice = gameObject.AddComponent<OldTreeChoice>();
         }
 
         interactionTarget = FindChildByName(transform, interactionTargetName);
@@ -365,11 +344,6 @@ public class OldTreeInteraction : MonoBehaviour
         if (state == DialogueState.Speaking && Input.GetKeyDown(KeyCode.C))
         {
             ShowNextLine();
-        }
-
-        if (state == DialogueState.EggChallenge)
-        {
-            UpdateEggChallenge();
         }
 
         if (state == DialogueState.RewardChoosing)
@@ -547,9 +521,7 @@ public class OldTreeInteraction : MonoBehaviour
     {
         branchFlowActive = false;
         currentAnswer = answerC;
-        currentLines = null;
-        currentDialogueComplete = null;
-        autoCompleteOnLastLine = false;
+        dialogue.Cancel();
         state = DialogueState.Attacking;
 
         if (resetCoroutine != null)
@@ -633,10 +605,9 @@ public class OldTreeInteraction : MonoBehaviour
             "Old Tree: Some birds leave eggs in smaller nests.",
             "Old Tree: When the chick hatches, the other eggs may be pushed out.",
             "Old Tree: Nature can be hard to judge.",
-            "Old Tree: I have a small test for your eyes.",
-            "Old Tree: Find the different egg before time runs out.",
-            "Old Tree: Stay focused."
-        }, StartEggChallenge);
+            "Old Tree: So tell me what you would do.",
+            "Old Tree: Think before you choose."
+        }, StartEggChoice);
     }
 
     private void StartDialogue(string[] lines, System.Action onComplete)
@@ -658,44 +629,25 @@ public class OldTreeInteraction : MonoBehaviour
             finalInstructionCoroutine = null;
         }
 
-        currentLines = lines;
-        currentLineIndex = 0;
-        currentDialogueComplete = onComplete;
-        autoCompleteOnLastLine = autoCompleteLastLine;
-        currentAnswer = currentLines[0];
+        dialogue.Begin(lines, onComplete, autoCompleteLastLine);
+        currentAnswer = dialogue.CurrentLine;
         state = DialogueState.Speaking;
 
-        if (autoCompleteOnLastLine && currentLines.Length == 1)
+        if (dialogue.ShouldCompleteImmediately())
         {
-            currentDialogueComplete?.Invoke();
+            onComplete?.Invoke();
         }
     }
 
     private void ShowNextLine()
     {
-        currentLineIndex++;
-        if (currentLines != null && currentLineIndex < currentLines.Length)
+        System.Action complete = dialogue.Advance(line =>
         {
-            currentAnswer = currentLines[currentLineIndex];
+            currentAnswer = line;
             TryActivateSideQuestFromDialogue(currentAnswer);
+        });
 
-            if (autoCompleteOnLastLine && currentLineIndex == currentLines.Length - 1)
-            {
-                System.Action finalLineComplete = currentDialogueComplete;
-                currentLines = null;
-                currentDialogueComplete = null;
-                autoCompleteOnLastLine = false;
-                finalLineComplete?.Invoke();
-            }
-
-            return;
-        }
-
-        System.Action dialogueComplete = currentDialogueComplete;
-        currentLines = null;
-        currentDialogueComplete = null;
-        autoCompleteOnLastLine = false;
-        dialogueComplete?.Invoke();
+        complete?.Invoke();
     }
 
     private void StartNestMove()
@@ -740,17 +692,9 @@ public class OldTreeInteraction : MonoBehaviour
 
     private void CloseDialogueAndReset()
     {
-        if (eggResultCoroutine != null)
-        {
-            StopCoroutine(eggResultCoroutine);
-            eggResultCoroutine = null;
-        }
-
-        ClearEggGrid();
         DisableMushroomGlow();
-        UnlockPlayerForEggChallenge();
+        UnlockPlayerForChoiceMode();
         currentAnswer = null;
-        eggResultText = null;
         branchFlowActive = false;
         state = DialogueState.Waiting;
         ResetTreeToInitialState();
@@ -810,160 +754,28 @@ public class OldTreeInteraction : MonoBehaviour
 
         currentAnswer = null;
         state = DialogueState.Waiting;
-        UnlockPlayerForEggChallenge();
+        UnlockPlayerForChoiceMode();
         ResetTreeToInitialState();
         StartLookCoroutine(ReturnToOriginalRotation());
         resetCoroutine = null;
     }
 
-    private void StartEggChallenge()
+    private void StartEggChoice()
     {
         currentAnswer = null;
         branchFlowActive = true;
-        LockPlayerForEggChallenge();
-        BeginEggLevel(1);
-    }
-
-    private void BeginEggLevel(int level)
-    {
-        ClearEggGrid();
-
-        currentEggLevel = Mathf.Clamp(level, 1, 3);
-        currentEggGridSize = GetEggGridSize(currentEggLevel);
-        eggTimer = eggLevelDuration;
-        eggResultText = null;
-        state = DialogueState.EggChallenge;
-
-        SpawnEggGrid(currentEggGridSize, GetOddEggPrefab(currentEggLevel));
-    }
-
-    private void UpdateEggChallenge()
-    {
-        eggTimer -= Time.deltaTime;
-        if (eggTimer <= 0f)
-        {
-            FailEggChallenge();
-            return;
-        }
-
-        if (Input.GetMouseButtonDown(0))
-        {
-            TrySelectEgg();
-        }
-    }
-
-    private void TrySelectEgg()
-    {
-        Camera camera = Camera.main;
-        if (camera == null)
-        {
-            return;
-        }
-
-        Ray ray = camera.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
-        if (!Physics.Raycast(ray, out hit, 100f))
-        {
-            return;
-        }
-
-        GameObject selectedEgg = FindSpawnedEggRoot(hit.transform);
-        if (selectedEgg == null)
-        {
-            return;
-        }
-
-        if (selectedEgg == correctEgg)
-        {
-            CompleteEggLevel();
-        }
-        else
-        {
-            FailEggChallenge();
-        }
-    }
-
-    private GameObject FindSpawnedEggRoot(Transform hitTransform)
-    {
-        Transform current = hitTransform;
-        while (current != null)
-        {
-            GameObject currentObject = current.gameObject;
-            if (spawnedEggs.Contains(currentObject))
-            {
-                return currentObject;
-            }
-
-            current = current.parent;
-        }
-
-        return null;
-    }
-
-    private void CompleteEggLevel()
-    {
-        if (eggResultCoroutine != null)
-        {
-            StopCoroutine(eggResultCoroutine);
-        }
-
-        string successText = GetEggSuccessText(currentEggLevel);
-        eggResultCoroutine = StartCoroutine(ShowEggSuccessThenContinue(successText));
-    }
-
-    private IEnumerator ShowEggSuccessThenContinue(string successText)
-    {
-        eggResultText = successText;
-        state = DialogueState.EggChallengeResult;
-        yield return new WaitForSeconds(eggResultDuration);
-
-        ClearEggGrid();
-        eggResultText = gameSuccessText;
-        yield return new WaitForSeconds(eggResultDuration);
-        eggResultText = null;
+        LockPlayerForChoiceMode();
         state = DialogueState.RewardChoosing;
-        eggResultCoroutine = null;
     }
 
-    private void FailEggChallenge()
+    private void LockPlayerForChoiceMode()
     {
-        ClearEggGrid();
-        eggResultText = gameFailedText;
-        state = DialogueState.EggChallengeFailed;
-
-        if (eggResultCoroutine != null)
-        {
-            StopCoroutine(eggResultCoroutine);
-            eggResultCoroutine = null;
-        }
-    }
-
-    private void RestartEggChallenge()
-    {
-        if (eggResultCoroutine != null)
-        {
-            StopCoroutine(eggResultCoroutine);
-            eggResultCoroutine = null;
-        }
-
-        BeginEggLevel(1);
-    }
-
-    private void ExitEggChallenge()
-    {
-        ClearEggGrid();
-        eggResultText = null;
-        CloseDialogueAndReset();
-    }
-
-    private void LockPlayerForEggChallenge()
-    {
-        if (eggPlayerControlLocked || player == null)
+        if (choiceModeControlLocked || player == null)
         {
             return;
         }
 
-        eggPlayerControlLocked = true;
+        choiceModeControlLocked = true;
         originalCursorLockMode = Cursor.lockState;
         originalCursorVisible = Cursor.visible;
         Cursor.lockState = CursorLockMode.None;
@@ -976,7 +788,7 @@ public class OldTreeInteraction : MonoBehaviour
             playerRigidbody.angularVelocity = Vector3.zero;
         }
 
-        eggDisabledPlayerBehaviours.Clear();
+        choiceDisabledPlayerBehaviours.Clear();
         MonoBehaviour[] playerBehaviours = player.GetComponentsInChildren<MonoBehaviour>();
         for (int i = 0; i < playerBehaviours.Length; i++)
         {
@@ -984,109 +796,100 @@ public class OldTreeInteraction : MonoBehaviour
             if (behaviour != null && behaviour.enabled)
             {
                 behaviour.enabled = false;
-                eggDisabledPlayerBehaviours.Add(behaviour);
+                choiceDisabledPlayerBehaviours.Add(behaviour);
             }
         }
     }
 
-    private void UnlockPlayerForEggChallenge()
+    private void UnlockPlayerForChoiceMode()
     {
-        if (!eggPlayerControlLocked)
+        if (!choiceModeControlLocked)
         {
             return;
         }
 
-        for (int i = 0; i < eggDisabledPlayerBehaviours.Count; i++)
+        for (int i = 0; i < choiceDisabledPlayerBehaviours.Count; i++)
         {
-            MonoBehaviour behaviour = eggDisabledPlayerBehaviours[i];
+            MonoBehaviour behaviour = choiceDisabledPlayerBehaviours[i];
             if (behaviour != null)
             {
                 behaviour.enabled = true;
             }
         }
 
-        eggDisabledPlayerBehaviours.Clear();
+        choiceDisabledPlayerBehaviours.Clear();
         Cursor.lockState = originalCursorLockMode;
         Cursor.visible = originalCursorVisible;
-        eggPlayerControlLocked = false;
+        choiceModeControlLocked = false;
     }
 
     private void ReadRewardChoiceKeys()
     {
-        if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.Alpha1))
+        if (oldTreeChoice != null && oldTreeChoice.TryReadInput(out OldTreeChoice.EggChoice choice))
         {
-            ChooseReward(rewardChoiceA);
-        }
-        else if (Input.GetKeyDown(KeyCode.B) || Input.GetKeyDown(KeyCode.Alpha2))
-        {
-            ChooseReward(rewardChoiceB);
-        }
-        else if (Input.GetKeyDown(KeyCode.C) || Input.GetKeyDown(KeyCode.Alpha3))
-        {
-            ChooseReward(rewardChoiceC);
-        }
-        else if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.Alpha4))
-        {
-            ChooseReward(rewardChoiceD);
+            ChooseReward(choice);
         }
     }
 
-    private void ChooseReward(string choice)
+    // Each choice is handled here because the lesson branches by intention, not by score.
+    private void ChooseReward(OldTreeChoice.EggChoice choice)
     {
-        UnlockPlayerForEggChallenge();
+        UnlockPlayerForChoiceMode();
         branchFlowActive = false;
 
-        if (choice == rewardChoiceA)
+        switch (choice)
         {
-            StartDialogue(new[]
-            {
-                "Old Tree: You want to take the egg?",
-                "Old Tree: That is not your choice to make.",
-                "Old Tree: The forest has its own rules.",
-                "Old Tree: Good intentions can still cause harm.",
-                "Old Tree: Watch first, then act.",
-                "Old Tree: You are not ready for this lesson.",
-                "Old Tree: Leave the nest alone.",
-                "Old Tree: Come back when you understand patience."
-            }, CloseDialogueAndReset);
-        }
-        else if (choice == rewardChoiceB)
-        {
-            StartDialogue(new[]
-            {
-                "Old Tree: Destroy it?",
-                "Old Tree: Magic is not for removing things you dislike.",
-                "Old Tree: A mage must understand balance.",
-                "Old Tree: Both lives belong to the forest.",
-                "Old Tree: Deciding who should live is not wisdom.",
-                "Old Tree: That kind of certainty is dangerous.",
-                "Old Tree: I will not help you with that.",
-                "Old Tree: Step away from the nest.",
-                "Old Tree: Think before you judge."
-            }, CloseDialogueAndReset);
-        }
-        else if (choice == rewardChoiceC)
-        {
-            StartDialogue(new[]
-            {
-                "Old Tree: Good. You chose restraint.",
-                "Old Tree: Many young mages rush to interfere.",
-                "Old Tree: The forest does not always need rescue.",
-                "Old Tree: It needs understanding.",
-                "Old Tree: You kept your hands still.",
-                "Old Tree: That deserves a small gift."
-            }, StartMushroomGift);
-        }
-        else
-        {
-            StartDialogue(new[]
-            {
-                "Old Tree: Moving it sounds kind, but it still changes the nest.",
-                "Old Tree: Help should solve the problem, not create a new one.",
-                "Old Tree: If you want to help, build a safe shelter nearby.",
-                "Old Tree: Use wisdom, not force.",
-                "Old Tree: That is the lesson."
-            }, CloseDialogueAndReset);
+            case OldTreeChoice.EggChoice.TakeEgg:
+                StartDialogue(new[]
+                {
+                    "Old Tree: You want to take the egg?",
+                    "Old Tree: That is not your choice to make.",
+                    "Old Tree: The forest has its own rules.",
+                    "Old Tree: Good intentions can still cause harm.",
+                    "Old Tree: Watch first, then act.",
+                    "Old Tree: You are not ready for this lesson.",
+                    "Old Tree: Leave the nest alone.",
+                    "Old Tree: Come back when you understand patience."
+                }, CloseDialogueAndReset);
+                break;
+
+            case OldTreeChoice.EggChoice.DestroyEgg:
+                StartDialogue(new[]
+                {
+                    "Old Tree: Destroy it?",
+                    "Old Tree: Magic is not for removing things you dislike.",
+                    "Old Tree: A mage must understand balance.",
+                    "Old Tree: Both lives belong to the forest.",
+                    "Old Tree: Deciding who should live is not wisdom.",
+                    "Old Tree: That kind of certainty is dangerous.",
+                    "Old Tree: I will not help you with that.",
+                    "Old Tree: Step away from the nest.",
+                    "Old Tree: Think before you judge."
+                }, CloseDialogueAndReset);
+                break;
+
+            case OldTreeChoice.EggChoice.LeaveIt:
+                StartDialogue(new[]
+                {
+                    "Old Tree: Good. You chose restraint.",
+                    "Old Tree: Many young mages rush to interfere.",
+                    "Old Tree: The forest does not always need rescue.",
+                    "Old Tree: It needs understanding.",
+                    "Old Tree: You kept your hands still.",
+                    "Old Tree: That deserves a small gift."
+                }, StartMushroomGift);
+                break;
+
+            case OldTreeChoice.EggChoice.MoveIt:
+                StartDialogue(new[]
+                {
+                    "Old Tree: Moving it sounds kind, but it still changes the nest.",
+                    "Old Tree: Help should solve the problem, not create a new one.",
+                    "Old Tree: If you want to help, build a safe shelter nearby.",
+                    "Old Tree: Use wisdom, not force.",
+                    "Old Tree: That is the lesson."
+                }, CloseDialogueAndReset);
+                break;
         }
     }
 
@@ -1094,7 +897,7 @@ public class OldTreeInteraction : MonoBehaviour
     {
         currentAnswer = null;
         state = DialogueState.MushroomGift;
-        LockPlayerForEggChallenge();
+        LockPlayerForChoiceMode();
         PrepareMushroomGift();
     }
 
@@ -1208,7 +1011,7 @@ public class OldTreeInteraction : MonoBehaviour
     private void PickUpMushroomGift()
     {
         DisableMushroomGlow();
-        UnlockPlayerForEggChallenge();
+        UnlockPlayerForChoiceMode();
         StartDialogue(new[]
         {
             "Old Tree: This is a magic mushroom.",
@@ -1815,165 +1618,6 @@ public class OldTreeInteraction : MonoBehaviour
             Destroy(mushroomGiftLight.gameObject);
             mushroomGiftLight = null;
         }
-    }
-
-    private void SpawnEggGrid(int gridSize, GameObject oddPrefab)
-    {
-        if (eggPrefab == null || oddPrefab == null)
-        {
-            FailEggChallenge();
-            return;
-        }
-
-        eggGridRoot = new GameObject("Old Tree Egg Challenge");
-        Transform cameraTransform = Camera.main != null ? Camera.main.transform : null;
-        Vector3 center;
-        Vector3 right;
-        Vector3 up;
-        Quaternion rotation;
-
-        if (cameraTransform != null)
-        {
-            center = cameraTransform.position + cameraTransform.forward * eggGridDistance;
-            right = cameraTransform.right;
-            up = cameraTransform.up;
-            rotation = Quaternion.LookRotation(-cameraTransform.forward, cameraTransform.up);
-        }
-        else
-        {
-            center = interactionTarget.position + Vector3.up * 2.5f + transform.forward * eggGridDistance;
-            right = transform.right;
-            up = Vector3.up;
-            rotation = transform.rotation;
-        }
-
-        int totalCount = gridSize * gridSize;
-        int oddIndex = Random.Range(0, totalCount);
-        float half = (gridSize - 1) * 0.5f;
-
-        for (int i = 0; i < totalCount; i++)
-        {
-            int x = i % gridSize;
-            int y = i / gridSize;
-            bool isOdd = i == oddIndex;
-            GameObject prefab = isOdd ? oddPrefab : eggPrefab;
-            Vector3 position = center + right * ((x - half) * eggGridSpacing) + up * ((half - y) * eggGridSpacing);
-            GameObject egg = Instantiate(prefab, position, rotation, eggGridRoot.transform);
-            egg.transform.localScale = Vector3.one * eggScale;
-            EnsureClickableCollider(egg);
-            spawnedEggs.Add(egg);
-
-            if (isOdd)
-            {
-                correctEgg = egg;
-            }
-        }
-    }
-
-    private void EnsureClickableCollider(GameObject target)
-    {
-        if (target.GetComponentInChildren<Collider>() != null)
-        {
-            return;
-        }
-
-        Renderer[] renderers = target.GetComponentsInChildren<Renderer>();
-        BoxCollider collider = target.AddComponent<BoxCollider>();
-        if (renderers.Length == 0)
-        {
-            collider.size = Vector3.one;
-            return;
-        }
-
-        Bounds bounds = renderers[0].bounds;
-        for (int i = 1; i < renderers.Length; i++)
-        {
-            bounds.Encapsulate(renderers[i].bounds);
-        }
-
-        collider.center = target.transform.InverseTransformPoint(bounds.center);
-        Vector3 localSize = target.transform.InverseTransformVector(bounds.size);
-        collider.size = new Vector3(Mathf.Abs(localSize.x), Mathf.Abs(localSize.y), Mathf.Abs(localSize.z));
-    }
-
-    private void ClearEggGrid()
-    {
-        for (int i = 0; i < spawnedEggs.Count; i++)
-        {
-            if (spawnedEggs[i] != null)
-            {
-                Destroy(spawnedEggs[i]);
-            }
-        }
-
-        spawnedEggs.Clear();
-        correctEgg = null;
-
-        if (eggGridRoot != null)
-        {
-            Destroy(eggGridRoot);
-            eggGridRoot = null;
-        }
-    }
-
-    private int GetEggGridSize(int level)
-    {
-        if (level == 1)
-        {
-            return 5;
-        }
-
-        if (level == 2)
-        {
-            return 10;
-        }
-
-        return 20;
-    }
-
-    private GameObject GetOddEggPrefab(int level)
-    {
-        if (level == 1)
-        {
-            return levelOneOddEggPrefab;
-        }
-
-        if (level == 2)
-        {
-            return levelTwoOddEggPrefab;
-        }
-
-        return levelThreeOddEggPrefab;
-    }
-
-    private string GetEggLevelTitle()
-    {
-        if (currentEggLevel == 1)
-        {
-            return levelOneTitle;
-        }
-
-        if (currentEggLevel == 2)
-        {
-            return levelTwoTitle;
-        }
-
-        return levelThreeTitle;
-    }
-
-    private string GetEggSuccessText(int level)
-    {
-        if (level == 1)
-        {
-            return levelOneSuccessText;
-        }
-
-        if (level == 2)
-        {
-            return levelTwoSuccessText;
-        }
-
-        return gameSuccessText;
     }
 
     private void StartLookCoroutine(IEnumerator routine)
@@ -2652,21 +2296,9 @@ public class OldTreeInteraction : MonoBehaviour
         {
             DrawDialogueBox(currentAnswer, false);
         }
-        else if (state == DialogueState.EggChallenge)
-        {
-            DrawEggChallengePanel();
-        }
-        else if (state == DialogueState.EggChallengeResult)
-        {
-            DrawCenteredResult(eggResultText);
-        }
-        else if (state == DialogueState.EggChallengeFailed)
-        {
-            DrawEggFailurePanel();
-        }
         else if (state == DialogueState.RewardChoosing)
         {
-            DrawRewardChoiceBox();
+            oldTreeChoice.Draw(dialogueFont, ChooseReward);
         }
         else if (state == DialogueState.MushroomGift)
         {
@@ -2775,49 +2407,6 @@ public class OldTreeInteraction : MonoBehaviour
         return GUI.Button(rect, text, style);
     }
 
-    private void DrawEggChallengePanel()
-    {
-        float width = Mathf.Min(420f, Screen.width - 40f);
-        Rect rect = GameUiStyle.SystemPromptRect(width, 104f);
-        GameUiStyle.DrawPanel(rect);
-
-        GUIStyle titleStyle = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = 26
-        };
-        ApplyDialogueFont(titleStyle);
-        titleStyle.normal.textColor = Color.white;
-
-        GUIStyle infoStyle = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = 18
-        };
-        ApplyDialogueFont(infoStyle);
-        infoStyle.normal.textColor = Color.white;
-
-        GUI.Label(new Rect(rect.x + 16f, rect.y + 12f, rect.width - 32f, 34f), GetEggLevelTitle(), titleStyle);
-        GUI.Label(new Rect(rect.x + 16f, rect.y + 52f, rect.width - 32f, 28f), "Time: " + Mathf.CeilToInt(eggTimer) + "s", infoStyle);
-    }
-
-    private void DrawCenteredResult(string text)
-    {
-        float width = Mathf.Min(520f, Screen.width - 40f);
-        Rect rect = GameUiStyle.SystemPromptRect(width, 110f);
-        GameUiStyle.DrawPanel(rect);
-
-        GUIStyle style = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = 26,
-            wordWrap = true
-        };
-        ApplyDialogueFont(style);
-        style.normal.textColor = Color.white;
-        GUI.Label(new Rect(rect.x + 20f, rect.y + 20f, rect.width - 40f, rect.height - 40f), text, style);
-    }
-
     private void DrawSideQuestPanel()
     {
         float width = 430f;
@@ -2891,86 +2480,6 @@ public class OldTreeInteraction : MonoBehaviour
             GUI.Label(new Rect(saplingSlotRect.x + 8f, saplingSlotRect.y + 8f, saplingSlotRect.width - 16f, 22f), saplingInventoryName, labelStyle);
             GUI.Label(new Rect(saplingSlotRect.x + 8f, saplingSlotRect.y + 32f, saplingSlotRect.width - 16f, 22f), "x" + availableSaplingCount, labelStyle);
         }
-    }
-
-    private void DrawEggFailurePanel()
-    {
-        float width = Mathf.Min(520f, Screen.width - 40f);
-        Rect rect = GameUiStyle.SystemPromptRect(width, 210f);
-        GameUiStyle.DrawPanel(rect);
-
-        GUIStyle style = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = 26,
-            wordWrap = true
-        };
-        ApplyDialogueFont(style);
-        style.normal.textColor = Color.white;
-        GUI.Label(new Rect(rect.x + 20f, rect.y + 20f, rect.width - 40f, 54f), eggResultText, style);
-
-        if (GUI.Button(new Rect(rect.x + 60f, rect.y + 112f, 170f, 48f), "Restart"))
-        {
-            RestartEggChallenge();
-        }
-
-        if (GUI.Button(new Rect(rect.x + rect.width - 230f, rect.y + 112f, 170f, 48f), "Exit"))
-        {
-            ExitEggChallenge();
-        }
-    }
-
-    private void DrawRewardChoiceBox()
-    {
-        float width = Mathf.Min(900f, Screen.width - 80f);
-        float height = 320f;
-        Rect rect = GameUiStyle.DialogueRect(height);
-
-        GameUiStyle.DrawPanel(rect);
-
-        GUIStyle textStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = 22,
-            wordWrap = true,
-            alignment = TextAnchor.UpperLeft
-        };
-        ApplyDialogueFont(textStyle);
-        textStyle.normal.textColor = Color.white;
-        GUI.Label(new Rect(rect.x + 24f, rect.y + 18f, rect.width - 48f, 60f), rewardGreeting, textStyle);
-
-        if (DrawRewardButton(rect, 92f, rewardChoiceA))
-        {
-            ChooseReward(rewardChoiceA);
-        }
-
-        if (DrawRewardButton(rect, 142f, rewardChoiceB))
-        {
-            ChooseReward(rewardChoiceB);
-        }
-
-        if (DrawRewardButton(rect, 192f, rewardChoiceC))
-        {
-            ChooseReward(rewardChoiceC);
-        }
-
-        if (DrawRewardButton(rect, 242f, rewardChoiceD))
-        {
-            ChooseReward(rewardChoiceD);
-        }
-    }
-
-    private bool DrawRewardButton(Rect parent, float yOffset, string text)
-    {
-        Rect rect = new Rect(parent.x + 24f, parent.y + yOffset, parent.width - 48f, 38f);
-        GUIStyle style = new GUIStyle(GUI.skin.button)
-        {
-            alignment = TextAnchor.MiddleLeft,
-            fontSize = 18,
-            wordWrap = true
-        };
-        ApplyDialogueFont(style);
-
-        return GUI.Button(rect, text, style);
     }
 
     private void DrawCenteredLabel(string text, float y, int fontSize)

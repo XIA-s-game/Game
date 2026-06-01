@@ -1,7 +1,10 @@
+// Main function: Manages the main menu scene, including buttons, intro and settings panels, default UI creation, and starting or exiting the game.
+
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.Video;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -13,6 +16,10 @@ public class MainMenuController : MonoBehaviour
     [Header("Scene Names")]
     [SerializeField] private string menuSceneName = "Mainmenu";
     [SerializeField] private string gameSceneName = "Enchanted Forest A";
+
+    [Header("Opening Video")]
+    [SerializeField] private VideoClip openingVideo;
+    [SerializeField] private string openingVideoPath = "Assets/Audio/openingvideo.mp4";
 
     [Header("Panels")]
     [SerializeField] private GameObject mainMenuPanel;
@@ -41,6 +48,11 @@ public class MainMenuController : MonoBehaviour
     [SerializeField] private string controlsText =
         "WASD: Move\nMouse: Look\nSpace: Jump\nE: Interact\nEsc: Back or close"; 
 
+    private bool openingVideoStarted;
+    private GameObject openingVideoRoot;
+    private RenderTexture openingVideoTexture;
+
+    // Function: Registers the scene-loaded callback for automatic menu controller setup.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void RegisterSceneLoaded()
     {
@@ -49,11 +61,13 @@ public class MainMenuController : MonoBehaviour
         EnsureControllerForActiveMenuScene();
     }
 
+    // Function: Checks newly loaded scenes and creates a menu controller when needed.
     private static void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         EnsureControllerForActiveMenuScene();
     }
 
+    // Function: Ensures the active menu scene has exactly the controller it needs.
     private static void EnsureControllerForActiveMenuScene()
     {
         Scene activeScene = SceneManager.GetActiveScene();
@@ -71,6 +85,7 @@ public class MainMenuController : MonoBehaviour
         host.AddComponent<MainMenuController>();
     }
 
+    // Function: Initializes component references, cached state, and default runtime data.
     private void Awake()
     {
         if (!IsConfiguredMenuScene(SceneManager.GetActiveScene().name))
@@ -84,10 +99,12 @@ public class MainMenuController : MonoBehaviour
             BuildDefaultMenuUi();
         }
 
+        LoadDefaultAssetsInEditor();
         BindButtons();
         ShowMainMenu();
     }
 
+    // Function: Updates input handling, interaction checks, and active gameplay flow each frame.
     private void Update()
     {
         if (Input.GetKeyDown(KeyCode.Escape))
@@ -96,26 +113,37 @@ public class MainMenuController : MonoBehaviour
         }
     }
 
+    // Function: Starts the game flow.
     public void StartGame()
     {
-        SceneManager.LoadScene(gameSceneName);
+        if (openingVideoStarted)
+        {
+            return;
+        }
+
+        openingVideoStarted = true;
+        PlayOpeningVideo();
     }
 
+    // Function: Shows intro.
     public void ShowIntro()
     {
         ShowPanel(introPanel);
     }
 
+    // Function: Shows controls.
     public void ShowControls()
     {
         ShowPanel(controlsPanel);
     }
 
+    // Function: Shows settings.
     public void ShowSettings()
     {
         ShowPanel(settingsPanel);
     }
 
+    // Function: Shows main menu.
     public void ShowMainMenu()
     {
         SetPanelActive(mainMenuPanel, true);
@@ -124,6 +152,7 @@ public class MainMenuController : MonoBehaviour
         SetPanelActive(settingsPanel, false);
     }
 
+    // Function: Exits game and restores exploration state.
     public void ExitGame()
     {
 #if UNITY_EDITOR
@@ -133,16 +162,20 @@ public class MainMenuController : MonoBehaviour
 #endif
     }
 
+    // Function: Checks whether menu scene is true.
     private static bool IsMenuScene(string sceneName)
     {
-        return string.Equals(sceneName, "MainMenu", System.StringComparison.OrdinalIgnoreCase);
+        return string.Equals(sceneName, "Mainmenu", System.StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(sceneName, "MainMenu", System.StringComparison.OrdinalIgnoreCase);
     }
 
+    // Function: Checks whether configured menu scene is true.
     private bool IsConfiguredMenuScene(string sceneName)
     {
         return string.Equals(sceneName, menuSceneName, System.StringComparison.OrdinalIgnoreCase) || IsMenuScene(sceneName);
     }
 
+    // Function: Shows panel.
     private void ShowPanel(GameObject panel)
     {
         SetPanelActive(mainMenuPanel, false);
@@ -151,6 +184,7 @@ public class MainMenuController : MonoBehaviour
         SetPanelActive(settingsPanel, panel == settingsPanel);
     }
 
+    // Function: Sets panel active.
     private static void SetPanelActive(GameObject panel, bool active)
     {
         if (panel != null)
@@ -159,6 +193,7 @@ public class MainMenuController : MonoBehaviour
         }
     }
 
+    // Function: Runs the bind buttons logic.
     private void BindButtons()
     {
         BindButton(startGameButton, StartGame);
@@ -171,6 +206,7 @@ public class MainMenuController : MonoBehaviour
         BindButton(settingsBackButton, ShowMainMenu);
     }
 
+    // Function: Runs the bind button logic.
     private static void BindButton(Button button, UnityEngine.Events.UnityAction action)
     {
         if (button == null)
@@ -182,6 +218,7 @@ public class MainMenuController : MonoBehaviour
         button.onClick.AddListener(action);
     }
 
+    // Function: Builds the data or scene objects needed for default menu UI.
     private void BuildDefaultMenuUi()
     {
         EnsureEventSystem();
@@ -207,6 +244,105 @@ public class MainMenuController : MonoBehaviour
         settingsPanel = CreateInfoPanel(canvasObject.transform, "SettingsPanel", "Settings", "Settings are not available yet.", out settingsBackButton);
     }
 
+    private void PlayOpeningVideo()
+    {
+        GameAudioController audioController = FindObjectOfType<GameAudioController>();
+        if (audioController != null)
+        {
+            audioController.StopMusic();
+        }
+
+        SetPanelActive(mainMenuPanel, false);
+        SetPanelActive(introPanel, false);
+        SetPanelActive(controlsPanel, false);
+        SetPanelActive(settingsPanel, false);
+
+        if (openingVideo == null)
+        {
+            LoadGameScene();
+            return;
+        }
+
+        openingVideoRoot = new GameObject("OpeningVideoPlayer");
+        openingVideoRoot.transform.SetParent(transform, false);
+
+        Canvas canvas = openingVideoRoot.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 2000;
+
+        CanvasScaler scaler = openingVideoRoot.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        scaler.matchWidthOrHeight = 0.5f;
+
+        GameObject imageObject = new GameObject("VideoImage");
+        imageObject.transform.SetParent(openingVideoRoot.transform, false);
+        RawImage image = imageObject.AddComponent<RawImage>();
+        image.color = Color.black;
+        RectTransform imageRect = image.rectTransform;
+        imageRect.anchorMin = Vector2.zero;
+        imageRect.anchorMax = Vector2.one;
+        imageRect.offsetMin = Vector2.zero;
+        imageRect.offsetMax = Vector2.zero;
+
+        openingVideoTexture = new RenderTexture(1920, 1080, 0);
+        openingVideoTexture.Create();
+        image.texture = openingVideoTexture;
+
+        VideoPlayer videoPlayer = openingVideoRoot.AddComponent<VideoPlayer>();
+        AudioSource audioSource = openingVideoRoot.AddComponent<AudioSource>();
+        audioSource.playOnAwake = false;
+        audioSource.spatialBlend = 0f;
+        audioSource.volume = 1f;
+
+        videoPlayer.playOnAwake = false;
+        videoPlayer.waitForFirstFrame = true;
+        videoPlayer.source = VideoSource.VideoClip;
+        videoPlayer.renderMode = VideoRenderMode.RenderTexture;
+        videoPlayer.targetTexture = openingVideoTexture;
+        videoPlayer.clip = openingVideo;
+        videoPlayer.aspectRatio = VideoAspectRatio.FitInside;
+        videoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
+        videoPlayer.EnableAudioTrack(0, true);
+        videoPlayer.SetTargetAudioSource(0, audioSource);
+        videoPlayer.prepareCompleted += player => player.Play();
+        videoPlayer.loopPointReached += _ => LoadGameScene();
+        videoPlayer.errorReceived += (_, message) =>
+        {
+            Debug.LogWarning("Opening video failed: " + message);
+            LoadGameScene();
+        };
+        videoPlayer.Prepare();
+    }
+
+    private void LoadGameScene()
+    {
+        if (openingVideoTexture != null)
+        {
+            openingVideoTexture.Release();
+            openingVideoTexture = null;
+        }
+
+        if (openingVideoRoot != null)
+        {
+            Destroy(openingVideoRoot);
+            openingVideoRoot = null;
+        }
+
+        SceneManager.LoadScene(gameSceneName);
+    }
+
+    private void LoadDefaultAssetsInEditor()
+    {
+#if UNITY_EDITOR
+        if (openingVideo == null && !string.IsNullOrEmpty(openingVideoPath))
+        {
+            openingVideo = AssetDatabase.LoadAssetAtPath<VideoClip>(openingVideoPath);
+        }
+#endif
+    }
+
+    // Function: Creates the objects, textures, or UI needed for main menu panel.
     private GameObject CreateMainMenuPanel(Transform parent)
     {
         GameObject panel = CreatePanelRoot("MainMenuPanel", parent);
@@ -238,6 +374,7 @@ public class MainMenuController : MonoBehaviour
         return panel;
     }
 
+    // Function: Creates the objects, textures, or UI needed for info panel.
     private GameObject CreateInfoPanel(Transform parent, string objectName, string title, string body, out Button backButton)
     {
         GameObject panel = CreatePanelRoot(objectName, parent);
@@ -268,6 +405,7 @@ public class MainMenuController : MonoBehaviour
         return panel;
     }
 
+    // Function: Creates the objects, textures, or UI needed for panel root.
     private static GameObject CreatePanelRoot(string objectName, Transform parent)
     {
         GameObject panel = new GameObject(objectName);
@@ -282,6 +420,7 @@ public class MainMenuController : MonoBehaviour
         return panel;
     }
 
+    // Function: Creates the objects, textures, or UI needed for background.
     private static void CreateBackground(Transform parent)
     {
         GameObject background = new GameObject("Background");
@@ -297,6 +436,7 @@ public class MainMenuController : MonoBehaviour
         rect.offsetMax = Vector2.zero;
     }
 
+    // Function: Creates the objects, textures, or UI needed for button.
     private static Button CreateButton(string objectName, Transform parent, string label)
     {
         GameObject buttonObject = new GameObject(objectName);
@@ -330,6 +470,7 @@ public class MainMenuController : MonoBehaviour
         return button;
     }
 
+    // Function: Creates the objects, textures, or UI needed for text.
     private static Text CreateText(string objectName, Transform parent, string value, int fontSize, TextAnchor alignment)
     {
         GameObject textObject = new GameObject(objectName);
@@ -350,6 +491,7 @@ public class MainMenuController : MonoBehaviour
         return text;
     }
 
+    // Function: Gets or calculates default font.
     private static Font GetDefaultFont()
     {
         Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -361,6 +503,7 @@ public class MainMenuController : MonoBehaviour
         return Resources.GetBuiltinResource<Font>("Arial.ttf");
     }
 
+    // Function: Ensures event system exists, is configured, or is ready to use.
     private static void EnsureEventSystem()
     {
         if (FindObjectOfType<EventSystem>() != null)
