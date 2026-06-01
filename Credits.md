@@ -1,7 +1,5 @@
 # Credits / Asset References
 
-本项目为课程作业（2D Game Improvement Assignment），以下列出所有借用或引用的外部资源。
-
 ---
 
 ## Unity Asset Pack
@@ -82,7 +80,7 @@
 
 - Most sound effects used in the game
 - Source: https://gamersounds.com/library
-- License: **Non-Commercial Use Only** (个人学习与交流使用，不得用于商业用途)
+- License: **Non-Commercial Use Only** 
 
 ### Additional Source: Freesound
 
