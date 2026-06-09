@@ -1,7 +1,4 @@
-// Keeps chapter one scene objects touchable and easy to detect at runtime.
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public partial class ChapterOnePuzzle
 {
@@ -19,7 +16,7 @@ public partial class ChapterOnePuzzle
             return false;
         }
 
-        if (TryGetDetectionBounds(target, out Bounds bounds))
+        if (TryGetTargetBounds(target, out Bounds bounds))
         {
             Vector3 position = player.position;
             bool insideX = position.x >= bounds.min.x - 0.15f && position.x <= bounds.max.x + 0.15f;
@@ -31,36 +28,15 @@ public partial class ChapterOnePuzzle
         return GetHorizontalDistanceToObject(Flatten(player.position), target) <= fallbackDistance;
     }
 
-    private static bool TryGetDetectionBounds(Transform target, out Bounds bounds)
+    private static bool TryGetTargetBounds(Transform target, out Bounds bounds)
     {
-        Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
         bounds = new Bounds(target.position, Vector3.zero);
-        bool hasBounds = false;
+        return TryGetColliderBounds(target, ref bounds) || TryGetRendererBounds(target, ref bounds);
+    }
 
-        foreach (Collider collider in colliders)
-        {
-            if (collider == null)
-            {
-                continue;
-            }
-
-            if (!hasBounds)
-            {
-                bounds = collider.bounds;
-                hasBounds = true;
-            }
-            else
-            {
-                bounds.Encapsulate(collider.bounds);
-            }
-        }
-
-        if (hasBounds)
-        {
-            return true;
-        }
-
-        return TryGetWorldBounds(target, out bounds);
+    private static bool TryGetWorldBounds(Transform target, out Bounds bounds)
+    {
+        return TryGetTargetBounds(target, out bounds);
     }
 
     private void EnsureSolidCollider(Transform target)
@@ -130,18 +106,17 @@ public partial class ChapterOnePuzzle
 
             BoxCollider collider = renderer.gameObject.AddComponent<BoxCollider>();
             collider.center = renderer.transform.InverseTransformPoint(renderer.bounds.center);
-            collider.size = DivideByLossyScale(renderer.bounds.size, renderer.transform.lossyScale);
+            collider.size = ToLocalColliderSize(renderer.bounds.size, renderer.transform.lossyScale);
             addedAny = true;
         }
 
         return addedAny;
     }
 
-    private static float GetClosestDistance(Vector3 point, Transform target)
+    private static bool TryGetColliderBounds(Transform target, ref Bounds bounds)
     {
         Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
-        float closestSqrDistance = float.PositiveInfinity;
-        bool found = false;
+        bool hasBounds = false;
 
         foreach (Collider collider in colliders)
         {
@@ -150,32 +125,23 @@ public partial class ChapterOnePuzzle
                 continue;
             }
 
-            Vector3 closestPoint = collider.ClosestPoint(point);
-            float sqrDistance = (point - closestPoint).sqrMagnitude;
-            if (sqrDistance < closestSqrDistance)
+            if (!hasBounds)
             {
-                closestSqrDistance = sqrDistance;
-                found = true;
+                bounds = collider.bounds;
+                hasBounds = true;
+            }
+            else
+            {
+                bounds.Encapsulate(collider.bounds);
             }
         }
 
-        if (found)
-        {
-            return Mathf.Sqrt(closestSqrDistance);
-        }
-
-        if (TryGetWorldBounds(target, out Bounds bounds))
-        {
-            return Vector3.Distance(point, bounds.ClosestPoint(point));
-        }
-
-        return Vector3.Distance(point, target.position);
+        return hasBounds;
     }
 
-    private static bool TryGetWorldBounds(Transform target, out Bounds bounds)
+    private static bool TryGetRendererBounds(Transform target, ref Bounds bounds)
     {
         Renderer[] renderers = target.GetComponentsInChildren<Renderer>(true);
-        bounds = new Bounds(target.position, Vector3.zero);
         bool hasBounds = false;
 
         foreach (Renderer renderer in renderers)
@@ -199,16 +165,17 @@ public partial class ChapterOnePuzzle
         return hasBounds;
     }
 
-    private static Vector3 DivideByLossyScale(Vector3 size, Vector3 lossyScale)
+    private static Vector3 ToLocalColliderSize(Vector3 worldSize, Vector3 lossyScale)
     {
         return new Vector3(
-            DivideByScale(size.x, lossyScale.x),
-            DivideByScale(size.y, lossyScale.y),
-            DivideByScale(size.z, lossyScale.z));
+            DivideAxis(worldSize.x, lossyScale.x),
+            DivideAxis(worldSize.y, lossyScale.y),
+            DivideAxis(worldSize.z, lossyScale.z));
     }
 
-    private static float DivideByScale(float value, float scale)
+    private static float DivideAxis(float worldSize, float scale)
     {
-        return Mathf.Abs(scale) > 0.0001f ? value / Mathf.Abs(scale) : value;
+        float absScale = Mathf.Abs(scale);
+        return absScale > 0.0001f ? Mathf.Abs(worldSize / absScale) : Mathf.Abs(worldSize);
     }
 }

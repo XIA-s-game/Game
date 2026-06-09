@@ -1,5 +1,3 @@
-// Runs chapter one story beats, rewards, enemy reveal, and portal unlocks.
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -79,6 +77,7 @@ public partial class ChapterOnePuzzle
         {
             pageRewardFinished = true;
             AddFirstPageToBackpack();
+            GameAudioManager.StartRoarLoop();
             StartDialogue(forestAttackDialogueLines, KeyCode.C, "Press C to continue");
         }
         else if (finishedLines == forestAttackDialogueLines)
@@ -156,6 +155,7 @@ public partial class ChapterOnePuzzle
 
             delayedEnemies.Add(enemy);
             HideDelayedEnemy(enemy);
+            SetAudioSourcesPlayingInHierarchy(enemy.transform, false);
         }
 
         enemiesPrepared = true;
@@ -223,6 +223,7 @@ public partial class ChapterOnePuzzle
     {
         PrepareDelayedEnemies();
         enemiesActivated = true;
+        GameAudioManager.StartEnemyLoop();
 
         for (int i = 0; i < delayedEnemies.Count; i++)
         {
@@ -233,15 +234,12 @@ public partial class ChapterOnePuzzle
             }
 
             RouteWaypointWalker walker = enemy.GetComponent<RouteWaypointWalker>();
-            if (walker == null)
-            {
-                walker = enemy.AddComponent<RouteWaypointWalker>();
-            }
-
-            if (!delayedEnemyWalkers.Contains(walker))
+            if (walker != null && !delayedEnemyWalkers.Contains(walker))
             {
                 delayedEnemyWalkers.Add(walker);
             }
+
+            SetAudioSourcesPlayingInHierarchy(enemy.transform, true);
         }
 
         for (int i = 0; i < delayedEnemyRenderers.Count; i++)
@@ -286,7 +284,6 @@ public partial class ChapterOnePuzzle
             return;
         }
 
-        GameAudioManager.StartEnemyLoop();
         SetHeroVisible(true);
 
         if (heroAnimator == null)
@@ -355,6 +352,7 @@ public partial class ChapterOnePuzzle
         heroAttacking = false;
         heroCombatFinished = true;
         heroPromptVisible = false;
+        GameAudioManager.StopRoarLoop();
         GameAudioManager.StopEnemyLoop();
 
         if (heroAnimator != null)
