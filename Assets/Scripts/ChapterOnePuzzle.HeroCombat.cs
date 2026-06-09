@@ -1,7 +1,4 @@
-// Handles the helper hero combat scene in chapter one.
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public partial class ChapterOnePuzzle
 {
@@ -148,6 +145,36 @@ public partial class ChapterOnePuzzle
             if (audioSources[i] != null)
             {
                 audioSources[i].Stop();
+            }
+        }
+    }
+
+    private static void SetAudioSourcesPlayingInHierarchy(Transform root, bool shouldPlay)
+    {
+        if (root == null)
+        {
+            return;
+        }
+
+        AudioSource[] audioSources = root.GetComponentsInChildren<AudioSource>(true);
+        for (int i = 0; i < audioSources.Length; i++)
+        {
+            AudioSource audioSource = audioSources[i];
+            if (audioSource == null)
+            {
+                continue;
+            }
+
+            if (shouldPlay)
+            {
+                if (!audioSource.isPlaying)
+                {
+                    audioSource.Play();
+                }
+            }
+            else
+            {
+                audioSource.Stop();
             }
         }
     }

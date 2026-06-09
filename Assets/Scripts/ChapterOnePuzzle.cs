@@ -1,10 +1,12 @@
-// Runs the first chapter puzzle manager: player checks, state flags, and the main update loop.
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public partial class ChapterOnePuzzle : MonoBehaviour
 {
+    private const string SaveKeyPrefix = "ChapterOnePuzzle.";
+    private const string SaveSceneName = "Enchanted Forest A";
+
     [System.Serializable]
     private class PushStep
     {
@@ -13,7 +15,6 @@ public partial class ChapterOnePuzzle : MonoBehaviour
         public Vector3 solvedLocalPosition;
     }
 
-    [SerializeField] private bool requireForestAttackDialogueBeforeEnemies = true;
     [SerializeField] private string nextSceneName = "Fae Homes Demo";
     [SerializeField] private RuntimeAnimatorController heroWalkController;
     [SerializeField] private RuntimeAnimatorController heroAttackController;
@@ -148,10 +149,24 @@ public partial class ChapterOnePuzzle : MonoBehaviour
     private void Awake()
     {
         RefreshReferences();
+        LoadPersistentState();
+    }
+
+    private void Start()
+    {
+        RefreshReferences();
+        if (!rescueApplied)
+        {
+            SetAudioSourcesPlayingInHierarchy(cage, true);
+        }
+
+        ApplyRuntimeStateToScene();
     }
 
     private void OnDisable()
     {
+        StopAudioSourcesInHierarchy(cage);
+        GameAudioManager.StopRoarLoop();
         if (enemiesActivated && !heroCombatFinished)
         {
             GameAudioManager.StopEnemyLoop();
@@ -217,6 +232,11 @@ public partial class ChapterOnePuzzle : MonoBehaviour
             SetPortalVisible(false);
         }
 
+        if (!rescueApplied)
+        {
+            SetAudioSourcesPlayingInHierarchy(cage, true);
+        }
+
         SetIndicatorVisible(redIndicator, false);
         SetIndicatorVisible(greenIndicator, false);
         PrepareDelayedEnemies();
@@ -242,5 +262,356 @@ public partial class ChapterOnePuzzle : MonoBehaviour
         }
 
         return Vector3.Distance(flatPoint, Flatten(target.position));
+    }
+
+    public static void SavePersistentStateForActiveScene()
+    {
+        if (SceneManager.GetActiveScene().name != SaveSceneName)
+        {
+            return;
+        }
+
+        ChapterOnePuzzle instance = FindObjectOfType<ChapterOnePuzzle>();
+        if (instance == null)
+        {
+            return;
+        }
+
+        instance.SavePersistentState();
+    }
+
+    public static void ClearPersistentState()
+    {
+        PlayerPrefs.DeleteKey(SaveKeyPrefix + "CurrentIndex");
+        PlayerPrefs.DeleteKey(SaveKeyPrefix + "RecognizeHelpShown");
+        PlayerPrefs.DeleteKey(SaveKeyPrefix + "InitialHelpDialogueFinished");
+        PlayerPrefs.DeleteKey(SaveKeyPrefix + "RescueApplied");
+        PlayerPrefs.DeleteKey(SaveKeyPrefix + "PageRewardFinished");
+        PlayerPrefs.DeleteKey(SaveKeyPrefix + "ForestAttackDialogueFinished");
+        PlayerPrefs.DeleteKey(SaveKeyPrefix + "EnemiesActivated");
+        PlayerPrefs.DeleteKey(SaveKeyPrefix + "HeroWarningShown");
+        PlayerPrefs.DeleteKey(SaveKeyPrefix + "HeroCombatFinished");
+        PlayerPrefs.DeleteKey(SaveKeyPrefix + "HeroPostCombatDialogueFinished");
+        PlayerPrefs.DeleteKey(SaveKeyPrefix + "PortalUnlocked");
+        PlayerPrefs.DeleteKey(SaveKeyPrefix + "FirstPageAddedToBackpack");
+        PlayerPrefs.DeleteKey(SaveKeyPrefix + "CompletedPushes");
+        PlayerPrefs.DeleteKey(SaveKeyPrefix + "BlockPositions");
+        PlayerPrefs.DeleteKey(SaveKeyPrefix + "EnemyActiveStates");
+    }
+
+    private void SavePersistentState()
+    {
+        PlayerPrefs.SetInt(SaveKeyPrefix + "CurrentIndex", currentIndex);
+        PlayerPrefs.SetInt(SaveKeyPrefix + "RecognizeHelpShown", recognizeHelpShown ? 1 : 0);
+        PlayerPrefs.SetInt(SaveKeyPrefix + "InitialHelpDialogueFinished", initialHelpDialogueFinished ? 1 : 0);
+        PlayerPrefs.SetInt(SaveKeyPrefix + "RescueApplied", rescueApplied ? 1 : 0);
+        PlayerPrefs.SetInt(SaveKeyPrefix + "PageRewardFinished", pageRewardFinished ? 1 : 0);
+        PlayerPrefs.SetInt(SaveKeyPrefix + "ForestAttackDialogueFinished", forestAttackDialogueFinished ? 1 : 0);
+        PlayerPrefs.SetInt(SaveKeyPrefix + "EnemiesActivated", enemiesActivated ? 1 : 0);
+        PlayerPrefs.SetInt(SaveKeyPrefix + "HeroWarningShown", heroWarningShown ? 1 : 0);
+        PlayerPrefs.SetInt(SaveKeyPrefix + "HeroCombatFinished", heroCombatFinished ? 1 : 0);
+        PlayerPrefs.SetInt(SaveKeyPrefix + "HeroPostCombatDialogueFinished", heroPostCombatDialogueFinished ? 1 : 0);
+        PlayerPrefs.SetInt(SaveKeyPrefix + "PortalUnlocked", portalUnlocked ? 1 : 0);
+        PlayerPrefs.SetInt(SaveKeyPrefix + "FirstPageAddedToBackpack", firstPageAddedToBackpack ? 1 : 0);
+        PlayerPrefs.SetString(SaveKeyPrefix + "CompletedPushes", SerializeBoolArray(completedPushes));
+        PlayerPrefs.SetString(SaveKeyPrefix + "BlockPositions", SerializeBlockPositions());
+        PlayerPrefs.SetString(SaveKeyPrefix + "EnemyActiveStates", SerializeEnemyStates());
+    }
+
+    private void LoadPersistentState()
+    {
+        currentIndex = PlayerPrefs.GetInt(SaveKeyPrefix + "CurrentIndex", currentIndex);
+        recognizeHelpShown = PlayerPrefs.GetInt(SaveKeyPrefix + "RecognizeHelpShown", recognizeHelpShown ? 1 : 0) == 1;
+        initialHelpDialogueFinished = PlayerPrefs.GetInt(SaveKeyPrefix + "InitialHelpDialogueFinished", initialHelpDialogueFinished ? 1 : 0) == 1;
+        rescueApplied = PlayerPrefs.GetInt(SaveKeyPrefix + "RescueApplied", rescueApplied ? 1 : 0) == 1;
+        pageRewardFinished = PlayerPrefs.GetInt(SaveKeyPrefix + "PageRewardFinished", pageRewardFinished ? 1 : 0) == 1;
+        forestAttackDialogueFinished = PlayerPrefs.GetInt(SaveKeyPrefix + "ForestAttackDialogueFinished", forestAttackDialogueFinished ? 1 : 0) == 1;
+        enemiesActivated = PlayerPrefs.GetInt(SaveKeyPrefix + "EnemiesActivated", enemiesActivated ? 1 : 0) == 1;
+        heroWarningShown = PlayerPrefs.GetInt(SaveKeyPrefix + "HeroWarningShown", heroWarningShown ? 1 : 0) == 1;
+        heroCombatFinished = PlayerPrefs.GetInt(SaveKeyPrefix + "HeroCombatFinished", heroCombatFinished ? 1 : 0) == 1;
+        heroPostCombatDialogueFinished = PlayerPrefs.GetInt(SaveKeyPrefix + "HeroPostCombatDialogueFinished", heroPostCombatDialogueFinished ? 1 : 0) == 1;
+        portalUnlocked = PlayerPrefs.GetInt(SaveKeyPrefix + "PortalUnlocked", portalUnlocked ? 1 : 0) == 1;
+        firstPageAddedToBackpack = PlayerPrefs.GetInt(SaveKeyPrefix + "FirstPageAddedToBackpack", firstPageAddedToBackpack ? 1 : 0) == 1;
+    }
+
+    private void ApplyRuntimeStateToScene()
+    {
+        ApplySavedPushState();
+
+        if (rescueApplied)
+        {
+            ApplyRescueSceneState();
+            SetIndicatorVisible(greenIndicator, currentIndex >= requiredOrderedPushCount);
+            SetIndicatorVisible(redIndicator, false);
+        }
+
+        if (forestAttackDialogueFinished && fairy != null)
+        {
+            fairy.gameObject.SetActive(false);
+        }
+
+        if (enemiesActivated)
+        {
+            if (!heroCombatFinished)
+            {
+                GameAudioManager.StartRoarLoop();
+            }
+
+            ApplyEnemySceneState();
+        }
+        else if (!forestAttackDialogueFinished)
+        {
+            SetHeroVisible(false);
+        }
+
+        if (heroCombatFinished && hero != null)
+        {
+            SetHeroVisible(true);
+        }
+
+        if (portalUnlocked)
+        {
+            SetPortalVisible(true);
+        }
+    }
+
+    private void ApplySavedPushState()
+    {
+        if (pushBlocks.Count == 0)
+        {
+            return;
+        }
+
+        string completedPushesValue = PlayerPrefs.GetString(SaveKeyPrefix + "CompletedPushes", string.Empty);
+        string blockPositionsValue = PlayerPrefs.GetString(SaveKeyPrefix + "BlockPositions", string.Empty);
+
+        if (!string.IsNullOrEmpty(completedPushesValue))
+        {
+            ApplySerializedBoolArray(completedPushesValue);
+        }
+
+        if (!string.IsNullOrEmpty(blockPositionsValue))
+        {
+            ApplySerializedBlockPositions(blockPositionsValue);
+        }
+    }
+
+    private string SerializeBoolArray(bool[] values)
+    {
+        if (values == null || values.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        string[] parts = new string[values.Length];
+        for (int i = 0; i < values.Length; i++)
+        {
+            parts[i] = values[i] ? "1" : "0";
+        }
+
+        return string.Join(",", parts);
+    }
+
+    private void ApplySerializedBoolArray(string serialized)
+    {
+        if (completedPushes == null || string.IsNullOrEmpty(serialized))
+        {
+            return;
+        }
+
+        string[] parts = serialized.Split(',');
+        for (int i = 0; i < completedPushes.Length && i < parts.Length; i++)
+        {
+            completedPushes[i] = parts[i] == "1";
+        }
+    }
+
+    private string SerializeBlockPositions()
+    {
+        if (pushBlocks.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        string[] parts = new string[pushBlocks.Count];
+        for (int i = 0; i < pushBlocks.Count; i++)
+        {
+            Transform block = pushBlocks[i];
+            if (block == null)
+            {
+                parts[i] = string.Empty;
+                continue;
+            }
+
+            Vector3 position = block.localPosition;
+            parts[i] = position.x + "|" + position.y + "|" + position.z;
+        }
+
+        return string.Join(";", parts);
+    }
+
+    private void ApplySerializedBlockPositions(string serialized)
+    {
+        if (string.IsNullOrEmpty(serialized))
+        {
+            return;
+        }
+
+        string[] blockEntries = serialized.Split(';');
+        for (int i = 0; i < pushBlocks.Count && i < blockEntries.Length; i++)
+        {
+            Transform block = pushBlocks[i];
+            if (block == null || string.IsNullOrEmpty(blockEntries[i]))
+            {
+                continue;
+            }
+
+            string[] parts = blockEntries[i].Split('|');
+            if (parts.Length != 3)
+            {
+                continue;
+            }
+
+            float x;
+            float y;
+            float z;
+            if (!float.TryParse(parts[0], out x) ||
+                !float.TryParse(parts[1], out y) ||
+                !float.TryParse(parts[2], out z))
+            {
+                continue;
+            }
+
+            block.localPosition = new Vector3(x, y, z);
+        }
+    }
+
+    private string SerializeEnemyStates()
+    {
+        if (delayedEnemyObjects == null || delayedEnemyObjects.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        string[] parts = new string[delayedEnemyObjects.Length];
+        for (int i = 0; i < delayedEnemyObjects.Length; i++)
+        {
+            GameObject enemy = delayedEnemyObjects[i];
+            parts[i] = enemy != null && enemy.activeSelf ? "1" : "0";
+        }
+
+        return string.Join(",", parts);
+    }
+
+    private void ApplyRescueSceneState()
+    {
+        if (cage != null && cage.childCount > 0)
+        {
+            cage.GetChild(0).localPosition = cageChildSolvedLocalPosition;
+            StopAudioSourcesInHierarchy(cage);
+        }
+
+        if (fairy != null)
+        {
+            fairy.position = fairySolvedWorldPosition;
+            fairy.rotation *= Quaternion.Euler(fairySolvedEulerOffset);
+        }
+    }
+
+    private void ApplyEnemySceneState()
+    {
+        PrepareDelayedEnemies();
+
+        string savedEnemyStates = PlayerPrefs.GetString(SaveKeyPrefix + "EnemyActiveStates", string.Empty);
+        string[] enemyStateParts = string.IsNullOrEmpty(savedEnemyStates) ? null : savedEnemyStates.Split(',');
+        bool anyEnemyActive = false;
+
+        for (int i = 0; i < delayedEnemies.Count; i++)
+        {
+            GameObject enemy = delayedEnemies[i];
+            if (enemy == null)
+            {
+                continue;
+            }
+
+            bool shouldBeActive = enemyStateParts == null || i >= enemyStateParts.Length || enemyStateParts[i] == "1";
+            enemy.SetActive(shouldBeActive);
+            if (!shouldBeActive)
+            {
+                continue;
+            }
+
+            anyEnemyActive = true;
+            SetAudioSourcesPlayingInHierarchy(enemy.transform, true);
+        }
+
+        for (int i = 0; i < delayedEnemyRenderers.Count; i++)
+        {
+            if (delayedEnemyRenderers[i] != null)
+            {
+                delayedEnemyRenderers[i].enabled = delayedEnemyRenderers[i].gameObject.activeInHierarchy;
+            }
+        }
+
+        for (int i = 0; i < delayedEnemyColliders.Count; i++)
+        {
+            if (delayedEnemyColliders[i] != null)
+            {
+                delayedEnemyColliders[i].enabled = delayedEnemyColliders[i].gameObject.activeInHierarchy;
+            }
+        }
+
+        for (int i = 0; i < delayedEnemyWalkers.Count; i++)
+        {
+            if (delayedEnemyWalkers[i] != null)
+            {
+                delayedEnemyWalkers[i].enabled = delayedEnemyWalkers[i].gameObject.activeInHierarchy;
+            }
+        }
+
+        for (int i = 0; i < delayedEnemyAnimators.Count; i++)
+        {
+            if (delayedEnemyAnimators[i] != null)
+            {
+                delayedEnemyAnimators[i].enabled = delayedEnemyAnimators[i].gameObject.activeInHierarchy;
+            }
+        }
+
+        if (hero == null)
+        {
+            return;
+        }
+
+        SetHeroVisible(true);
+        heroCombatY = hero.position.y;
+
+        if (heroCombatFinished)
+        {
+            heroCombatActive = false;
+            heroAttacking = false;
+            if (heroAnimator != null)
+            {
+                heroAnimator.speed = 0f;
+            }
+
+            GameAudioManager.StopEnemyLoop();
+            return;
+        }
+
+        if (!anyEnemyActive)
+        {
+            GameAudioManager.StopEnemyLoop();
+            FinishHeroCombat();
+            return;
+        }
+
+        GameAudioManager.StartEnemyLoop();
+        heroCombatActive = true;
+        heroAttacking = false;
+        heroTargetEnemy = FindNextHeroTarget();
+        if (heroTargetEnemy != null)
+        {
+            PlayHeroAnimation(heroWalkController, heroWalkStateName);
+        }
     }
 }
