@@ -1,7 +1,4 @@
-// Handles the stone pushing puzzle and its reset/win checks.
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public partial class ChapterOnePuzzle
 {
@@ -179,7 +176,6 @@ public partial class ChapterOnePuzzle
 
     private Vector3 GetSolvedLocalPositionForBlock(Transform block, int index)
     {
-        // If I filled in a solved position in the Inspector, use it. Otherwise the block's starting spot is the answer.
         if (pushSteps != null &&
             index >= 0 &&
             index < pushSteps.Length &&
