@@ -123,7 +123,6 @@ public partial class ChapterOnePuzzle
 
             pushBlocks.Add(step.block);
             pushMarkers.Add(step.marker);
-            EnsureSolidCollider(step.block);
         }
     }
 

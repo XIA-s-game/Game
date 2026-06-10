@@ -285,11 +285,7 @@ public partial class ChapterOnePuzzle
         }
 
         SetHeroVisible(true);
-
-        if (heroAnimator == null)
-        {
-            heroAnimator = hero.GetComponentInChildren<Animator>(true);
-        }
+        CacheHeroAnimator();
 
         if (heroAnimator != null)
         {
@@ -317,10 +313,7 @@ public partial class ChapterOnePuzzle
             return;
         }
 
-        if (heroAnimator == null)
-        {
-            heroAnimator = hero.GetComponentInChildren<Animator>(true);
-        }
+        CacheHeroAnimator();
 
         if (heroAnimator != null)
         {
@@ -396,7 +389,16 @@ public partial class ChapterOnePuzzle
     private void UnlockPortal()
     {
         portalUnlocked = true;
-        SetPortalVisible(true);
+
+        if (portalTrigger != null && !portalTrigger.gameObject.activeSelf)
+        {
+            portalTrigger.gameObject.SetActive(true);
+        }
+
+        if (portalDoor != null && !portalDoor.activeSelf)
+        {
+            portalDoor.SetActive(true);
+        }
     }
 
     private void UpdatePortalInteraction()
@@ -407,7 +409,15 @@ public partial class ChapterOnePuzzle
             return;
         }
 
-        SetPortalVisible(true);
+        if (portalTrigger != null && !portalTrigger.gameObject.activeSelf)
+        {
+            portalTrigger.gameObject.SetActive(true);
+        }
+
+        if (portalDoor != null && !portalDoor.activeSelf)
+        {
+            portalDoor.SetActive(true);
+        }
 
         if (!IsPlayerOnTrigger(portalTrigger, portalInteractDistance))
         {
@@ -418,19 +428,6 @@ public partial class ChapterOnePuzzle
         if (Input.GetKeyDown(KeyCode.E))
         {
             SceneManager.LoadScene(nextSceneName);
-        }
-    }
-
-    private void SetPortalVisible(bool visible)
-    {
-        if (portalTrigger != null && portalTrigger.gameObject.activeSelf != visible)
-        {
-            portalTrigger.gameObject.SetActive(visible);
-        }
-
-        if (portalDoor != null && portalDoor.activeSelf != visible)
-        {
-            portalDoor.SetActive(visible);
         }
     }
 }
