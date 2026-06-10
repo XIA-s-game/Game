@@ -6,6 +6,7 @@ public partial class ChapterOnePuzzle : MonoBehaviour
 {
     private const string SaveKeyPrefix = "ChapterOnePuzzle.";
     private const string SaveSceneName = "Enchanted Forest A";
+    private static ChapterOnePuzzle activeInstance;
 
     [System.Serializable]
     private class PushStep
@@ -85,7 +86,6 @@ public partial class ChapterOnePuzzle : MonoBehaviour
 
     private readonly List<Transform> pushBlocks = new List<Transform>();
     private readonly List<Transform> pushMarkers = new List<Transform>();
-    private readonly HashSet<Transform> colliderReadyTargets = new HashSet<Transform>();
     private Vector3[] runtimeSolvedLocalPositions;
     private Vector3[] initialLocalPositions;
     private bool[] completedPushes;
@@ -148,8 +148,17 @@ public partial class ChapterOnePuzzle : MonoBehaviour
 
     private void Awake()
     {
+        activeInstance = this;
         RefreshReferences();
         LoadPersistentState();
+    }
+
+    private void OnDestroy()
+    {
+        if (activeInstance == this)
+        {
+            activeInstance = null;
+        }
     }
 
     private void Start()
@@ -218,10 +227,8 @@ public partial class ChapterOnePuzzle : MonoBehaviour
 
     private void RefreshReferences()
     {
-        if (hero != null && heroAnimator == null)
-        {
-            heroAnimator = hero.GetComponentInChildren<Animator>(true);
-        }
+        CacheHeroAnimator();
+
         if (!forestAttackDialogueFinished && !enemiesActivated)
         {
             SetHeroVisible(false);
@@ -229,7 +236,15 @@ public partial class ChapterOnePuzzle : MonoBehaviour
 
         if (!portalUnlocked)
         {
-            SetPortalVisible(false);
+            if (portalTrigger != null && portalTrigger.gameObject.activeSelf)
+            {
+                portalTrigger.gameObject.SetActive(false);
+            }
+
+            if (portalDoor != null && portalDoor.activeSelf)
+            {
+                portalDoor.SetActive(false);
+            }
         }
 
         if (!rescueApplied)
@@ -248,7 +263,6 @@ public partial class ChapterOnePuzzle : MonoBehaviour
         RefreshPushReferences();
 
         BuildRuntimeSolvedLocalPositions();
-        EnsureSolidCollider(center);
         int expectedPushCount = pushSteps != null ? pushSteps.Length : 0;
         referencesReady = player != null && puzzleRoot != null && center != null && pushBlocks.Count == expectedPushCount;
     }
@@ -271,7 +285,7 @@ public partial class ChapterOnePuzzle : MonoBehaviour
             return;
         }
 
-        ChapterOnePuzzle instance = FindObjectOfType<ChapterOnePuzzle>();
+        ChapterOnePuzzle instance = activeInstance;
         if (instance == null)
         {
             return;
@@ -282,56 +296,57 @@ public partial class ChapterOnePuzzle : MonoBehaviour
 
     public static void ClearPersistentState()
     {
-        PlayerPrefs.DeleteKey(SaveKeyPrefix + "CurrentIndex");
-        PlayerPrefs.DeleteKey(SaveKeyPrefix + "RecognizeHelpShown");
-        PlayerPrefs.DeleteKey(SaveKeyPrefix + "InitialHelpDialogueFinished");
-        PlayerPrefs.DeleteKey(SaveKeyPrefix + "RescueApplied");
-        PlayerPrefs.DeleteKey(SaveKeyPrefix + "PageRewardFinished");
-        PlayerPrefs.DeleteKey(SaveKeyPrefix + "ForestAttackDialogueFinished");
-        PlayerPrefs.DeleteKey(SaveKeyPrefix + "EnemiesActivated");
-        PlayerPrefs.DeleteKey(SaveKeyPrefix + "HeroWarningShown");
-        PlayerPrefs.DeleteKey(SaveKeyPrefix + "HeroCombatFinished");
-        PlayerPrefs.DeleteKey(SaveKeyPrefix + "HeroPostCombatDialogueFinished");
-        PlayerPrefs.DeleteKey(SaveKeyPrefix + "PortalUnlocked");
-        PlayerPrefs.DeleteKey(SaveKeyPrefix + "FirstPageAddedToBackpack");
-        PlayerPrefs.DeleteKey(SaveKeyPrefix + "CompletedPushes");
-        PlayerPrefs.DeleteKey(SaveKeyPrefix + "BlockPositions");
-        PlayerPrefs.DeleteKey(SaveKeyPrefix + "EnemyActiveStates");
+        DeleteSaveKeys(
+            "CurrentIndex",
+            "RecognizeHelpShown",
+            "InitialHelpDialogueFinished",
+            "RescueApplied",
+            "PageRewardFinished",
+            "ForestAttackDialogueFinished",
+            "EnemiesActivated",
+            "HeroWarningShown",
+            "HeroCombatFinished",
+            "HeroPostCombatDialogueFinished",
+            "PortalUnlocked",
+            "FirstPageAddedToBackpack",
+            "CompletedPushes",
+            "BlockPositions",
+            "EnemyActiveStates");
     }
 
     private void SavePersistentState()
     {
-        PlayerPrefs.SetInt(SaveKeyPrefix + "CurrentIndex", currentIndex);
-        PlayerPrefs.SetInt(SaveKeyPrefix + "RecognizeHelpShown", recognizeHelpShown ? 1 : 0);
-        PlayerPrefs.SetInt(SaveKeyPrefix + "InitialHelpDialogueFinished", initialHelpDialogueFinished ? 1 : 0);
-        PlayerPrefs.SetInt(SaveKeyPrefix + "RescueApplied", rescueApplied ? 1 : 0);
-        PlayerPrefs.SetInt(SaveKeyPrefix + "PageRewardFinished", pageRewardFinished ? 1 : 0);
-        PlayerPrefs.SetInt(SaveKeyPrefix + "ForestAttackDialogueFinished", forestAttackDialogueFinished ? 1 : 0);
-        PlayerPrefs.SetInt(SaveKeyPrefix + "EnemiesActivated", enemiesActivated ? 1 : 0);
-        PlayerPrefs.SetInt(SaveKeyPrefix + "HeroWarningShown", heroWarningShown ? 1 : 0);
-        PlayerPrefs.SetInt(SaveKeyPrefix + "HeroCombatFinished", heroCombatFinished ? 1 : 0);
-        PlayerPrefs.SetInt(SaveKeyPrefix + "HeroPostCombatDialogueFinished", heroPostCombatDialogueFinished ? 1 : 0);
-        PlayerPrefs.SetInt(SaveKeyPrefix + "PortalUnlocked", portalUnlocked ? 1 : 0);
-        PlayerPrefs.SetInt(SaveKeyPrefix + "FirstPageAddedToBackpack", firstPageAddedToBackpack ? 1 : 0);
-        PlayerPrefs.SetString(SaveKeyPrefix + "CompletedPushes", SerializeBoolArray(completedPushes));
-        PlayerPrefs.SetString(SaveKeyPrefix + "BlockPositions", SerializeBlockPositions());
-        PlayerPrefs.SetString(SaveKeyPrefix + "EnemyActiveStates", SerializeEnemyStates());
+        PlayerPrefs.SetInt(SaveKey("CurrentIndex"), currentIndex);
+        SaveBool("RecognizeHelpShown", recognizeHelpShown);
+        SaveBool("InitialHelpDialogueFinished", initialHelpDialogueFinished);
+        SaveBool("RescueApplied", rescueApplied);
+        SaveBool("PageRewardFinished", pageRewardFinished);
+        SaveBool("ForestAttackDialogueFinished", forestAttackDialogueFinished);
+        SaveBool("EnemiesActivated", enemiesActivated);
+        SaveBool("HeroWarningShown", heroWarningShown);
+        SaveBool("HeroCombatFinished", heroCombatFinished);
+        SaveBool("HeroPostCombatDialogueFinished", heroPostCombatDialogueFinished);
+        SaveBool("PortalUnlocked", portalUnlocked);
+        SaveBool("FirstPageAddedToBackpack", firstPageAddedToBackpack);
+        PlayerPrefs.SetString(SaveKey("CompletedPushes"), SerializeBoolArray(completedPushes));
+        PlayerPrefs.SetString(SaveKey("BlockPositions"), SerializeBlockPositions());
+        PlayerPrefs.SetString(SaveKey("EnemyActiveStates"), SerializeEnemyStates());
     }
 
     private void LoadPersistentState()
     {
-        currentIndex = PlayerPrefs.GetInt(SaveKeyPrefix + "CurrentIndex", currentIndex);
-        recognizeHelpShown = PlayerPrefs.GetInt(SaveKeyPrefix + "RecognizeHelpShown", recognizeHelpShown ? 1 : 0) == 1;
-        initialHelpDialogueFinished = PlayerPrefs.GetInt(SaveKeyPrefix + "InitialHelpDialogueFinished", initialHelpDialogueFinished ? 1 : 0) == 1;
-        rescueApplied = PlayerPrefs.GetInt(SaveKeyPrefix + "RescueApplied", rescueApplied ? 1 : 0) == 1;
-        pageRewardFinished = PlayerPrefs.GetInt(SaveKeyPrefix + "PageRewardFinished", pageRewardFinished ? 1 : 0) == 1;
-        forestAttackDialogueFinished = PlayerPrefs.GetInt(SaveKeyPrefix + "ForestAttackDialogueFinished", forestAttackDialogueFinished ? 1 : 0) == 1;
-        enemiesActivated = PlayerPrefs.GetInt(SaveKeyPrefix + "EnemiesActivated", enemiesActivated ? 1 : 0) == 1;
-        heroWarningShown = PlayerPrefs.GetInt(SaveKeyPrefix + "HeroWarningShown", heroWarningShown ? 1 : 0) == 1;
-        heroCombatFinished = PlayerPrefs.GetInt(SaveKeyPrefix + "HeroCombatFinished", heroCombatFinished ? 1 : 0) == 1;
-        heroPostCombatDialogueFinished = PlayerPrefs.GetInt(SaveKeyPrefix + "HeroPostCombatDialogueFinished", heroPostCombatDialogueFinished ? 1 : 0) == 1;
-        portalUnlocked = PlayerPrefs.GetInt(SaveKeyPrefix + "PortalUnlocked", portalUnlocked ? 1 : 0) == 1;
-        firstPageAddedToBackpack = PlayerPrefs.GetInt(SaveKeyPrefix + "FirstPageAddedToBackpack", firstPageAddedToBackpack ? 1 : 0) == 1;
+        currentIndex = PlayerPrefs.GetInt(SaveKey("CurrentIndex"), currentIndex);
+        recognizeHelpShown = LoadBool("RecognizeHelpShown", recognizeHelpShown);
+        initialHelpDialogueFinished = LoadBool("InitialHelpDialogueFinished", initialHelpDialogueFinished);
+        rescueApplied = LoadBool("RescueApplied", rescueApplied);
+        pageRewardFinished = LoadBool("PageRewardFinished", pageRewardFinished);
+        forestAttackDialogueFinished = LoadBool("ForestAttackDialogueFinished", forestAttackDialogueFinished);
+        enemiesActivated = LoadBool("EnemiesActivated", enemiesActivated);
+        heroWarningShown = LoadBool("HeroWarningShown", heroWarningShown);
+        heroCombatFinished = LoadBool("HeroCombatFinished", heroCombatFinished);
+        heroPostCombatDialogueFinished = LoadBool("HeroPostCombatDialogueFinished", heroPostCombatDialogueFinished);
+        portalUnlocked = LoadBool("PortalUnlocked", portalUnlocked);
+        firstPageAddedToBackpack = LoadBool("FirstPageAddedToBackpack", firstPageAddedToBackpack);
     }
 
     private void ApplyRuntimeStateToScene()
@@ -371,7 +386,15 @@ public partial class ChapterOnePuzzle : MonoBehaviour
 
         if (portalUnlocked)
         {
-            SetPortalVisible(true);
+            if (portalTrigger != null && !portalTrigger.gameObject.activeSelf)
+            {
+                portalTrigger.gameObject.SetActive(true);
+            }
+
+            if (portalDoor != null && !portalDoor.activeSelf)
+            {
+                portalDoor.SetActive(true);
+            }
         }
     }
 
@@ -382,8 +405,8 @@ public partial class ChapterOnePuzzle : MonoBehaviour
             return;
         }
 
-        string completedPushesValue = PlayerPrefs.GetString(SaveKeyPrefix + "CompletedPushes", string.Empty);
-        string blockPositionsValue = PlayerPrefs.GetString(SaveKeyPrefix + "BlockPositions", string.Empty);
+        string completedPushesValue = PlayerPrefs.GetString(SaveKey("CompletedPushes"), string.Empty);
+        string blockPositionsValue = PlayerPrefs.GetString(SaveKey("BlockPositions"), string.Empty);
 
         if (!string.IsNullOrEmpty(completedPushesValue))
         {
@@ -522,7 +545,7 @@ public partial class ChapterOnePuzzle : MonoBehaviour
     {
         PrepareDelayedEnemies();
 
-        string savedEnemyStates = PlayerPrefs.GetString(SaveKeyPrefix + "EnemyActiveStates", string.Empty);
+        string savedEnemyStates = PlayerPrefs.GetString(SaveKey("EnemyActiveStates"), string.Empty);
         string[] enemyStateParts = string.IsNullOrEmpty(savedEnemyStates) ? null : savedEnemyStates.Split(',');
         bool anyEnemyActive = false;
 
@@ -613,5 +636,38 @@ public partial class ChapterOnePuzzle : MonoBehaviour
         {
             PlayHeroAnimation(heroWalkController, heroWalkStateName);
         }
+    }
+
+    private static string SaveKey(string keySuffix)
+    {
+        return SaveKeyPrefix + keySuffix;
+    }
+
+    private static void SaveBool(string keySuffix, bool value)
+    {
+        PlayerPrefs.SetInt(SaveKey(keySuffix), value ? 1 : 0);
+    }
+
+    private static bool LoadBool(string keySuffix, bool defaultValue)
+    {
+        return PlayerPrefs.GetInt(SaveKey(keySuffix), defaultValue ? 1 : 0) == 1;
+    }
+
+    private static void DeleteSaveKeys(params string[] keySuffixes)
+    {
+        for (int i = 0; i < keySuffixes.Length; i++)
+        {
+            PlayerPrefs.DeleteKey(SaveKey(keySuffixes[i]));
+        }
+    }
+
+    private void CacheHeroAnimator()
+    {
+        if (hero == null || heroAnimator != null)
+        {
+            return;
+        }
+
+        heroAnimator = hero.GetComponentInChildren<Animator>(true);
     }
 }
