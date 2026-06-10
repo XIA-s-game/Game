@@ -1,14 +1,10 @@
-// Handles the old tree angry branch attack and the player launch sequence.
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public partial class OldTreeInteraction
 {
     private void StartAngryAttack()
     {
-        // This is the wrong-choice branch: freeze the talk and let the tree lash out.
         branchFlowActive = false;
         currentAnswer = answerC;
         currentLines = null;
@@ -16,32 +12,15 @@ public partial class OldTreeInteraction
         autoCompleteOnLastLine = false;
         state = DialogueState.Attacking;
 
-        if (resetCoroutine != null)
-        {
-            StopCoroutine(resetCoroutine);
-            resetCoroutine = null;
-        }
-
-        if (finalInstructionCoroutine != null)
-        {
-            StopCoroutine(finalInstructionCoroutine);
-            finalInstructionCoroutine = null;
-        }
+        StopCoroutineIfRunning(ref resetCoroutine);
+        StopCoroutineIfRunning(ref finalInstructionCoroutine);
 
         CacheAttackSceneState();
         LockPlayerControl();
         CollectAttackCylinders();
 
-        if (cylinderAttackCoroutine != null)
-        {
-            StopCoroutine(cylinderAttackCoroutine);
-        }
-
-        if (playerLaunchCoroutine != null)
-        {
-            StopCoroutine(playerLaunchCoroutine);
-        }
-
+        StopCoroutineIfRunning(ref cylinderAttackCoroutine);
+        StopCoroutineIfRunning(ref playerLaunchCoroutine);
         cylinderAttackCoroutine = StartCoroutine(AnimateAttackCylinders());
         playerLaunchCoroutine = StartCoroutine(SweepAndLaunchPlayer());
     }
@@ -92,16 +71,6 @@ public partial class OldTreeInteraction
     {
         disabledPlayerBehaviours.Clear();
 
-        PlayerCharacterController playerController = player.GetComponent<PlayerCharacterController>();
-        if (playerController != null)
-        {
-            if (playerController.enabled)
-            {
-                playerController.enabled = false;
-                disabledPlayerBehaviours.Add(playerController);
-            }
-        }
-
         MonoBehaviour[] playerBehaviours = player.GetComponents<MonoBehaviour>();
         for (int i = 0; i < playerBehaviours.Length; i++)
         {
@@ -139,20 +108,18 @@ public partial class OldTreeInteraction
 
     private bool IsAttackCylinder(Transform target)
     {
-        string normalizedName = NormalizeName(target.name);
+        string normalizedName = target.name.ToLowerInvariant();
         if (!normalizedName.Contains("cylinder") && !normalizedName.Contains("cyliner"))
         {
             return false;
         }
 
-        if (NamesMatch(target.name, nestBranchName) ||
-            NamesMatch(target.name, cylinderResetName) ||
-            NamesMatch(target.name, cylinderResetFallbackName))
+        if (target == nestBranch || target == cylinderResetTarget)
         {
             return false;
         }
 
-        return target != nestBranch && target != cylinderResetTarget;
+        return true;
     }
 
     private Vector3 GetIrregularMoveAxis(Transform target)
@@ -275,7 +242,6 @@ public partial class OldTreeInteraction
 
     private IEnumerator LaunchPlayerHigh()
     {
-        // The launch is a story beat, so it is animated by hand instead of relying on physics.
         CharacterController controller = player.GetComponent<CharacterController>();
         if (controller != null)
         {
@@ -394,11 +360,7 @@ public partial class OldTreeInteraction
 
     private void StopAttackCylindersInPlace()
     {
-        if (cylinderAttackCoroutine != null)
-        {
-            StopCoroutine(cylinderAttackCoroutine);
-            cylinderAttackCoroutine = null;
-        }
+        StopCoroutineIfRunning(ref cylinderAttackCoroutine);
     }
 
     private void SetCameraLocalView(Vector3 localPosition, Quaternion localRotation)
@@ -552,5 +514,96 @@ public partial class OldTreeInteraction
         }
 
         disabledPlayerBehaviours.Clear();
+    }
+
+    private void FindPlayerAnimator()
+    {
+        if (playerAnimator != null)
+        {
+            return;
+        }
+
+        if (player != null)
+        {
+            playerAnimator = player.GetComponentInChildren<Animator>(true);
+        }
+
+        if (playerAnimator != null || player == null)
+        {
+            return;
+        }
+
+        Animator[] animators = FindObjectsOfType<Animator>();
+        float bestDistance = float.MaxValue;
+        for (int i = 0; i < animators.Length; i++)
+        {
+            Animator candidate = animators[i];
+            if (candidate == null)
+            {
+                continue;
+            }
+
+            float distance = Vector3.SqrMagnitude(candidate.transform.position - player.position);
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                playerAnimator = candidate;
+            }
+        }
+    }
+
+    private void FindPlayerCamera()
+    {
+        if (playerCameraTransform != null)
+        {
+            return;
+        }
+
+        Camera playerCamera = null;
+        if (player != null)
+        {
+            playerCamera = player.GetComponentInChildren<Camera>(true);
+        }
+
+        if (playerCamera == null)
+        {
+            playerCamera = Camera.main;
+        }
+
+        if (playerCamera != null)
+        {
+            playerCameraTransform = playerCamera.transform;
+        }
+    }
+
+    private void CacheManualAttackCylinders()
+    {
+        attackCylinders.Clear();
+        attackCylinderOriginalPositions.Clear();
+        attackCylinderOriginalRotations.Clear();
+        attackCylinderOriginalScales.Clear();
+        attackCylinderMoveAxes.Clear();
+        attackCylinderSeeds.Clear();
+
+        if (attackCylinderTargets == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < attackCylinderTargets.Length; i++)
+        {
+            Transform target = attackCylinderTargets[i];
+            if (target == null || attackCylinders.Contains(target))
+            {
+                continue;
+            }
+
+            attackCylinders.Add(target);
+            attackCylinderOriginalPositions.Add(target.position);
+            attackCylinderOriginalRotations.Add(target.rotation);
+            attackCylinderOriginalScales.Add(target.localScale);
+            attackCylinderMoveAxes.Add(GetIrregularMoveAxis(target));
+            attackCylinderSeeds.Add(attackCylinders.Count * 1.73f);
+        }
     }
 }

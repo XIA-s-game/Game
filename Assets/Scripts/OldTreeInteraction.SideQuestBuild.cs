@@ -1,46 +1,23 @@
-// Runs the fence and sapling build side quest after the fairy backstory opens.
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public partial class OldTreeInteraction
 {
     private void CollectFenceTargets()
     {
         fenceCollectibles.Clear();
-
-        Transform[] allTransforms = FindObjectsOfType<Transform>();
-        for (int i = 0; i < allTransforms.Length; i++)
+        if (fenceCollectibleTargets == null)
         {
-            Transform candidate = allTransforms[i];
-            if (candidate == null || !candidate.gameObject.activeInHierarchy)
-            {
-                continue;
-            }
+            return;
+        }
 
-            string normalizedName = NormalizeName(candidate.name);
-            if (fenceBuildTarget != null && candidate == fenceBuildTarget)
+        for (int i = 0; i < fenceCollectibleTargets.Length; i++)
+        {
+            Transform candidate = fenceCollectibleTargets[i];
+            if (candidate != null && candidate != fenceBuildTarget && !fenceCollectibles.Contains(candidate))
             {
-                continue;
+                fenceCollectibles.Add(candidate);
             }
-
-            if (NamesMatch(candidate.name, fenceBuildTargetName))
-            {
-                continue;
-            }
-
-            if (!normalizedName.StartsWith("fence"))
-            {
-                continue;
-            }
-
-            if (candidate.parent != null && NormalizeName(candidate.parent.name).StartsWith("fence"))
-            {
-                continue;
-            }
-
-            fenceCollectibles.Add(candidate);
         }
     }
 
@@ -58,24 +35,7 @@ public partial class OldTreeInteraction
             return;
         }
 
-        Transform closest = null;
-        float closestDistance = fencePickupDistance * fencePickupDistance;
-        for (int i = 0; i < fenceCollectibles.Count; i++)
-        {
-            Transform candidate = fenceCollectibles[i];
-            if (candidate == null || !candidate.gameObject.activeInHierarchy)
-            {
-                continue;
-            }
-
-            float distance = Vector3.SqrMagnitude(candidate.position - player.position);
-            if (distance <= closestDistance)
-            {
-                closest = candidate;
-                closestDistance = distance;
-            }
-        }
-
+        Transform closest = FindClosestFenceCollectible();
         if (closest != nearbyFence)
         {
             ClearFenceHighlight();
@@ -98,11 +58,6 @@ public partial class OldTreeInteraction
 
         if (fenceBuildTarget == null)
         {
-            fenceBuildTarget = FindSceneTransform(fenceBuildTargetName);
-        }
-
-        if (fenceBuildTarget == null)
-        {
             ClearFenceHighlight();
             nearbyFenceBuildTarget = false;
             return;
@@ -115,7 +70,7 @@ public partial class OldTreeInteraction
             ApplyFenceBuildGhost();
         }
 
-        bool isNearBuildTarget = Vector3.SqrMagnitude(fenceBuildTarget.position - player.position) <= fenceBuildDistance * fenceBuildDistance;
+        bool isNearBuildTarget = IsWithinDistance(fenceBuildTarget.position, fenceBuildDistance);
         if (isNearBuildTarget != nearbyFenceBuildTarget)
         {
             ClearFenceHighlight();
@@ -145,17 +100,14 @@ public partial class OldTreeInteraction
     private void PrepareSaplingPlantTargets()
     {
         saplingPlantTargets.Clear();
-        for (int i = 0; i < saplingPlantTargetNames.Length; i++)
+        if (saplingPlantTargetRefs == null)
         {
-            Transform target = FindSceneTransform(saplingPlantTargetNames[i]);
-            if (target == null && saplingPreviewPrefab != null)
-            {
-                Vector3 spawnPosition = GetSaplingPlantPosition(i);
-                GameObject spawned = Instantiate(saplingPreviewPrefab, spawnPosition, Quaternion.identity);
-                spawned.name = saplingPlantTargetNames[i];
-                target = spawned.transform;
-            }
+            return;
+        }
 
+        for (int i = 0; i < saplingPlantTargetRefs.Length; i++)
+        {
+            Transform target = saplingPlantTargetRefs[i];
             if (target == null)
             {
                 continue;
@@ -164,13 +116,6 @@ public partial class OldTreeInteraction
             target.gameObject.SetActive(false);
             saplingPlantTargets.Add(target);
         }
-    }
-
-    private Vector3 GetSaplingPlantPosition(int index)
-    {
-        Vector3 basePosition = fenceBuildTarget != null ? fenceBuildTarget.position : transform.position;
-        Vector3 offset = index < saplingPlantOffsets.Length ? saplingPlantOffsets[index] : Vector3.zero;
-        return basePosition + offset;
     }
 
     private void ShowSaplingPlantTargets()
@@ -209,24 +154,7 @@ public partial class OldTreeInteraction
 
         ShowSaplingPlantTargets();
 
-        Transform closest = null;
-        float closestDistance = saplingPlantDistance * saplingPlantDistance;
-        for (int i = 0; i < saplingPlantTargets.Count; i++)
-        {
-            Transform target = saplingPlantTargets[i];
-            if (target == null || !target.gameObject.activeInHierarchy || !IsSaplingGhost(target))
-            {
-                continue;
-            }
-
-            float distance = Vector3.SqrMagnitude(target.position - player.position);
-            if (distance <= closestDistance)
-            {
-                closest = target;
-                closestDistance = distance;
-            }
-        }
-
+        Transform closest = FindClosestSaplingPlantTarget();
         if (closest != nearbySaplingPlantTarget)
         {
             ClearFenceHighlight();
@@ -250,7 +178,7 @@ public partial class OldTreeInteraction
 
     private void ApplySaplingGhost(Transform target)
     {
-        Renderer[] renderers = target.GetComponentsInChildren<Renderer>();
+        Renderer[] renderers = GetCachedRenderers(target);
         for (int i = 0; i < renderers.Length; i++)
         {
             Renderer renderer = renderers[i];
@@ -280,7 +208,7 @@ public partial class OldTreeInteraction
 
     private bool IsSaplingGhost(Transform target)
     {
-        Renderer[] renderers = target.GetComponentsInChildren<Renderer>();
+        Renderer[] renderers = GetCachedRenderers(target);
         for (int i = 0; i < renderers.Length; i++)
         {
             if (saplingGhostRenderers.Contains(renderers[i]))
@@ -294,7 +222,7 @@ public partial class OldTreeInteraction
 
     private void RestoreSaplingSolid(Transform target)
     {
-        Renderer[] renderers = target.GetComponentsInChildren<Renderer>();
+        Renderer[] renderers = GetCachedRenderers(target);
         for (int i = 0; i < renderers.Length; i++)
         {
             Renderer renderer = renderers[i];
@@ -326,7 +254,7 @@ public partial class OldTreeInteraction
             return;
         }
 
-        Renderer[] renderers = fenceBuildTarget.GetComponentsInChildren<Renderer>();
+        Renderer[] renderers = GetCachedRenderers(fenceBuildTarget);
         for (int i = 0; i < renderers.Length; i++)
         {
             Renderer renderer = renderers[i];
@@ -427,7 +355,7 @@ public partial class OldTreeInteraction
             return;
         }
 
-        Renderer[] renderers = target.GetComponentsInChildren<Renderer>();
+        Renderer[] renderers = GetCachedRenderers(target);
         for (int i = 0; i < renderers.Length; i++)
         {
             Renderer renderer = renderers[i];
@@ -487,5 +415,69 @@ public partial class OldTreeInteraction
         highlightedFenceOriginalEmissionColors.Clear();
         highlightedFenceHadEmissionEnabled.Clear();
         nearbyFence = null;
+    }
+
+    private Transform FindClosestFenceCollectible()
+    {
+        Transform closest = null;
+        float closestDistance = fencePickupDistance * fencePickupDistance;
+
+        for (int i = 0; i < fenceCollectibles.Count; i++)
+        {
+            Transform candidate = fenceCollectibles[i];
+            if (candidate == null || !candidate.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            float distance = Vector3.SqrMagnitude(candidate.position - player.position);
+            if (distance <= closestDistance)
+            {
+                closest = candidate;
+                closestDistance = distance;
+            }
+        }
+
+        return closest;
+    }
+
+    private Transform FindClosestSaplingPlantTarget()
+    {
+        Transform closest = null;
+        float closestDistance = saplingPlantDistance * saplingPlantDistance;
+
+        for (int i = 0; i < saplingPlantTargets.Count; i++)
+        {
+            Transform target = saplingPlantTargets[i];
+            if (target == null || !target.gameObject.activeInHierarchy || !IsSaplingGhost(target))
+            {
+                continue;
+            }
+
+            float distance = Vector3.SqrMagnitude(target.position - player.position);
+            if (distance <= closestDistance)
+            {
+                closest = target;
+                closestDistance = distance;
+            }
+        }
+
+        return closest;
+    }
+
+    private bool IsWithinDistance(Vector3 targetPosition, float distance)
+    {
+        return Vector3.SqrMagnitude(targetPosition - player.position) <= distance * distance;
+    }
+
+    private Renderer[] GetCachedRenderers(Transform target)
+    {
+        if (!treeRendererCache.TryGetValue(target, out Renderer[] renderers))
+        {
+            renderers = target.GetComponentsInChildren<Renderer>();
+            treeRendererCache[target] = renderers;
+        }
+
+        return renderers;
     }
 }

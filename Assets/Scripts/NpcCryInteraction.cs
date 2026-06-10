@@ -1,4 +1,3 @@
-// Runs Luna and the witch feather side quest, including ladder, key, and portal steps.
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,9 +6,6 @@ using UnityEngine.SceneManagement;
 
 public class NpcCryInteraction : MonoBehaviour
 {
-    private const string LegacyWitchName = "Peasant Girl";
-    private const string CurrentWitchName = "Snake Hip Hop Dance";
-
     private enum QuestState
     {
         NotStarted,
@@ -25,36 +21,34 @@ public class NpcCryInteraction : MonoBehaviour
     }
 
     [Header("Player")]
-    [SerializeField] private string playerName = "AQM_FPS_Character";
+    [SerializeField] private Transform player;
     [SerializeField] private float interactDistance = 3f;
     [SerializeField] private KeyCode interactKey = KeyCode.E;
     [SerializeField] private KeyCode continueKey = KeyCode.C;
 
     [Header("Luna")]
-    [SerializeField] private string lunaHomeName = "ln";
+    [SerializeField] private Transform lunaHome;
     [SerializeField] private string prompt = "Press E to talk";
     [SerializeField] private string standParameter = "Stand";
     [SerializeField] private string standStateName = "Stand";
     [SerializeField] private float lunaFlyHeight = 1.2f;
 
     [Header("Witch")]
-    [SerializeField] private string witchName = "Snake Hip Hop Dance";
+    [SerializeField] private Transform witch;
     [SerializeField] private float witchInteractDistance = 6f;
     [SerializeField] private RuntimeAnimatorController witchStandController;
-    [SerializeField] private string witchStandControllerPath = "Assets/animator/stand.controller";
-    [SerializeField] private string witchAvatarPath = "Assets/character/Snake Hip Hop Dance.fbx";
     [SerializeField] private string witchStandStateName = "mixamo_com";
 
     [Header("Feathers")]
-    [SerializeField] private string[] featherNames = { "feather_only", "feather (1)", "feather (2)", "feather (3)" };
+    [SerializeField] private Transform[] feathers;
     [SerializeField] private string featherItemName = "Feather";
     [SerializeField] private float featherPickupDistance = 6f;
     [SerializeField] private Color featherHighlightColor = new Color(1f, 0.92f, 0.2f, 1f);
 
     [Header("Ladder And Key")]
-    [SerializeField] private string ladderName = "Muddy_Ladder_FBX";
-    [SerializeField] private string climbTargetName = "tz1";
-    [SerializeField] private string keyName = "Key OBJ";
+    [SerializeField] private Transform ladder;
+    [SerializeField] private Transform climbTarget;
+    [SerializeField] private Transform keyObject;
     [SerializeField] private string keyItemName = "Key";
     [SerializeField] private float ladderInteractDistance = 4f;
     [SerializeField] private float keyPickupDistance = 6f;
@@ -62,7 +56,7 @@ public class NpcCryInteraction : MonoBehaviour
 
     [Header("Reward And Portal")]
     [SerializeField] private string fourthPageItemName = "Fourth Page";
-    [SerializeField] private string portalName = "Portal_01";
+    [SerializeField] private Transform portal;
     [SerializeField] private string nextSceneName = "11 1";
     [SerializeField] private float portalInteractDistance = 4f;
 
@@ -107,15 +101,7 @@ public class NpcCryInteraction : MonoBehaviour
     };
 
     private Animator animator;
-    private Transform player;
-    private Transform lunaHome;
-    private Transform witch;
     private Animator witchAnimator;
-    private Transform ladder;
-    private Transform climbTarget;
-    private Transform keyObject;
-    private Transform portal;
-    private Transform[] feathers;
     private Material highlightMaterial;
     private readonly Dictionary<Renderer, Material[]> originalFeatherMaterials = new Dictionary<Renderer, Material[]>();
     private string[] dialogueLines;
@@ -125,7 +111,6 @@ public class NpcCryInteraction : MonoBehaviour
     private bool[] featherCollected;
     private bool isDialogueOpen;
     private bool isClimbing;
-    private bool witchHasStoppedDancing;
     private bool keyDiscoveryDialogueShown;
     private GUIStyle dialogueStyle;
     private GUIStyle hintStyle;
@@ -133,33 +118,20 @@ public class NpcCryInteraction : MonoBehaviour
 
     private void Awake()
     {
-        if (witchName == LegacyWitchName)
-        {
-            witchName = CurrentWitchName;
-        }
-
         animator = GetComponent<Animator>();
-        LoadEditorControllers();
-        FindSceneObjects();
     }
 
     private void Start()
     {
-        featherCollected = new bool[featherNames.Length];
+        featherCollected = new bool[feathers != null ? feathers.Length : 0];
         SetLadderVisible(false);
         SetPortalVisible(false);
         SetFeatherHighlights(false);
-        witchHasStoppedDancing = true;
         PlayWitchStand();
     }
 
     private void Update()
     {
-        if (player == null || witch == null || lunaHome == null || FeathersNeedRefresh())
-        {
-            FindSceneObjects();
-        }
-
         if (isDialogueOpen)
         {
             if (Input.GetKeyDown(continueKey))
@@ -176,106 +148,6 @@ public class NpcCryInteraction : MonoBehaviour
         }
 
         UpdateInteractions();
-    }
-
-    private void FindSceneObjects()
-    {
-        // This quest is dropped into a busy scene, so it finds its pieces by name at runtime.
-        bool featherReferencesChanged = false;
-
-        GameObject playerObject = FindSceneGameObject(playerName);
-        if (playerObject != null)
-        {
-            player = playerObject.transform;
-        }
-
-        GameObject lunaHomeObject = FindSceneGameObject(lunaHomeName);
-        if (lunaHomeObject != null)
-        {
-            lunaHome = lunaHomeObject.transform;
-        }
-
-        GameObject witchObject = FindSceneGameObject(witchName);
-        if (witchObject != null)
-        {
-            witch = witchObject.transform;
-            EnsureWitchAnimator();
-            PlayWitchStand();
-        }
-
-        GameObject ladderObject = FindSceneGameObject(ladderName);
-        if (ladderObject != null)
-        {
-            ladder = ladderObject.transform;
-        }
-
-        GameObject climbTargetObject = FindSceneGameObject(climbTargetName);
-        if (climbTargetObject != null)
-        {
-            climbTarget = climbTargetObject.transform;
-        }
-
-        GameObject keyGameObject = FindSceneGameObject(keyName);
-        if (keyGameObject != null)
-        {
-            keyObject = keyGameObject.transform;
-        }
-
-        GameObject portalObject = FindSceneGameObject(portalName);
-        if (portalObject != null)
-        {
-            portal = portalObject.transform;
-        }
-
-        if (feathers == null || feathers.Length != featherNames.Length)
-        {
-            feathers = new Transform[featherNames.Length];
-        }
-
-        for (int i = 0; i < featherNames.Length; i++)
-        {
-            if (feathers[i] != null && feathers[i].gameObject != null)
-            {
-                continue;
-            }
-
-            GameObject featherObject = FindSceneGameObject(featherNames[i]);
-            if (featherObject != null)
-            {
-                feathers[i] = featherObject.transform;
-                featherReferencesChanged = true;
-            }
-        }
-
-        if (featherReferencesChanged && IsFeatherQuestActive())
-        {
-            SetFeatherHighlights(true);
-        }
-    }
-
-    private bool FeathersNeedRefresh()
-    {
-        if (feathers == null || feathers.Length != featherNames.Length)
-        {
-            return true;
-        }
-
-        for (int i = 0; i < feathers.Length; i++)
-        {
-            if (feathers[i] == null)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private bool IsFeatherQuestActive()
-    {
-        return state == QuestState.NeedFeathers ||
-               state == QuestState.CollectingFeathers ||
-               state == QuestState.ReturnToWitch;
     }
 
     private void UpdateInteractions()
@@ -349,7 +221,6 @@ public class NpcCryInteraction : MonoBehaviour
         if (state == QuestState.GoAskWitch)
         {
             PlayWitchStand();
-            witchHasStoppedDancing = true;
             StartDialogue(witchFirstLines, () =>
             {
                 state = QuestState.NeedFeathers;
@@ -358,7 +229,7 @@ public class NpcCryInteraction : MonoBehaviour
             return;
         }
 
-        if (CollectedFeatherCount() < featherNames.Length)
+        if (CollectedFeatherCount() < FeatherCount)
         {
             StartDialogue(witchNeedFeathersLines, () =>
             {
@@ -403,11 +274,22 @@ public class NpcCryInteraction : MonoBehaviour
 
     private void PlayWitchStand()
     {
-        EnsureWitchAnimator();
+        if (witch == null)
+        {
+            return;
+        }
+
+        if (witchAnimator == null)
+        {
+            witchAnimator = witch.GetComponentInChildren<Animator>(true);
+        }
+
         if (witchAnimator == null)
         {
             return;
         }
+
+        witchAnimator.applyRootMotion = false;
 
         if (witchStandController != null)
         {
@@ -418,42 +300,6 @@ public class NpcCryInteraction : MonoBehaviour
         {
             witchAnimator.Play(witchStandStateName);
         }
-    }
-
-    private void EnsureWitchAnimator()
-    {
-        if (witch == null)
-        {
-            return;
-        }
-
-        if (witchAnimator == null)
-        {
-            witchAnimator = witch.GetComponentInChildren<Animator>();
-        }
-
-        if (witchAnimator == null)
-        {
-            witchAnimator = witch.gameObject.AddComponent<Animator>();
-        }
-
-        witchAnimator.applyRootMotion = false;
-
-#if UNITY_EDITOR
-        if (witchAnimator.avatar == null)
-        {
-            UnityEngine.Object[] assets = UnityEditor.AssetDatabase.LoadAllAssetsAtPath(witchAvatarPath);
-            foreach (UnityEngine.Object asset in assets)
-            {
-                Avatar avatar = asset as Avatar;
-                if (avatar != null)
-                {
-                    witchAnimator.avatar = avatar;
-                    break;
-                }
-            }
-        }
-#endif
     }
 
     private bool TryGetNearbyFeather(out int featherIndex)
@@ -492,7 +338,7 @@ public class NpcCryInteraction : MonoBehaviour
         feathers[featherIndex].gameObject.SetActive(false);
         GlobalBackpackUI.AddItem(featherItemName);
 
-        if (CollectedFeatherCount() >= featherNames.Length)
+        if (CollectedFeatherCount() >= FeatherCount)
         {
             state = QuestState.ReturnToWitch;
         }
@@ -526,15 +372,6 @@ public class NpcCryInteraction : MonoBehaviour
         isClimbing = true;
 
         Vector3 start = player.position;
-        if (climbTarget == null)
-        {
-            GameObject climbTargetObject = FindSceneGameObject(climbTargetName);
-            if (climbTargetObject != null)
-            {
-                climbTarget = climbTargetObject.transform;
-            }
-        }
-
         Vector3 target = climbTarget != null ? climbTarget.position : player.position;
         float elapsed = 0f;
 
@@ -564,15 +401,6 @@ public class NpcCryInteraction : MonoBehaviour
 
     private bool IsNearKey()
     {
-        if (keyObject == null)
-        {
-            GameObject keyGameObject = FindSceneGameObject(keyName);
-            if (keyGameObject != null)
-            {
-                keyObject = keyGameObject.transform;
-            }
-        }
-
         return keyObject != null &&
                keyObject.gameObject.activeInHierarchy &&
                IsNearObjectBounds(keyObject, keyPickupDistance);
@@ -588,15 +416,6 @@ public class NpcCryInteraction : MonoBehaviour
 
     private void SetPortalVisible(bool visible)
     {
-        if (portal == null)
-        {
-            GameObject portalObject = FindSceneGameObject(portalName);
-            if (portalObject != null)
-            {
-                portal = portalObject.transform;
-            }
-        }
-
         if (portal != null)
         {
             portal.gameObject.SetActive(visible);
@@ -605,15 +424,6 @@ public class NpcCryInteraction : MonoBehaviour
 
     private void SetLadderVisible(bool visible)
     {
-        if (ladder == null)
-        {
-            GameObject ladderObject = FindSceneGameObject(ladderName);
-            if (ladderObject != null)
-            {
-                ladder = ladderObject.transform;
-            }
-        }
-
         if (ladder != null)
         {
             ladder.gameObject.SetActive(visible);
@@ -627,7 +437,12 @@ public class NpcCryInteraction : MonoBehaviour
             return;
         }
 
-        EnsureHighlightMaterial();
+        if (highlighted && highlightMaterial == null)
+        {
+            highlightMaterial = new Material(Shader.Find("Standard"));
+            highlightMaterial.color = featherHighlightColor;
+        }
+
         for (int i = 0; i < feathers.Length; i++)
         {
             if (feathers[i] == null || featherCollected != null && featherCollected[i])
@@ -635,52 +450,36 @@ public class NpcCryInteraction : MonoBehaviour
                 continue;
             }
 
-            ApplyFeatherHighlight(feathers[i], highlighted);
-        }
-
-    }
-
-    private void ApplyFeatherHighlight(Transform featherTransform, bool highlighted)
-    {
-        if (featherTransform == null)
-        {
-            return;
-        }
-
-        Renderer[] renderers = featherTransform.GetComponentsInChildren<Renderer>();
-        foreach (Renderer renderer in renderers)
-        {
-            if (!originalFeatherMaterials.ContainsKey(renderer))
+            Renderer[] renderers = feathers[i].GetComponentsInChildren<Renderer>();
+            for (int j = 0; j < renderers.Length; j++)
             {
-                originalFeatherMaterials.Add(renderer, renderer.sharedMaterials);
-            }
-
-            if (highlighted)
-            {
-                Material[] materials = renderer.sharedMaterials;
-                for (int materialIndex = 0; materialIndex < materials.Length; materialIndex++)
+                Renderer renderer = renderers[j];
+                if (renderer == null)
                 {
-                    materials[materialIndex] = highlightMaterial;
+                    continue;
                 }
 
-                renderer.sharedMaterials = materials;
-            }
-            else if (originalFeatherMaterials.TryGetValue(renderer, out Material[] originalMaterials))
-            {
-                renderer.sharedMaterials = originalMaterials;
+                if (!originalFeatherMaterials.ContainsKey(renderer))
+                {
+                    originalFeatherMaterials.Add(renderer, renderer.sharedMaterials);
+                }
+
+                if (highlighted)
+                {
+                    Material[] materials = renderer.sharedMaterials;
+                    for (int materialIndex = 0; materialIndex < materials.Length; materialIndex++)
+                    {
+                        materials[materialIndex] = highlightMaterial;
+                    }
+
+                    renderer.sharedMaterials = materials;
+                }
+                else if (originalFeatherMaterials.TryGetValue(renderer, out Material[] originalMaterials))
+                {
+                    renderer.sharedMaterials = originalMaterials;
+                }
             }
         }
-    }
-
-    private void EnsureHighlightMaterial()
-    {
-        if (highlightMaterial != null)
-        {
-            return;
-        }
-
-        highlightMaterial = new Material(Shader.Find("Standard"));
-        highlightMaterial.color = featherHighlightColor;
     }
 
     private void StartDialogue(string[] lines, Action onComplete)
@@ -709,6 +508,10 @@ public class NpcCryInteraction : MonoBehaviour
 
     private void OnGUI()
     {
+        if (Event.current.type != EventType.Repaint)
+        {
+            return;
+        }
 
         if (isDialogueOpen)
         {
@@ -777,28 +580,28 @@ public class NpcCryInteraction : MonoBehaviour
     private void DrawDialogue()
     {
         string text = dialogueLines != null && dialogueIndex < dialogueLines.Length ? dialogueLines[dialogueIndex] : string.Empty;
-        Rect rect = GameUiStyle.DialogueRect(210f);
-        GameUiStyle.DrawPanel(rect);
+        Rect rect = GameUiStyle.DialogueRect(260f);
+        GameUiStyle.DrawDialoguePanel(rect);
 
-        GUI.Label(new Rect(rect.x + 24f, rect.y + 22f, rect.width - 48f, rect.height - 70f), text, GameUiStyle.LabelStyle(ref dialogueStyle, 30, TextAnchor.UpperLeft, FontStyle.Normal, true));
-        GUI.Label(new Rect(rect.x + 24f, rect.yMax - 46f, rect.width - 48f, 28f), "Press C to continue", GameUiStyle.LabelStyle(ref hintStyle, 22, TextAnchor.MiddleRight));
+        GUI.Label(new Rect(rect.x + 36f, rect.y + 30f, rect.width - 72f, rect.height - 126f), text, GameUiStyle.LabelStyle(ref dialogueStyle, 30, TextAnchor.UpperLeft, FontStyle.Normal, true));
+        GUI.Label(new Rect(rect.x + 36f, rect.yMax - 72f, rect.width - 72f, 48f), "Press C to continue", GameUiStyle.LabelStyle(ref hintStyle, 22, TextAnchor.MiddleRight));
     }
 
     private void DrawPrompt(string text)
     {
         Rect rect = GameUiStyle.InteractionPromptRect();
-        GameUiStyle.DrawPanel(rect);
+        GameUiStyle.DrawDialoguePanel(rect);
         GUI.Label(rect, text, GameUiStyle.LabelStyle(ref promptStyle, 28, TextAnchor.MiddleCenter));
     }
 
     private void DrawFeatherProgress()
     {
-        Rect rect = GameUiStyle.SideQuestRect(320f, 86f);
-        GameUiStyle.DrawPanel(rect);
-        GUI.Label(new Rect(rect.x + 16f, rect.y + 12f, rect.width - 32f, 28f), "Find feathers", GameUiStyle.LabelStyle(ref hintStyle, 22, TextAnchor.MiddleLeft, FontStyle.Bold));
-        GUI.Label(new Rect(rect.x + 16f, rect.y + 46f, rect.width - 32f, 26f), CollectedFeatherCount() + "/" + featherNames.Length, GameUiStyle.LabelStyle(ref promptStyle, 20, TextAnchor.MiddleLeft));
+        Rect rect = GameUiStyle.SideQuestRect(420f, 156f);
+        GameUiStyle.DrawDialoguePanel(rect);
+        int collectedCount = CollectedFeatherCount();
+        GUI.Label(new Rect(rect.x + 22f, rect.y + 18f, rect.width - 44f, 58f), "Find feathers", GameUiStyle.LabelStyle(ref hintStyle, 22, TextAnchor.MiddleLeft, FontStyle.Bold));
+        GUI.Label(new Rect(rect.x + 22f, rect.y + 88f, rect.width - 44f, 48f), collectedCount + "/" + FeatherCount, GameUiStyle.LabelStyle(ref promptStyle, 20, TextAnchor.MiddleLeft));
     }
-
 
     private bool IsNear(Transform target, float distance)
     {
@@ -866,44 +669,6 @@ public class NpcCryInteraction : MonoBehaviour
         return Vector3.Distance(closestPoint, position);
     }
 
-    private GameObject FindSceneGameObject(string objectName)
-    {
-        if (string.IsNullOrEmpty(objectName))
-        {
-            return null;
-        }
+    private int FeatherCount => feathers != null ? feathers.Length : 0;
 
-        GameObject activeObject = GameObject.Find(objectName);
-        if (activeObject != null)
-        {
-            return activeObject;
-        }
-
-        GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
-        foreach (GameObject sceneObject in allObjects)
-        {
-            if (sceneObject == null || !sceneObject.scene.IsValid())
-            {
-                continue;
-            }
-
-            if (sceneObject.name == objectName)
-            {
-                return sceneObject;
-            }
-        }
-
-        return null;
-    }
-
-    private void LoadEditorControllers()
-    {
-#if UNITY_EDITOR
-        if (witchStandController == null)
-        {
-            witchStandController = UnityEditor.AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(witchStandControllerPath);
-        }
-
-#endif
-    }
 }

@@ -1,19 +1,18 @@
-// Draws the old tree dialogue, choices, egg challenge, side quest, and reward UI.
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public partial class OldTreeInteraction
 {
+    private GUIStyle dialogueTextStyle;
+    private GUIStyle continueHintStyle;
+    private GUIStyle choiceHintStyle;
+    private GUIStyle sideQuestTitleStyle;
+    private GUIStyle sideQuestTaskStyle;
+    private GUIStyle rewardTextStyle;
+    private GUIStyle centeredLabelStyle;
+
     private void OnGUI()
     {
-        if (!IsTargetScene())
-        {
-            return;
-        }
-
-        if (player == null)
+        if (!IsTargetScene() || player == null)
         {
             return;
         }
@@ -22,54 +21,11 @@ public partial class OldTreeInteraction
         {
             if (!sideQuestActive || (nearbyFence == null && !nearbyFenceBuildTarget && nearbySaplingPlantTarget == null && !IsPlayerNearPeasant()))
             {
-                DrawCenteredLabel(prompt, Screen.height * 0.72f, 28);
+                DrawCenteredLabel(prompt, 28);
             }
         }
 
-        if (state == DialogueState.Choosing)
-        {
-            DrawDialogueBox(greeting, true);
-        }
-        else if (state == DialogueState.Speaking)
-        {
-            DrawDialogueBox(currentAnswer, false, true);
-        }
-        else if (state == DialogueState.FinalInstruction)
-        {
-            DrawDialogueBox(currentAnswer, false, false);
-        }
-        else if (state == DialogueState.MovingNest)
-        {
-            DrawDialogueBox("The nest is moving down...", false, false);
-        }
-        else if (state == DialogueState.Attacking)
-        {
-            DrawDialogueBox(currentAnswer, false);
-        }
-        else if (state == DialogueState.Answered)
-        {
-            DrawDialogueBox(currentAnswer, false);
-        }
-        else if (state == DialogueState.EggChallenge)
-        {
-            DrawEggChallengePanel();
-        }
-        else if (state == DialogueState.EggChallengeResult)
-        {
-            DrawCenteredResult(eggResultText);
-        }
-        else if (state == DialogueState.EggChallengeFailed)
-        {
-            DrawEggFailurePanel();
-        }
-        else if (state == DialogueState.RewardChoosing)
-        {
-            DrawRewardChoiceBox();
-        }
-        else if (state == DialogueState.MushroomGift)
-        {
-            DrawCenteredLabel(mushroomPickupPrompt, Screen.height * 0.72f, 28);
-        }
+        DrawCurrentDialogueState();
 
         if (sideQuestActive)
         {
@@ -77,51 +33,70 @@ public partial class OldTreeInteraction
 
             if (nearbyFence != null)
             {
-                DrawCenteredLabel(fencePickupPrompt, Screen.height * 0.68f, 26);
+                DrawCenteredLabel(fencePickupPrompt, 26);
             }
             else if (nearbyFenceBuildTarget)
             {
-                DrawCenteredLabel(fenceBuildPrompt, Screen.height * 0.68f, 26);
+                DrawCenteredLabel(fenceBuildPrompt, 26);
             }
             else if (nearbySaplingPlantTarget != null)
             {
-                DrawCenteredLabel(saplingPlantPrompt, Screen.height * 0.68f, 26);
+                DrawCenteredLabel(saplingPlantPrompt, 26);
             }
             else if (IsSideQuestInProgress() && !peasantRewardGiven && IsPlayerNearPeasant())
             {
-                DrawCenteredLabel(prompt, Screen.height * 0.68f, 26);
+                DrawCenteredLabel(prompt, 26);
             }
+        }
+    }
+
+    private void DrawCurrentDialogueState()
+    {
+        switch (state)
+        {
+            case DialogueState.Choosing:
+                DrawDialogueBox(greeting, true);
+                break;
+            case DialogueState.Speaking:
+                DrawDialogueBox(currentAnswer, false, true);
+                break;
+            case DialogueState.FinalInstruction:
+                DrawDialogueBox(currentAnswer, false, false);
+                break;
+            case DialogueState.MovingNest:
+                DrawDialogueBox("The nest is moving down...", false, false);
+                break;
+            case DialogueState.Attacking:
+            case DialogueState.Answered:
+                DrawDialogueBox(currentAnswer, false);
+                break;
+            case DialogueState.RewardChoosing:
+                DrawRewardChoiceBox();
+                break;
         }
     }
 
     private void DrawDialogueBox(string text, bool showChoices, bool showContinueHint)
     {
-        float height = showChoices ? 330f : (showContinueHint ? 190f : 160f);
+        float height = showChoices ? 470f : (showContinueHint ? 260f : 230f);
         Rect rect = GameUiStyle.DialogueRect(height);
-
-        GameUiStyle.DrawPanel(rect);
-
-        GUIStyle textStyle = new GUIStyle(GUI.skin.label)
+        if (showChoices)
         {
-            fontSize = 30,
-            wordWrap = true,
-            alignment = TextAnchor.UpperLeft
-        };
-        ApplyDialogueFont(textStyle);
-        textStyle.normal.textColor = Color.white;
+            float width = Mathf.Min(1280f, Screen.width - 96f);
+            rect.x = (Screen.width - width) * 0.5f;
+            rect.width = width;
+        }
 
-        GUI.Label(new Rect(rect.x + 24f, rect.y + 18f, rect.width - 48f, showContinueHint ? 92f : 70f), text, textStyle);
+        GameUiStyle.DrawDialoguePanel(rect);
+
+        GUIStyle textStyle = LabelStyle(ref dialogueTextStyle, 30, TextAnchor.UpperLeft, Color.white, true);
+        float choiceTextOffsetY = showChoices ? 80f : 0f;
+        GUI.Label(new Rect(rect.x + 180f, rect.y + 130f + choiceTextOffsetY, rect.width - 252f, showChoices ? 120f : rect.height - 126f), text, textStyle);
 
         if (showContinueHint)
         {
-            GUIStyle continueHintStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 22,
-                alignment = TextAnchor.MiddleRight
-            };
-            ApplyDialogueFont(continueHintStyle);
-            continueHintStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f);
-            GUI.Label(new Rect(rect.x + 24f, rect.y + rect.height - 42f, rect.width - 48f, 24f), continueHint, continueHintStyle);
+            GUIStyle continueStyle = LabelStyle(ref continueHintStyle, 22, TextAnchor.MiddleRight, new Color(0.9f, 0.9f, 0.9f));
+            GUI.Label(new Rect(rect.x, rect.y + rect.height - 130f, rect.width - 160f, 48f), continueHint, continueStyle);
         }
 
         if (!showChoices)
@@ -129,263 +104,67 @@ public partial class OldTreeInteraction
             return;
         }
 
-        GUIStyle hintStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = 22,
-            alignment = TextAnchor.MiddleLeft
-        };
-        ApplyDialogueFont(hintStyle);
-        hintStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f);
-        GUI.Label(new Rect(rect.x + 24f, rect.y + 84f, rect.width - 48f, 24f), chooseHint, hintStyle);
+        GUIStyle choiceStyle = LabelStyle(ref choiceHintStyle, 22, TextAnchor.MiddleLeft, new Color(0.9f, 0.9f, 0.9f));
+        GUI.Label(new Rect(rect.x + 180f, rect.y + 326f, rect.width - 252f, 38f), chooseHint, choiceStyle);
 
-        if (DrawChoiceButton(rect, 118f, 36f, choiceA))
-        {
-            Choose(answerA);
-        }
-
-        if (DrawChoiceButton(rect, 164f, 58f, choiceB))
-        {
-            StartBranchDialogue();
-        }
-
-        if (DrawChoiceButton(rect, 236f, 36f, choiceC))
-        {
-            StartAngryAttack();
-        }
-    }
-
-    private bool DrawChoiceButton(Rect parent, float yOffset, float height, string text)
-    {
-        Rect rect = new Rect(parent.x + 24f, parent.y + yOffset, parent.width - 48f, height);
-        GUIStyle style = new GUIStyle(GUI.skin.button)
-        {
-            alignment = TextAnchor.MiddleLeft,
-            fontSize = 24,
-            wordWrap = true
-        };
-        ApplyDialogueFont(style);
-
-        return GUI.Button(rect, text, style);
-    }
-
-    private void DrawEggChallengePanel()
-    {
-        float width = Mathf.Min(420f, Screen.width - 40f);
-        Rect rect = GameUiStyle.SystemPromptRect(width, 104f);
-        GameUiStyle.DrawPanel(rect);
-
-        GUIStyle titleStyle = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = 26
-        };
-        ApplyDialogueFont(titleStyle);
-        titleStyle.normal.textColor = Color.white;
-
-        GUIStyle infoStyle = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = 18
-        };
-        ApplyDialogueFont(infoStyle);
-        infoStyle.normal.textColor = Color.white;
-
-        GUI.Label(new Rect(rect.x + 16f, rect.y + 12f, rect.width - 32f, 34f), GetEggLevelTitle(), titleStyle);
-        GUI.Label(new Rect(rect.x + 16f, rect.y + 52f, rect.width - 32f, 28f), "Time: " + Mathf.CeilToInt(eggTimer) + "s", infoStyle);
-    }
-
-    private void DrawCenteredResult(string text)
-    {
-        float width = Mathf.Min(520f, Screen.width - 40f);
-        Rect rect = GameUiStyle.SystemPromptRect(width, 110f);
-        GameUiStyle.DrawPanel(rect);
-
-        GUIStyle style = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = 26,
-            wordWrap = true
-        };
-        ApplyDialogueFont(style);
-        style.normal.textColor = Color.white;
-        GUI.Label(new Rect(rect.x + 20f, rect.y + 20f, rect.width - 40f, rect.height - 40f), text, style);
+        GUIStyle optionStyle = LabelStyle(ref choiceHintStyle, 26, TextAnchor.MiddleLeft, Color.white, true);
+        GUI.Label(new Rect(rect.x + 180f, rect.y + 382f, rect.width - 252f, 42f), choiceA, optionStyle);
+        GUI.Label(new Rect(rect.x + 180f, rect.y + 432f, rect.width - 252f, 54f), choiceB, optionStyle);
+        GUI.Label(new Rect(rect.x + 180f, rect.y + 494f, rect.width - 252f, 42f), choiceC, optionStyle);
     }
 
     private void DrawSideQuestPanel()
     {
-        float width = 430f;
-        float height = 150f;
+        float width = 560f;
+        float height = 250f;
         Rect rect = GameUiStyle.SideQuestRect(width, height);
-        GameUiStyle.DrawPanel(rect);
+        GameUiStyle.DrawDialoguePanel(rect);
 
-        GUIStyle titleStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = 18,
-            wordWrap = true,
-            alignment = TextAnchor.UpperLeft
-        };
-        ApplyDialogueFont(titleStyle);
-        titleStyle.normal.textColor = Color.white;
+        GUIStyle titleStyle = LabelStyle(ref sideQuestTitleStyle, 18, TextAnchor.UpperLeft, Color.white, true);
+        GUIStyle taskStyle = LabelStyle(ref sideQuestTaskStyle, 16, TextAnchor.UpperLeft, new Color(0.92f, 0.92f, 0.92f), true);
 
-        GUIStyle taskStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = 16,
-            wordWrap = true,
-            alignment = TextAnchor.UpperLeft
-        };
-        ApplyDialogueFont(taskStyle);
-        taskStyle.normal.textColor = new Color(0.92f, 0.92f, 0.92f);
-
-        GUI.Label(new Rect(rect.x + 14f, rect.y + 12f, rect.width - 28f, 44f), sideQuestTitle, titleStyle);
+        GUI.Label(new Rect(rect.x + 22f, rect.y + 18f, rect.width - 44f, 70f), sideQuestTitle, titleStyle);
         string fenceCompletionMark = collectedFenceCount >= requiredFenceCount ? " done" : string.Empty;
         string saplingCompletionMark = collectedSaplingCount >= requiredSaplingCount ? " done" : string.Empty;
-        GUI.Label(new Rect(rect.x + 14f, rect.y + 62f, rect.width - 28f, 28f), "1: " + fenceTaskText + " " + collectedFenceCount + "/" + requiredFenceCount + fenceCompletionMark, taskStyle);
-        GUI.Label(new Rect(rect.x + 14f, rect.y + 96f, rect.width - 28f, 28f), "2: " + saplingTaskText + " " + collectedSaplingCount + "/" + requiredSaplingCount + saplingCompletionMark, taskStyle);
-    }
-
-    private void DrawBackpackPanel()
-    {
-        float slotSize = 72f;
-        Rect panelRect = GameUiStyle.BackpackRect(260f, 94f);
-        GameUiStyle.DrawPanel(panelRect);
-
-        GUIStyle labelStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = 16,
-            alignment = TextAnchor.MiddleLeft
-        };
-        ApplyDialogueFont(labelStyle);
-        labelStyle.normal.textColor = Color.white;
-
-        GUI.Label(new Rect(panelRect.x + 12f, panelRect.y + 8f, 120f, 22f), "Backpack", labelStyle);
-
-        int availableFenceCount = fenceBuilt ? 0 : collectedFenceCount;
-        int availableSaplingCount = Mathf.Max(0, collectedSaplingCount - plantedSaplingCount);
-        if (availableFenceCount <= 0 && availableSaplingCount <= 0)
-        {
-            GUI.Label(new Rect(panelRect.x + 12f, panelRect.y + 42f, panelRect.width - 24f, 24f), "Empty", labelStyle);
-            return;
-        }
-
-        Rect slotRect = new Rect(panelRect.x + 12f, panelRect.y + 34f, slotSize, slotSize - 12f);
-        if (availableFenceCount > 0)
-        {
-            GUI.Box(slotRect, GUIContent.none);
-            GUI.Label(new Rect(slotRect.x + 8f, slotRect.y + 8f, slotRect.width - 16f, 22f), fenceInventoryName, labelStyle);
-            GUI.Label(new Rect(slotRect.x + 8f, slotRect.y + 32f, slotRect.width - 16f, 22f), "x" + availableFenceCount, labelStyle);
-        }
-
-        if (availableSaplingCount > 0)
-        {
-            Rect saplingSlotRect = availableFenceCount > 0
-                ? new Rect(slotRect.xMax + 12f, slotRect.y, slotSize, slotSize - 12f)
-                : slotRect;
-            GUI.Box(saplingSlotRect, GUIContent.none);
-            GUI.Label(new Rect(saplingSlotRect.x + 8f, saplingSlotRect.y + 8f, saplingSlotRect.width - 16f, 22f), saplingInventoryName, labelStyle);
-            GUI.Label(new Rect(saplingSlotRect.x + 8f, saplingSlotRect.y + 32f, saplingSlotRect.width - 16f, 22f), "x" + availableSaplingCount, labelStyle);
-        }
-    }
-
-    private void DrawEggFailurePanel()
-    {
-        float width = Mathf.Min(520f, Screen.width - 40f);
-        Rect rect = GameUiStyle.SystemPromptRect(width, 210f);
-        GameUiStyle.DrawPanel(rect);
-
-        GUIStyle style = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = 26,
-            wordWrap = true
-        };
-        ApplyDialogueFont(style);
-        style.normal.textColor = Color.white;
-        GUI.Label(new Rect(rect.x + 20f, rect.y + 20f, rect.width - 40f, 54f), eggResultText, style);
-
-        if (GUI.Button(new Rect(rect.x + 60f, rect.y + 112f, 170f, 48f), "Restart"))
-        {
-            RestartEggChallenge();
-        }
-
-        if (GUI.Button(new Rect(rect.x + rect.width - 230f, rect.y + 112f, 170f, 48f), "Exit"))
-        {
-            ExitEggChallenge();
-        }
+        GUI.Label(new Rect(rect.x + 22f, rect.y + 96f, rect.width - 44f, 58f), "1: " + fenceTaskText + " " + collectedFenceCount + "/" + requiredFenceCount + fenceCompletionMark, taskStyle);
+        GUI.Label(new Rect(rect.x + 22f, rect.y + 166f, rect.width - 44f, 58f), "2: " + saplingTaskText + " " + collectedSaplingCount + "/" + requiredSaplingCount + saplingCompletionMark, taskStyle);
     }
 
     private void DrawRewardChoiceBox()
     {
         float width = Mathf.Min(900f, Screen.width - 80f);
-        float height = 320f;
+        float height = 500f;
         Rect rect = GameUiStyle.DialogueRect(height);
 
-        GameUiStyle.DrawPanel(rect);
+        GameUiStyle.DrawDialoguePanel(rect);
 
-        GUIStyle textStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = 22,
-            wordWrap = true,
-            alignment = TextAnchor.UpperLeft
-        };
-        ApplyDialogueFont(textStyle);
-        textStyle.normal.textColor = Color.white;
-        GUI.Label(new Rect(rect.x + 24f, rect.y + 18f, rect.width - 48f, 60f), rewardGreeting, textStyle);
+        GUIStyle textStyle = LabelStyle(ref rewardTextStyle, 28, TextAnchor.UpperLeft, Color.white, true);
+        GUI.Label(new Rect(rect.x + 180f, rect.y + 210f, rect.width - 252f, 88f), rewardGreeting, textStyle);
 
-        if (DrawRewardButton(rect, 92f, rewardChoiceA))
-        {
-            ChooseReward(rewardChoiceA);
-        }
-
-        if (DrawRewardButton(rect, 142f, rewardChoiceB))
-        {
-            ChooseReward(rewardChoiceB);
-        }
-
-        if (DrawRewardButton(rect, 192f, rewardChoiceC))
-        {
-            ChooseReward(rewardChoiceC);
-        }
-
-        if (DrawRewardButton(rect, 242f, rewardChoiceD))
-        {
-            ChooseReward(rewardChoiceD);
-        }
+        GUIStyle optionStyle = LabelStyle(ref choiceHintStyle, 24, TextAnchor.MiddleLeft, Color.white, true);
+        GUI.Label(new Rect(rect.x + 180f, rect.y + 310f, rect.width - 252f, 42f), rewardChoiceA, optionStyle);
+        GUI.Label(new Rect(rect.x + 180f, rect.y + 366f, rect.width - 252f, 42f), rewardChoiceB, optionStyle);
+        GUI.Label(new Rect(rect.x + 180f, rect.y + 422f, rect.width - 252f, 42f), rewardChoiceC, optionStyle);
+        GUI.Label(new Rect(rect.x + 180f, rect.y + 478f, rect.width - 252f, 42f), rewardChoiceD, optionStyle);
     }
 
-    private bool DrawRewardButton(Rect parent, float yOffset, string text)
+    private void DrawCenteredLabel(string text, int fontSize)
     {
-        Rect rect = new Rect(parent.x + 24f, parent.y + yOffset, parent.width - 48f, 38f);
-        GUIStyle style = new GUIStyle(GUI.skin.button)
-        {
-            alignment = TextAnchor.MiddleLeft,
-            fontSize = 18,
-            wordWrap = true
-        };
-        ApplyDialogueFont(style);
-
-        return GUI.Button(rect, text, style);
-    }
-
-    private void DrawCenteredLabel(string text, float y, int fontSize)
-    {
-        GUIStyle style = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = fontSize
-        };
-        ApplyDialogueFont(style);
-        style.normal.textColor = Color.white;
-
         Rect rect = GameUiStyle.InteractionPromptRect(520f, 60f);
-        GameUiStyle.DrawPanel(rect);
-        GUI.Label(rect, text, style);
+        GameUiStyle.DrawDialoguePanel(rect);
+        GUI.Label(rect, text, LabelStyle(ref centeredLabelStyle, fontSize, TextAnchor.MiddleCenter, Color.white));
     }
 
-    private void ApplyDialogueFont(GUIStyle style)
+    private GUIStyle LabelStyle(ref GUIStyle style, int fontSize, TextAnchor alignment, Color color, bool wordWrap = false)
     {
+        style = GameUiStyle.LabelStyle(ref style, fontSize, alignment, FontStyle.Normal, wordWrap);
         if (dialogueFont != null)
         {
             style.font = dialogueFont;
         }
+
+        style.normal.textColor = color;
+        return style;
     }
+
 }

@@ -1,4 +1,3 @@
-// Caches, restores, and finds old tree scene objects during the quest.
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -41,7 +40,6 @@ public partial class OldTreeInteraction
         hasCylinderOriginal = TryCacheTransform(cylinderResetTarget, out cylinderOriginalPosition, out cylinderOriginalRotation, out cylinderOriginalScale);
         hasNestOriginal = TryCacheTransform(nest, out nestOriginalPosition, out nestOriginalRotation, out nestOriginalScale);
         hasFaceOriginal = TryCacheTransform(faceResetTarget, out faceOriginalPosition, out faceOriginalRotation, out faceOriginalScale);
-        hasMushroomOriginal = TryCacheTransform(mushroomGift, out mushroomOriginalPosition, out mushroomOriginalRotation, out mushroomOriginalScale);
     }
 
     private static bool TryCacheTransform(Transform target, out Vector3 position, out Quaternion rotation, out Vector3 scale)
@@ -62,15 +60,12 @@ public partial class OldTreeInteraction
 
     private void ResetTreeToInitialState()
     {
-        DisableMushroomGlow();
         RestoreTransform(interactionTarget, hasInteractionTargetOriginal, interactionTargetOriginalPosition, interactionTargetOriginalRotation, interactionTargetOriginalScale);
         RestoreTransform(nestBranch, hasNestBranchOriginal, nestBranchOriginalPosition, nestBranchOriginalRotation, nestBranchOriginalScale);
         RestoreTransform(cylinderResetTarget, hasCylinderOriginal, cylinderOriginalPosition, cylinderOriginalRotation, cylinderOriginalScale);
         RestoreTransform(nest, hasNestOriginal, nestOriginalPosition, nestOriginalRotation, nestOriginalScale);
         RestoreTransform(faceResetTarget, hasFaceOriginal, faceOriginalPosition, faceOriginalRotation, faceOriginalScale);
-        RestoreTransform(mushroomGift, hasMushroomOriginal, mushroomOriginalPosition, mushroomOriginalRotation, mushroomOriginalScale);
         RestoreAttackCylinders();
-        lookRoot.rotation = originalRotation;
     }
 
     private static void RestoreTransform(Transform target, bool hasOriginal, Vector3 position, Quaternion rotation, Vector3 scale)
@@ -87,89 +82,17 @@ public partial class OldTreeInteraction
 
     private bool IsPlayerNear()
     {
-        Vector3 targetPosition = interactionTarget.position;
-        Vector3 playerPosition = player.position;
-        targetPosition.y = 0f;
-        playerPosition.y = 0f;
-
-        return Vector3.Distance(targetPosition, playerPosition) <= interactDistance;
+        return IsPlayerWithinDistance(interactionTarget, interactDistance);
     }
 
     private bool IsPlayerNearPeasant()
     {
-        FindPeasantGirl();
         if (peasantGirl == null || player == null)
         {
             return false;
         }
 
-        Vector3 targetPosition = peasantGirl.position;
-        Vector3 playerPosition = player.position;
-        targetPosition.y = 0f;
-        playerPosition.y = 0f;
-
-        return Vector3.Distance(targetPosition, playerPosition) <= peasantInteractDistance;
-    }
-
-    private Transform FindSceneTransform(string objectName)
-    {
-        Transform found = FindChildByName(transform, objectName);
-        if (found != null)
-        {
-            return found;
-        }
-
-        GameObject foundObject = GameObject.Find(objectName);
-        if (foundObject != null)
-        {
-            return foundObject.transform;
-        }
-
-        Transform[] allTransforms = Resources.FindObjectsOfTypeAll<Transform>();
-        for (int i = 0; i < allTransforms.Length; i++)
-        {
-            Transform candidate = allTransforms[i];
-            if (candidate != null && NamesMatch(candidate.name, objectName) && candidate.gameObject.scene.IsValid())
-            {
-                return candidate;
-            }
-        }
-
-        return null;
-    }
-
-    private static Transform FindChildByName(Transform root, string childName)
-    {
-        if (root == null || string.IsNullOrEmpty(childName))
-        {
-            return null;
-        }
-
-        if (NamesMatch(root.name, childName))
-        {
-            return root;
-        }
-
-        for (int i = 0; i < root.childCount; i++)
-        {
-            Transform found = FindChildByName(root.GetChild(i), childName);
-            if (found != null)
-            {
-                return found;
-            }
-        }
-
-        return null;
-    }
-
-    private static bool NamesMatch(string sceneName, string searchName)
-    {
-        if (string.Equals(sceneName, searchName, System.StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        return NormalizeName(sceneName) == NormalizeName(searchName);
+        return IsPlayerWithinDistance(peasantGirl, peasantInteractDistance);
     }
 
     private bool IsTargetScene()
@@ -177,23 +100,12 @@ public partial class OldTreeInteraction
         return SceneManager.GetActiveScene().name == targetSceneName;
     }
 
-    private static string NormalizeName(string value)
+    private bool IsPlayerWithinDistance(Transform target, float distance)
     {
-        if (string.IsNullOrEmpty(value))
-        {
-            return string.Empty;
-        }
-
-        System.Text.StringBuilder builder = new System.Text.StringBuilder(value.Length);
-        for (int i = 0; i < value.Length; i++)
-        {
-            char character = value[i];
-            if (char.IsLetterOrDigit(character))
-            {
-                builder.Append(char.ToLowerInvariant(character));
-            }
-        }
-
-        return builder.ToString();
+        Vector3 targetPosition = target.position;
+        Vector3 playerPosition = player.position;
+        targetPosition.y = 0f;
+        playerPosition.y = 0f;
+        return Vector3.Distance(targetPosition, playerPosition) <= distance;
     }
 }

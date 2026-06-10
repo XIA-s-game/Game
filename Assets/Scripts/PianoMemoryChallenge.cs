@@ -1,8 +1,8 @@
-// Runs the piano memory mini-game and awards the red key.
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[RequireComponent(typeof(AudioSource))]
 public class PianoMemoryChallenge : MonoBehaviour
 {
     [Header("Scene References")]
@@ -15,7 +15,7 @@ public class PianoMemoryChallenge : MonoBehaviour
     [SerializeField] private KeyCode interactKey = KeyCode.E;
     [SerializeField] private float noteSeconds = 0.42f;
     [SerializeField] private float noteGapSeconds = 0.16f;
-    [SerializeField] private float noteVolume = 0.32f;
+    [SerializeField] private float noteVolume = 1f;
 
     private static readonly string[] KeyNames = { "1 Do", "2 Re", "3 Mi", "4 Fa", "5 Sol", "6 La", "7 Si", "8 Do" };
     private static readonly float[] NoteFrequencies = { 261.63f, 293.66f, 329.63f, 349.23f, 392f, 440f, 493.88f, 523.25f };
@@ -60,13 +60,12 @@ public class PianoMemoryChallenge : MonoBehaviour
     private int inputIndex;
     private GUIStyle promptStyle;
     private GUIStyle titleStyle;
+    private GUIStyle keyButtonStyle;
+    private bool loggedFirstNote;
 
     private void Awake()
     {
-        if (audioSource == null)
-        {
-            audioSource = GetComponent<AudioSource>();
-        }
+        EnsureAudioSource();
     }
 
     private void Update()
@@ -137,18 +136,18 @@ public class PianoMemoryChallenge : MonoBehaviour
 
     private void StartChallenge()
     {
-        EnsureAudioSource();
         active = true;
-        failed = false;
-        won = false;
-        roundIndex = 0;
-        inputIndex = 0;
-        StartCoroutine(PlayCurrentRound());
+        PlayFromBeginning();
     }
 
     private void RestartChallenge()
     {
         StopAllCoroutines();
+        PlayFromBeginning();
+    }
+
+    private void PlayFromBeginning()
+    {
         failed = false;
         won = false;
         roundIndex = 0;
@@ -216,8 +215,8 @@ public class PianoMemoryChallenge : MonoBehaviour
 
     private void DrawPianoPanel()
     {
-        Rect panel = GameUiStyle.DialogueRect(230f);
-        DrawPanel(panel);
+        Rect panel = GameUiStyle.DialogueRect(280f);
+        GameUiStyle.DrawDialoguePanel(panel);
 
         string title;
         if (failed)
@@ -237,27 +236,25 @@ public class PianoMemoryChallenge : MonoBehaviour
             title = "Round " + (roundIndex + 1) + ": repeat";
         }
 
-        GUI.Label(new Rect(panel.x + 20f, panel.y + 18f, panel.width - 40f, 34f), title, GetStyle(ref titleStyle, 26, TextAnchor.MiddleCenter, FontStyle.Bold));
+        GUI.Label(new Rect(panel.x + 20f, panel.y + 128f, panel.width - 40f, 34f), title, GameUiStyle.LabelStyle(ref titleStyle, 26, TextAnchor.MiddleCenter, FontStyle.Bold));
 
         if (failed)
         {
-            GUI.Label(new Rect(panel.x + 20f, panel.y + 66f, panel.width - 40f, 30f), "Press A to restart    Press B to exit", GetStyle(ref promptStyle, 22, TextAnchor.MiddleCenter, FontStyle.Bold));
+            GUI.Label(new Rect(panel.x + 20f, panel.y + 106f, panel.width - 40f, 30f), "Press A to restart    Press B to exit", GameUiStyle.LabelStyle(ref promptStyle, 22, TextAnchor.MiddleCenter, FontStyle.Bold));
         }
         else if (won)
         {
-            GUI.Label(new Rect(panel.x + 20f, panel.y + 66f, panel.width - 40f, 30f), "Press B to exit", GetStyle(ref promptStyle, 22, TextAnchor.MiddleCenter, FontStyle.Bold));
+            GUI.Label(new Rect(panel.x + 20f, panel.y + 106f, panel.width - 40f, 30f), "Press B to exit", GameUiStyle.LabelStyle(ref promptStyle, 22, TextAnchor.MiddleCenter, FontStyle.Bold));
         }
 
         float keyWidth = (panel.width - 64f) / 8f;
+        GUIStyle keyStyle = GameUiStyle.ButtonStyle(ref keyButtonStyle, 20);
         for (int i = 0; i < 8; i++)
         {
-            Rect keyRect = new Rect(panel.x + 32f + i * keyWidth, panel.y + 112f, keyWidth - 8f, 64f);
-            if (GUI.Button(keyRect, KeyNames[i]))
+            Rect keyRect = new Rect(panel.x + 32f + i * keyWidth, panel.y + 200f, keyWidth - 8f, 64f);
+            if (GUI.Button(keyRect, KeyNames[i], keyStyle) && !playingSequence && !failed && !won)
             {
-                if (!playingSequence && !failed && !won)
-                {
-                    HandlePlayerNote(i);
-                }
+                HandlePlayerNote(i);
             }
         }
     }
@@ -265,27 +262,8 @@ public class PianoMemoryChallenge : MonoBehaviour
     private void DrawPrompt(string text)
     {
         Rect rect = GameUiStyle.InteractionPromptRect();
-        DrawPanel(rect);
-        GUI.Label(rect, text, GetStyle(ref promptStyle, 30, TextAnchor.MiddleCenter, FontStyle.Bold));
-    }
-
-    private void DrawPanel(Rect rect)
-    {
         GameUiStyle.DrawPanel(rect);
-    }
-
-    private GUIStyle GetStyle(ref GUIStyle style, int fontSize, TextAnchor alignment, FontStyle fontStyle)
-    {
-        if (style == null)
-        {
-            style = new GUIStyle(GUI.skin.label);
-        }
-
-        style.fontSize = fontSize;
-        style.alignment = alignment;
-        style.fontStyle = fontStyle;
-        style.normal.textColor = Color.white;
-        return style;
+        GUI.Label(rect, text, GameUiStyle.LabelStyle(ref promptStyle, 30, TextAnchor.MiddleCenter, FontStyle.Bold));
     }
 
     private void PlayNote(int noteIndex)
@@ -294,8 +272,36 @@ public class PianoMemoryChallenge : MonoBehaviour
         AudioClip clip = GetOrCreateNoteClip(noteIndex);
         if (clip != null && audioSource != null)
         {
-            audioSource.PlayOneShot(clip, noteVolume);
+            if (!loggedFirstNote)
+            {
+                Debug.Log("[PianoMemoryChallenge] Playing piano note audio.");
+                loggedFirstNote = true;
+            }
+
+            audioSource.PlayOneShot(clip, Mathf.Max(1f, noteVolume));
         }
+    }
+
+    private void EnsureAudioSource()
+    {
+        if (audioSource == null)
+        {
+            audioSource = GetComponent<AudioSource>();
+        }
+
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+        }
+
+        audioSource.playOnAwake = false;
+        audioSource.loop = false;
+        audioSource.mute = false;
+        audioSource.enabled = true;
+        audioSource.spatialBlend = 0f;
+        audioSource.volume = 1f;
+        audioSource.ignoreListenerVolume = true;
+        audioSource.ignoreListenerPause = true;
     }
 
     private AudioClip GetOrCreateNoteClip(int noteIndex)
@@ -313,7 +319,7 @@ public class PianoMemoryChallenge : MonoBehaviour
         {
             float t = i / (float)sampleRate;
             float envelope = Mathf.Clamp01(t / 0.02f) * Mathf.Exp(-3.2f * t);
-            samples[i] = Mathf.Sin(2f * Mathf.PI * frequency * t) * envelope * 0.65f;
+            samples[i] = Mathf.Sin(2f * Mathf.PI * frequency * t) * envelope * 0.95f;
         }
 
         clip = AudioClip.Create("PianoMemory_" + noteIndex, sampleCount, 1, sampleRate, false);
@@ -322,16 +328,39 @@ public class PianoMemoryChallenge : MonoBehaviour
         return clip;
     }
 
-    private void EnsureAudioSource()
-    {
-        if (audioSource == null)
-        {
-            audioSource = GetComponent<AudioSource>();
-        }
-    }
-
     private bool IsNearPiano()
     {
-        return player != null && piano != null && Vector3.Distance(player.position, piano.position) <= interactDistance;
+        return player != null && piano != null && GetClosestDistance(player.position, piano) <= interactDistance;
+    }
+
+    private float GetClosestDistance(Vector3 point, Transform target)
+    {
+        Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
+        float closestSqrDistance = float.PositiveInfinity;
+        bool found = false;
+
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            Collider collider = colliders[i];
+            if (collider == null)
+            {
+                continue;
+            }
+
+            Vector3 closest = collider.ClosestPoint(point);
+            float sqrDistance = (point - closest).sqrMagnitude;
+            if (sqrDistance < closestSqrDistance)
+            {
+                closestSqrDistance = sqrDistance;
+                found = true;
+            }
+        }
+
+        if (found)
+        {
+            return Mathf.Sqrt(closestSqrDistance);
+        }
+
+        return Vector3.Distance(point, target.position);
     }
 }

@@ -1,22 +1,19 @@
-// Runs old tree dialogue choices, nest lowering, and peasant girl conversation.
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public partial class OldTreeInteraction
 {
     private void ReadChoiceKeys()
     {
-        if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.Alpha1))
+        if (IsChoiceKeyPressed(KeyCode.A, KeyCode.Alpha1))
         {
             Choose(answerA);
         }
-        else if (Input.GetKeyDown(KeyCode.B) || Input.GetKeyDown(KeyCode.Alpha2))
+        else if (IsChoiceKeyPressed(KeyCode.B, KeyCode.Alpha2))
         {
             StartBranchDialogue();
         }
-        else if (Input.GetKeyDown(KeyCode.C) || Input.GetKeyDown(KeyCode.Alpha3))
+        else if (IsChoiceKeyPressed(KeyCode.C, KeyCode.Alpha3))
         {
             StartAngryAttack();
         }
@@ -55,25 +52,14 @@ public partial class OldTreeInteraction
             "Old Tree: Some birds leave eggs in smaller nests.",
             "Old Tree: When the chick hatches, the other eggs may be pushed out.",
             "Old Tree: Nature can be hard to judge.",
-            "Old Tree: I have a small test for your eyes.",
-            "Old Tree: Find the different egg before time runs out.",
-            "Old Tree: Stay focused."
-        }, StartEggChallenge);
+            "Old Tree: What would you do?"
+        }, ShowRewardChoices, true);
     }
 
     private void StartDialogue(string[] lines, System.Action onComplete, bool autoCompleteLastLine)
     {
-        if (resetCoroutine != null)
-        {
-            StopCoroutine(resetCoroutine);
-            resetCoroutine = null;
-        }
-
-        if (finalInstructionCoroutine != null)
-        {
-            StopCoroutine(finalInstructionCoroutine);
-            finalInstructionCoroutine = null;
-        }
+        StopCoroutineIfRunning(ref resetCoroutine);
+        StopCoroutineIfRunning(ref finalInstructionCoroutine);
 
         currentLines = lines;
         currentLineIndex = 0;
@@ -94,7 +80,6 @@ public partial class OldTreeInteraction
         if (currentLines != null && currentLineIndex < currentLines.Length)
         {
             currentAnswer = currentLines[currentLineIndex];
-            TryActivateSideQuestFromDialogue(currentAnswer);
 
             if (autoCompleteOnLastLine && currentLineIndex == currentLines.Length - 1)
             {
@@ -130,15 +115,14 @@ public partial class OldTreeInteraction
 
     private IEnumerator MoveNestBranchDown()
     {
-        Transform movingTarget = nestBranch != null ? nestBranch : nest;
-        if (movingTarget == null)
+        if (nestBranch == null)
         {
             StartNestDialogue();
             nestMoveCoroutine = null;
             yield break;
         }
 
-        Vector3 startPosition = movingTarget.position;
+        Vector3 startPosition = nestBranch.position;
         Vector3 targetPosition = new Vector3(startPosition.x, nestTargetY, startPosition.z);
         float elapsed = 0f;
 
@@ -146,32 +130,28 @@ public partial class OldTreeInteraction
         {
             elapsed += Time.deltaTime;
             float t = Mathf.SmoothStep(0f, 1f, elapsed / nestMoveDuration);
-            movingTarget.position = Vector3.Lerp(startPosition, targetPosition, t);
+            nestBranch.position = Vector3.Lerp(startPosition, targetPosition, t);
             yield return null;
         }
 
-        movingTarget.position = targetPosition;
+        nestBranch.position = targetPosition;
         nestMoveCoroutine = null;
         StartNestDialogue();
     }
 
     private void CloseDialogueAndReset()
     {
-        if (eggResultCoroutine != null)
-        {
-            StopCoroutine(eggResultCoroutine);
-            eggResultCoroutine = null;
-        }
-
-        ClearEggGrid();
-        DisableMushroomGlow();
-        UnlockPlayerForEggChallenge();
         currentAnswer = null;
-        eggResultText = null;
         branchFlowActive = false;
         state = DialogueState.Waiting;
         ResetTreeToInitialState();
         StartLookCoroutine(ReturnToOriginalRotation());
+    }
+
+    private void ShowRewardChoices()
+    {
+        currentAnswer = null;
+        state = DialogueState.RewardChoosing;
     }
 
     private void CloseSideQuestReminder()
@@ -183,7 +163,6 @@ public partial class OldTreeInteraction
 
     private void StartPeasantGirlDialogue()
     {
-        SetPeasantStand();
         StartDialogue(new[]
         {
             peasantFirstLine,
@@ -205,11 +184,7 @@ public partial class OldTreeInteraction
     {
         state = DialogueState.FinalInstruction;
 
-        if (finalInstructionCoroutine != null)
-        {
-            StopCoroutine(finalInstructionCoroutine);
-        }
-
+        StopCoroutineIfRunning(ref finalInstructionCoroutine);
         finalInstructionCoroutine = StartCoroutine(CloseFinalInstructionAfterDelay());
     }
 
@@ -219,21 +194,6 @@ public partial class OldTreeInteraction
 
         finalInstructionCoroutine = null;
         CloseDialogueAndReset();
-    }
-
-    private void TryActivateSideQuestFromDialogue(string line)
-    {
-        if (sideQuestActivatedOnce || string.IsNullOrEmpty(line))
-        {
-            return;
-        }
-
-        if (!line.Contains("safe shelter"))
-        {
-            return;
-        }
-
-        ActivateFairyBackstorySideQuest();
     }
 
     public void ActivateFairyBackstorySideQuest()
@@ -263,5 +223,16 @@ public partial class OldTreeInteraction
 
         PrepareSaplingPlantTargets();
         CollectFenceTargets();
+    }
+
+    private void StopCoroutineIfRunning(ref Coroutine coroutine)
+    {
+        if (coroutine == null)
+        {
+            return;
+        }
+
+        StopCoroutine(coroutine);
+        coroutine = null;
     }
 }

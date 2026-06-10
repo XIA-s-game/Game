@@ -1,4 +1,3 @@
-// Runs the old man card shuffle challenge and gives the green key on success.
 using System.Collections;
 using System.Collections.Generic;
 using AquariusMax.Fae.demo;
@@ -11,6 +10,7 @@ public class OldManCardChallenge : MonoBehaviour
 
     [Header("Scene")]
     public Transform oldMan;
+    public Transform oldManInteractPoint;
     public Transform player;
     public float interactDistance = 4f;
 
@@ -193,6 +193,7 @@ public class OldManCardChallenge : MonoBehaviour
     private readonly Vector3[] slotPositions = new Vector3[4];
     private readonly Quaternion[] slotRotations = new Quaternion[4];
     private readonly List<MonoBehaviour> disabledControllers = new List<MonoBehaviour>();
+    private GameObject[] cardObjects;
 
     private State state = State.Exploring;
     private string[] activeLines;
@@ -208,14 +209,10 @@ public class OldManCardChallenge : MonoBehaviour
     private Vector3 savedCameraPosition;
     private Quaternion savedCameraRotation;
     private Coroutine runningChallenge;
-
-    private void Awake()
-    {
-        if (playerCamera == null)
-        {
-            playerCamera = Camera.main;
-        }
-    }
+    private string currentDialogueText;
+    private string currentHintText;
+    private GUIStyle fallbackDialogueStyle;
+    private GUIStyle fallbackHintStyle;
 
     private void OnDisable()
     {
@@ -228,8 +225,6 @@ public class OldManCardChallenge : MonoBehaviour
 
     private void Update()
     {
-        EnsureCards();
-
         switch (state)
         {
             case State.Exploring:
@@ -247,6 +242,39 @@ public class OldManCardChallenge : MonoBehaviour
             case State.AwaitingCardChoice:
                 UpdateCardChoice();
                 break;
+        }
+    }
+
+    private void OnGUI()
+    {
+        if (Event.current.type != EventType.Repaint)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(currentDialogueText) && string.IsNullOrEmpty(currentHintText))
+        {
+            return;
+        }
+
+        bool promptOnly = state == State.Exploring && string.IsNullOrEmpty(currentHintText);
+        if (!string.IsNullOrEmpty(currentDialogueText) && !promptOnly)
+        {
+            Rect rect = GameUiStyle.DialogueRect(190f);
+            GameUiStyle.DrawDialoguePanel(rect);
+            GUI.Label(new Rect(rect.x + 132f, rect.y + 22f, rect.width - 128f, rect.height - 44f),
+                currentDialogueText,
+                GameUiStyle.LabelStyle(ref fallbackDialogueStyle, 26, TextAnchor.MiddleLeft, FontStyle.Bold));
+        }
+
+        string promptText = promptOnly ? currentDialogueText : currentHintText;
+        if (!string.IsNullOrEmpty(promptText))
+        {
+            Rect rect = GameUiStyle.InteractionPromptRect(520f, 60f);
+            GameUiStyle.DrawPanel(rect);
+            GUI.Label(rect,
+                promptText,
+                GameUiStyle.LabelStyle(ref fallbackHintStyle, 24, TextAnchor.MiddleCenter, FontStyle.Bold));
         }
     }
 
@@ -323,8 +351,7 @@ public class OldManCardChallenge : MonoBehaviour
         // The shuffle is preset on purpose, so the round is fair and readable.
         state = State.Shuffling;
         hasSubmittedChoice = false;
-        EnsureCards();
-        if (cards.Count < 4)
+        if (!InitializeCards())
         {
             StartDialogue(new[] { "Old Man: The cards are not ready yet." }, EndConversation);
             yield break;
@@ -678,8 +705,7 @@ public class OldManCardChallenge : MonoBehaviour
 
     private void ResetCardsToDefault()
     {
-        EnsureCards();
-        if (cards.Count < 4)
+        if (!InitializeCards())
         {
             return;
         }
@@ -762,11 +788,6 @@ public class OldManCardChallenge : MonoBehaviour
     {
         if (playerCamera == null)
         {
-            playerCamera = Camera.main;
-        }
-
-        if (playerCamera == null)
-        {
             return;
         }
 
@@ -794,19 +815,6 @@ public class OldManCardChallenge : MonoBehaviour
             for (int i = 0; i < playerControllers.Length; i++)
             {
                 DisableController(playerControllers[i]);
-            }
-        }
-
-        if (disabledControllers.Count == 0 && player != null)
-        {
-            MonoBehaviour[] behaviours = player.GetComponentsInChildren<MonoBehaviour>(true);
-            for (int i = 0; i < behaviours.Length; i++)
-            {
-                MonoBehaviour behaviour = behaviours[i];
-                if (behaviour != null && (behaviour.GetType().Name == "PlayerCharacterController" || behaviour is DemoCharacter))
-                {
-                    DisableController(behaviour);
-                }
             }
         }
 
@@ -848,24 +856,27 @@ public class OldManCardChallenge : MonoBehaviour
     {
     }
 
-    private void EnsureCards()
+    private bool InitializeCards()
     {
         if (initializedCards)
         {
-            return;
+            return cards.Count == 4;
         }
 
-        if (card_bird == null || card_castle == null || card_clean == null || card_dragon == null)
+        cardObjects = new[] { card_bird, card_castle, card_clean, card_dragon };
+        for (int i = 0; i < cardObjects.Length; i++)
         {
-            return;
+            if (cardObjects[i] == null)
+            {
+                return false;
+            }
         }
 
-        GameObject[] objects = { card_bird, card_castle, card_clean, card_dragon };
-        System.Array.Sort(objects, (left, right) => left.transform.position.x.CompareTo(right.transform.position.x));
-        for (int i = 0; i < objects.Length; i++)
+        System.Array.Sort(cardObjects, (left, right) => left.transform.position.x.CompareTo(right.transform.position.x));
+        for (int i = 0; i < cardObjects.Length; i++)
         {
-            slotPositions[i] = objects[i].transform.position;
-            slotRotations[i] = objects[i].transform.rotation;
+            slotPositions[i] = cardObjects[i].transform.position;
+            slotRotations[i] = cardObjects[i].transform.rotation;
         }
 
         cards.Clear();
@@ -875,32 +886,48 @@ public class OldManCardChallenge : MonoBehaviour
         cards.Add(new CardData(CardType.Dragon, "Dragon", card_dragon, 3));
         initializedCards = true;
         ResetCardsToDefault();
+        return true;
     }
 
     private bool IsNearOldMan()
     {
-        return player != null && oldMan != null && Vector3.Distance(player.position, oldMan.position) <= interactDistance;
+        if (player == null || oldMan == null)
+        {
+            return false;
+        }
+
+        Vector3 playerPosition = player.position;
+        Vector3 oldManPosition = oldManInteractPoint != null ? oldManInteractPoint.position : oldMan.position;
+        playerPosition.y = 0f;
+        oldManPosition.y = 0f;
+        return Vector3.Distance(playerPosition, oldManPosition) <= interactDistance;
     }
 
     private void SetUi(string dialogue, string hint)
     {
-        SetTextVisible(dialogueText, dialogue);
-        SetTextVisible(hintText, hint);
-    }
-
-    private void SetTextVisible(Text text, string value)
-    {
-        if (text == null)
+        currentDialogueText = dialogue;
+        currentHintText = hint;
+        if (dialogueText != null)
         {
-            return;
+            bool visible = !string.IsNullOrEmpty(dialogue);
+            dialogueText.text = dialogue;
+            dialogueText.enabled = visible;
+            if (dialogueText.transform.parent != null)
+            {
+                dialogueText.transform.parent.gameObject.SetActive(visible);
+            }
         }
 
-        bool visible = !string.IsNullOrEmpty(value);
-        text.text = value;
-        text.enabled = visible;
-        if (text.transform.parent != null)
+        if (hintText != null)
         {
-            text.transform.parent.gameObject.SetActive(visible);
+            bool visible = !string.IsNullOrEmpty(hint);
+            hintText.text = hint;
+            hintText.enabled = visible;
+            if (hintText.transform.parent != null)
+            {
+                hintText.transform.parent.gameObject.SetActive(visible);
+            }
         }
     }
+
 }

@@ -1,10 +1,7 @@
-// Moves an NPC or prop along route waypoints while keeping it grounded.
-using System;
 using UnityEngine;
 
 public class RouteWaypointWalker : MonoBehaviour
 {
-    [SerializeField] private Transform routeRoot;
     [SerializeField] private Transform[] routePoints;
     [SerializeField] private float moveSpeed = 2f;
     [SerializeField] private float turnSpeed = 360f;
@@ -20,13 +17,12 @@ public class RouteWaypointWalker : MonoBehaviour
 
     private int targetIndex;
     private bool hasRoute;
+    private readonly RaycastHit[] groundHits = new RaycastHit[12];
+    private Terrain[] sceneTerrains;
 
     private void Awake()
     {
-        if (animator == null)
-        {
-            animator = GetComponentInChildren<Animator>();
-        }
+        sceneTerrains = Terrain.activeTerrains;
 
         if (animator != null)
         {
@@ -37,9 +33,6 @@ public class RouteWaypointWalker : MonoBehaviour
 
     private void Start()
     {
-        LoadRoutePointsFromRoot();
-        CompactRoutePoints();
-
         hasRoute = routePoints != null && routePoints.Length > 0;
         if (!hasRoute)
         {
@@ -152,60 +145,6 @@ public class RouteWaypointWalker : MonoBehaviour
         }
     }
 
-    private void LoadRoutePointsFromRoot()
-    {
-        if (routePoints != null && routePoints.Length > 0)
-        {
-            return;
-        }
-
-        if (routeRoot == null)
-        {
-            return;
-        }
-
-        routePoints = new Transform[routeRoot.childCount];
-        for (int i = 0; i < routeRoot.childCount; i++)
-        {
-            routePoints[i] = routeRoot.GetChild(i);
-        }
-    }
-
-    private void CompactRoutePoints()
-    {
-        if (routePoints == null || routePoints.Length == 0)
-        {
-            return;
-        }
-
-        int validCount = 0;
-        for (int i = 0; i < routePoints.Length; i++)
-        {
-            if (routePoints[i] != null)
-            {
-                validCount++;
-            }
-        }
-
-        if (validCount == routePoints.Length)
-        {
-            return;
-        }
-
-        Transform[] validPoints = new Transform[validCount];
-        int writeIndex = 0;
-        for (int i = 0; i < routePoints.Length; i++)
-        {
-            if (routePoints[i] != null)
-            {
-                validPoints[writeIndex] = routePoints[i];
-                writeIndex++;
-            }
-        }
-
-        routePoints = validPoints;
-    }
-
     private void SnapToGround()
     {
         if (!followGround)
@@ -222,28 +161,44 @@ public class RouteWaypointWalker : MonoBehaviour
             return;
         }
 
-        RaycastHit[] hits = Physics.RaycastAll(rayStart, Vector3.down, groundRaycastDistance, groundMask, QueryTriggerInteraction.Ignore);
-        Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+        int hitCount = Physics.RaycastNonAlloc(rayStart, Vector3.down, groundHits, groundRaycastDistance, groundMask, QueryTriggerInteraction.Ignore);
+        float bestDistance = float.PositiveInfinity;
+        Vector3 bestPoint = Vector3.zero;
+        bool foundGround = false;
 
-        foreach (RaycastHit hit in hits)
+        for (int i = 0; i < hitCount; i++)
         {
+            RaycastHit hit = groundHits[i];
             if (hit.transform == transform || hit.transform.IsChildOf(transform))
             {
                 continue;
             }
 
-            position.y = hit.point.y + groundOffset;
+            if (hit.distance < bestDistance)
+            {
+                bestDistance = hit.distance;
+                bestPoint = hit.point;
+                foundGround = true;
+            }
+        }
+
+        if (foundGround)
+        {
+            position.y = bestPoint.y + groundOffset;
             transform.position = position;
-            return;
         }
     }
 
     private bool TrySnapToTerrain(ref Vector3 position)
     {
-        Terrain[] terrains = Terrain.activeTerrains;
-        for (int i = 0; i < terrains.Length; i++)
+        if (sceneTerrains == null || sceneTerrains.Length == 0)
         {
-            Terrain terrain = terrains[i];
+            sceneTerrains = Terrain.activeTerrains;
+        }
+
+        for (int i = 0; i < sceneTerrains.Length; i++)
+        {
+            Terrain terrain = sceneTerrains[i];
             if (terrain == null || terrain.terrainData == null)
             {
                 continue;

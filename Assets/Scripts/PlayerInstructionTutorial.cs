@@ -1,4 +1,3 @@
-// Guides the player through the first-scene controls and unlocks them step by step.
 using AquariusMax.Fae.demo;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -6,6 +5,7 @@ using UnityEngine.SceneManagement;
 public class PlayerInstructionTutorial : MonoBehaviour
 {
     private const string TutorialSceneName = "Enchanted Forest A";
+    private const string TutorialCompletedKey = "TutorialCompleted_EnchantedForestA";
     private const float StepPauseSeconds = 0.45f;
     private const float FinalMessageSeconds = 5f;
 
@@ -25,44 +25,22 @@ public class PlayerInstructionTutorial : MonoBehaviour
     private float stepStartedAt;
     private float lookAmount;
     private float moveHeldSeconds;
-    private Texture2D panelTexture;
     private GUIStyle panelStyle;
     private GUIStyle titleStyle;
     private GUIStyle messageStyle;
     private GUIStyle progressStyle;
-
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    private static void Bootstrap()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-        SceneManager.sceneLoaded += OnSceneLoaded;
-        TryCreateForScene(SceneManager.GetActiveScene());
-    }
-
-    private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        TryCreateForScene(scene);
-    }
-
-    private static void TryCreateForScene(Scene scene)
-    {
-        if (scene.name != TutorialSceneName || FindObjectOfType<PlayerInstructionTutorial>() != null)
-        {
-            return;
-        }
-
-        new GameObject("Player Instruction Tutorial").AddComponent<PlayerInstructionTutorial>();
-    }
+    private bool tutorialEnabled;
 
     private void Awake()
     {
-        DemoCharacter.TutorialActive = true;
-        DemoCharacter.TutorialAllowLook = true;
-        DemoCharacter.TutorialAllowMove = false;
-        DemoCharacter.TutorialAllowJump = false;
-        DemoCharacter.TutorialAllowCrouch = false;
-        DemoCharacter.TutorialAllowRun = false;
-        DemoCharacter.TutorialRunObserved = false;
+        tutorialEnabled = SceneManager.GetActiveScene().name == TutorialSceneName && !HasCompletedTutorial();
+        if (!tutorialEnabled)
+        {
+            enabled = false;
+            return;
+        }
+
+        ApplyTutorialFlags(true, false, false, false, false, false);
         EnterStep(TutorialStep.Look);
     }
 
@@ -140,28 +118,49 @@ public class PlayerInstructionTutorial : MonoBehaviour
     private void CompleteTutorial()
     {
         step = TutorialStep.Complete;
-        DemoCharacter.TutorialActive = false;
+        ApplyTutorialFlags(false, true, true, true, true, false);
+        PlayerPrefs.SetInt(TutorialCompletedKey, 1);
+        PlayerPrefs.Save();
         Destroy(gameObject);
+    }
+
+    public static bool HasCompletedTutorial()
+    {
+        return PlayerPrefs.GetInt(TutorialCompletedKey, 0) == 1;
+    }
+
+    public static void ClearPersistentState()
+    {
+        PlayerPrefs.DeleteKey(TutorialCompletedKey);
     }
 
     private void OnDestroy()
     {
-        DemoCharacter.TutorialActive = false;
-        DemoCharacter.TutorialAllowLook = true;
-        DemoCharacter.TutorialAllowMove = true;
-        DemoCharacter.TutorialAllowJump = true;
-        DemoCharacter.TutorialAllowCrouch = true;
-        DemoCharacter.TutorialAllowRun = true;
-        DemoCharacter.TutorialRunObserved = false;
-        if (panelTexture != null)
+        if (tutorialEnabled)
         {
-            Destroy(panelTexture);
+            ApplyTutorialFlags(false, true, true, true, true, false);
         }
+
+        if (panelStyle != null && panelStyle.normal.background != null)
+        {
+            Destroy(panelStyle.normal.background);
+        }
+    }
+
+    private static void ApplyTutorialFlags(bool active, bool allowMove, bool allowJump, bool allowCrouch, bool allowRun, bool runObserved)
+    {
+        DemoCharacter.TutorialActive = active;
+        DemoCharacter.TutorialAllowLook = true;
+        DemoCharacter.TutorialAllowMove = allowMove;
+        DemoCharacter.TutorialAllowJump = allowJump;
+        DemoCharacter.TutorialAllowCrouch = allowCrouch;
+        DemoCharacter.TutorialAllowRun = allowRun;
+        DemoCharacter.TutorialRunObserved = runObserved;
     }
 
     private void OnGUI()
     {
-        if (step == TutorialStep.Complete || Time.time - stepStartedAt < StepPauseSeconds)
+        if (Event.current.type != EventType.Repaint || step == TutorialStep.Complete || Time.time - stepStartedAt < StepPauseSeconds)
         {
             return;
         }
@@ -192,10 +191,10 @@ public class PlayerInstructionTutorial : MonoBehaviour
         }
 
         panelStyle = new GUIStyle(GUI.skin.box);
-        panelTexture = new Texture2D(1, 1);
-        panelTexture.SetPixel(0, 0, new Color(0.035f, 0.055f, 0.08f, 0.92f));
-        panelTexture.Apply();
-        panelStyle.normal.background = panelTexture;
+        Texture2D panelBackground = new Texture2D(1, 1);
+        panelBackground.SetPixel(0, 0, new Color(0.035f, 0.055f, 0.08f, 0.92f));
+        panelBackground.Apply();
+        panelStyle.normal.background = panelBackground;
         panelStyle.normal.textColor = Color.white;
         panelStyle.padding = new RectOffset(18, 18, 14, 14);
 
