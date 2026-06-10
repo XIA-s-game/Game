@@ -1,8 +1,5 @@
-// Runs the maze welcome, guard quiz, wrong-answer reset, and second page reward.
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public partial class ChapterTwoPuzzle
 {
@@ -33,13 +30,7 @@ public partial class ChapterTwoPuzzle
     private void StartQuiz()
     {
         BuildQuizQuestions();
-        currentQuestionIndex = 0;
-        correctAnswerCount = 0;
-        wrongAnswerCount = 0;
-        quizFeedback = null;
-        quizPassedAfterFeedback = false;
-        quizFailedAfterFeedback = false;
-        showingQuizFeedback = false;
+        ResetQuizProgress();
         state = FlowState.Quiz;
     }
 
@@ -150,24 +141,16 @@ public partial class ChapterTwoPuzzle
 
     private void ResetMazeAfterWrongAnswer()
     {
-        // Two wrong answers means the player has to walk the maze again.
         state = FlowState.Exploring;
         quizStarted = false;
         exitedMaze = false;
         mazeOpened = true;
-        currentQuestionIndex = 0;
-        correctAnswerCount = 0;
-        wrongAnswerCount = 0;
-        showingQuizFeedback = false;
-        quizPassedAfterFeedback = false;
-        quizFailedAfterFeedback = false;
-        quizFeedback = null;
+        ResetQuizProgress();
 
         if (mazeBlock != null)
         {
             mazeBlock.SetActive(true);
             mazeBlock.transform.position = openedMazeBlockPosition;
-            SetCollidersEnabled(mazeBlock, true);
         }
 
         if (guard != null && guardOriginalPositionReady)
@@ -181,22 +164,27 @@ public partial class ChapterTwoPuzzle
 
     private void CompleteSecondPageReward()
     {
-        // The guard challenge is done; open the next route and drop the page into the backpack.
         quizCompleted = true;
         state = FlowState.Exploring;
+        ResetQuizProgress();
         AddInventoryItem(secondPageItemName);
         ShowSystemPrompt(quizPassedPrompt, 3f);
         DropAirWallTwo();
     }
 
-    private void DropAirWallTwo()
+    private void DropAirWallTwoOnStartIfNeeded()
     {
-        if (airWallTwoDropped)
+        if (!dropAirWallTwoOnStart)
         {
             return;
         }
 
-        if (airWallTwo == null)
+        DropAirWallTwo();
+    }
+
+    private void DropAirWallTwo()
+    {
+        if (airWallTwoDropped || airWallTwo == null)
         {
             return;
         }
@@ -255,22 +243,23 @@ public partial class ChapterTwoPuzzle
 
     private void OpenMaze()
     {
-        if (!mazeOpened)
+        if (mazeOpened)
         {
-            mazeOpened = true;
-            if (guard != null)
-            {
-                guard.position += Vector3.right * guardMoveRightDistance;
-            }
+            return;
+        }
 
-            RemoveInventoryItem(mazePassItemName);
+        mazeOpened = true;
+        if (guard != null)
+        {
+            guard.position += Vector3.right * guardMoveRightDistance;
+        }
 
-            if (mazeBlock != null)
-            {
-                mazeBlock.SetActive(true);
-                mazeBlock.transform.position = openedMazeBlockPosition;
-                SetCollidersEnabled(mazeBlock, true);
-            }
+        RemoveInventoryItem(mazePassItemName);
+
+        if (mazeBlock != null)
+        {
+            mazeBlock.SetActive(true);
+            mazeBlock.transform.position = openedMazeBlockPosition;
         }
     }
 
@@ -300,5 +289,16 @@ public partial class ChapterTwoPuzzle
         questions.Add(new Question("Patience", "You fail to learn a spell after many tries. What now?", new[] { "Try a new method", "Quit", "Argue" }, 0, "Patience also means adjusting your method."));
         questions.Add(new Question("Patience", "A seed has not grown for a month. What do you do?", new[] { "Give up", "Check the conditions", "Throw away the soil" }, 1, "Patience looks for the reason before quitting."));
         questions.Add(new Question("Patience", "You are lost and keep returning to the same place. What helps?", new[] { "Cry", "Mark the path", "Run blindly" }, 1, "Patience learns from failure."));
+    }
+
+    private void ResetQuizProgress()
+    {
+        currentQuestionIndex = 0;
+        correctAnswerCount = 0;
+        wrongAnswerCount = 0;
+        quizFeedback = null;
+        quizPassedAfterFeedback = false;
+        quizFailedAfterFeedback = false;
+        showingQuizFeedback = false;
     }
 }

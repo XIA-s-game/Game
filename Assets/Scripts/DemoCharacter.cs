@@ -1,4 +1,3 @@
-// Controls the fae demo player and exposes a few locks used by puzzle cutscenes.
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -122,6 +121,7 @@ namespace AquariusMax.Fae.demo
             {
                 animator = GetComponentInChildren<Animator>();
             }
+            ConfigureAnimator();
 
             if (fitControllerToVisibleCharacter)
             {
@@ -134,18 +134,72 @@ namespace AquariusMax.Fae.demo
             CacheAnimatorParameters();
 
             characterTargetRot = transform.localRotation;
-            cameraTargetRot = cam.transform.localRotation;
+            cameraTargetRot = cam != null ? cam.transform.localRotation : Quaternion.identity;
 
             Cursor.visible = false;
             Cursor.lockState = CursorLockMode.Locked;
         }
 
+        public void SetAnimator(Animator targetAnimator)
+        {
+            if (targetAnimator == null)
+            {
+                return;
+            }
+
+            animator = targetAnimator;
+            ConfigureAnimator();
+            currentAnimationStateHash = 0;
+            CacheAnimatorParameters();
+        }
+
+        public void SetCollisionOptions(bool blockSolid, bool preciseBodyCollision)
+        {
+            blockSolidObstacles = blockSolid;
+            usePreciseBodyCollision = preciseBodyCollision;
+        }
+
+        public void ClearMotionState()
+        {
+            moveInput = Vector2.zero;
+            move = Vector3.zero;
+            jumpPressed = false;
+            isJumping = false;
+            isCrouching = false;
+            crouchEndsAt = -1f;
+        }
+
+        public static void ResetControlFlags()
+        {
+            LockPlayerInput = false;
+            LockMovementInput = false;
+            ForceWalkAnimation = false;
+            UseLookPadInput = false;
+            LookPadInput = Vector2.zero;
+            TutorialActive = false;
+            TutorialAllowLook = false;
+            TutorialAllowMove = false;
+            TutorialAllowJump = false;
+            TutorialAllowCrouch = false;
+            TutorialAllowRun = false;
+            TutorialRunObserved = false;
+        }
+
+        public static void SetControlLocked(bool locked)
+        {
+            LockPlayerInput = locked;
+            LockMovementInput = locked;
+            ForceWalkAnimation = false;
+            UseLookPadInput = false;
+            LookPadInput = Vector2.zero;
+        }
+
         private void FitControllerToVisibleCharacter()
         {
-            Renderer[] renderers = GetComponentsInChildren<Renderer>();
             bool hasBounds = false;
             Bounds worldBounds = new Bounds(transform.position, Vector3.zero);
 
+            Renderer[] renderers = GetComponentsInChildren<Renderer>();
             foreach (Renderer renderer in renderers)
             {
                 if (renderer == null || renderer.transform.GetComponentInParent<Camera>() != null)
@@ -217,7 +271,17 @@ namespace AquariusMax.Fae.demo
 
         void CameraLook()
         {
+            if (cam == null)
+            {
+                return;
+            }
+
             if (LockPlayerInput || (TutorialActive && !TutorialAllowLook))
+            {
+                return;
+            }
+
+            if (cam == null)
             {
                 return;
             }
@@ -305,10 +369,8 @@ namespace AquariusMax.Fae.demo
                 speed = crouchSpeed;
             }
 
-            // always move along the camera forward as it is the direction that it being aimed at
             Vector3 desiredMove = transform.forward * moveInput.y + transform.right * moveInput.x;
 
-            // get a normal for the surface that is being touched to move along it
             RaycastHit hitInfo;
             Physics.SphereCast(transform.position, charControl.radius, Vector3.down, out hitInfo,
                                charControl.height / 2f, Physics.AllLayers, QueryTriggerInteraction.Ignore);
@@ -522,10 +584,10 @@ namespace AquariusMax.Fae.demo
 
         private bool TryGetVisibleBounds(out Bounds bounds)
         {
-            Renderer[] renderers = GetComponentsInChildren<Renderer>();
             bool hasBounds = false;
             bounds = new Bounds(transform.position, Vector3.zero);
 
+            Renderer[] renderers = GetComponentsInChildren<Renderer>();
             foreach (Renderer renderer in renderers)
             {
                 if (renderer == null || renderer.transform.GetComponentInParent<Camera>() != null)
@@ -652,6 +714,19 @@ namespace AquariusMax.Fae.demo
             {
                 animatorParameters.Add(parameter.nameHash);
             }
+        }
+
+        private void ConfigureAnimator()
+        {
+            if (animator == null)
+            {
+                return;
+            }
+
+            animator.applyRootMotion = false;
+            animator.updateMode = AnimatorUpdateMode.Normal;
+            animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            animator.enabled = true;
         }
 
         private bool HasParameter(string parameterName)

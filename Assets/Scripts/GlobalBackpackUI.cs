@@ -1,19 +1,22 @@
-// Keeps a small global backpack list visible across the adventure scenes.
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class GlobalBackpackUI : MonoBehaviour
 {
+    private const string SaveItemsKey = "BackpackItems";
+
     [SerializeField] private string menuSceneName = "MainMenu";
     [SerializeField] private string menuSceneAlias = "Mainmenu";
 
     private static GlobalBackpackUI instance;
+    private static bool enabledForGameSession;
 
     private readonly Dictionary<string, int> itemCounts = new Dictionary<string, int>();
     private readonly List<string> itemOrder = new List<string>();
     private bool inventoryOpen;
     private GUIStyle labelStyle;
+    private GUIStyle titleStyle;
 
     public static void AddItem(string itemName, int amount = 1)
     {
@@ -50,6 +53,41 @@ public class GlobalBackpackUI : MonoBehaviour
         SetItemCount(itemName, 0);
     }
 
+    public static void EnableForGameSession()
+    {
+        enabledForGameSession = true;
+    }
+
+    public static void DisableForGameSession()
+    {
+        enabledForGameSession = false;
+        if (instance != null)
+        {
+            instance.inventoryOpen = false;
+        }
+    }
+
+    public static void ClearAllItems()
+    {
+        if (instance == null)
+        {
+            PlayerPrefs.DeleteKey(SaveItemsKey);
+            return;
+        }
+
+        instance.itemCounts.Clear();
+        instance.itemOrder.Clear();
+        instance.SaveItems();
+    }
+
+    public static void SaveNow()
+    {
+        if (instance != null)
+        {
+            instance.SaveItems();
+        }
+    }
+
     private void Awake()
     {
         if (instance != null && instance != this)
@@ -59,12 +97,26 @@ public class GlobalBackpackUI : MonoBehaviour
         }
 
         instance = this;
-        DontDestroyOnLoad(gameObject);
+        LoadItems();
+
+        if (IsMenuScene())
+        {
+            enabledForGameSession = false;
+            inventoryOpen = false;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (instance == this)
+        {
+            instance = null;
+        }
     }
 
     private void Update()
     {
-        if (IsMenuScene())
+        if (IsMenuScene() || !enabledForGameSession)
         {
             return;
         }
@@ -77,7 +129,7 @@ public class GlobalBackpackUI : MonoBehaviour
 
     private void OnGUI()
     {
-        if (IsMenuScene())
+        if (Event.current.type != EventType.Repaint || IsMenuScene() || !enabledForGameSession)
         {
             return;
         }
@@ -99,6 +151,7 @@ public class GlobalBackpackUI : MonoBehaviour
         }
 
         itemCounts[itemName] += amount;
+        SaveItems();
     }
 
     private void SetCount(string itemName, int count)
@@ -112,6 +165,7 @@ public class GlobalBackpackUI : MonoBehaviour
         {
             itemCounts.Remove(itemName);
             itemOrder.Remove(itemName);
+            SaveItems();
             return;
         }
 
@@ -121,6 +175,7 @@ public class GlobalBackpackUI : MonoBehaviour
         }
 
         itemCounts[itemName] = count;
+        SaveItems();
     }
 
     private void Remove(string itemName, int amount)
@@ -135,28 +190,37 @@ public class GlobalBackpackUI : MonoBehaviour
 
     private bool IsMenuScene()
     {
-        string sceneName = SceneManager.GetActiveScene().name;
+        return IsMenuSceneName(SceneManager.GetActiveScene().name);
+    }
+
+    private bool IsMenuSceneName(string sceneName)
+    {
         return string.Equals(sceneName, menuSceneName, System.StringComparison.OrdinalIgnoreCase) ||
             string.Equals(sceneName, menuSceneAlias, System.StringComparison.OrdinalIgnoreCase);
     }
 
     private void DrawBackpack()
     {
-        float width = inventoryOpen ? 250f : 118f;
-        float height = inventoryOpen ? Mathf.Min(260f, 70f + Mathf.Max(1, itemOrder.Count) * 28f) : 48f;
-        Rect rect = GameUiStyle.BackpackRect(width, height);
-        GameUiStyle.DrawPanel(rect);
-
-        GUI.Label(new Rect(rect.x + 8f, rect.y + 8f, rect.width - 16f, 34f), "Backpack B", GetLabelStyle(20, TextAnchor.MiddleCenter, FontStyle.Bold));
-
         if (!inventoryOpen)
         {
             return;
         }
 
+        float width = inventoryOpen ? 420f : 190f;
+        float height = inventoryOpen ? Mathf.Min(460f, 118f + Mathf.Max(1, itemOrder.Count) * 48f) : 128f;
+        Rect rect = GameUiStyle.BackpackRect(width, height);
+
+        GameUiStyle.DrawPanel(rect);
+        Rect bagRect = new Rect(rect.x + rect.width - 112f, rect.y + 14f, 92f, 76f);
+        GameUiStyle.DrawBag(bagRect);
+        GUI.Label(new Rect(rect.x + 28f, rect.y + 18f, rect.width - 154f, 54f), "Backpack", GameUiStyle.LabelStyle(ref titleStyle, 22, TextAnchor.MiddleLeft, FontStyle.Bold));
+        GUI.Label(new Rect(rect.x + 28f, rect.y + 70f, rect.width - 56f, 32f), "Press B to close", GameUiStyle.LabelStyle(ref labelStyle, 12, TextAnchor.MiddleLeft));
+
+        float listY = rect.y + 118f;
+
         if (itemOrder.Count == 0)
         {
-            GUI.Label(new Rect(rect.x + 16f, rect.y + 52f, rect.width - 32f, 26f), "Empty", GetLabelStyle(18, TextAnchor.MiddleLeft, FontStyle.Normal));
+            GUI.Label(new Rect(rect.x + 34f, listY, rect.width - 68f, 42f), "Empty", GameUiStyle.LabelStyle(ref labelStyle, 16, TextAnchor.MiddleLeft));
             return;
         }
 
@@ -169,12 +233,48 @@ public class GlobalBackpackUI : MonoBehaviour
             }
 
             string text = count > 1 ? itemName + " x" + count : itemName;
-            GUI.Label(new Rect(rect.x + 16f, rect.y + 52f + i * 28f, rect.width - 32f, 26f), text, GetLabelStyle(18, TextAnchor.MiddleLeft, FontStyle.Normal));
+            GUI.Label(new Rect(rect.x + 34f, listY + i * 48f, rect.width - 68f, 42f), text, GameUiStyle.LabelStyle(ref labelStyle, 15, TextAnchor.MiddleLeft));
         }
     }
 
-    private GUIStyle GetLabelStyle(int fontSize, TextAnchor alignment, FontStyle fontStyle)
+    private void SaveItems()
     {
-        return GameUiStyle.LabelStyle(ref labelStyle, fontSize, alignment, fontStyle);
+        List<string> entries = new List<string>();
+        for (int i = 0; i < itemOrder.Count; i++)
+        {
+            string itemName = itemOrder[i];
+            if (itemCounts.TryGetValue(itemName, out int count) && count > 0)
+            {
+                entries.Add(itemName.Replace("|", string.Empty) + "|" + count);
+            }
+        }
+
+        PlayerPrefs.SetString(SaveItemsKey, string.Join("\n", entries.ToArray()));
+        PlayerPrefs.Save();
+    }
+
+    private void LoadItems()
+    {
+        itemCounts.Clear();
+        itemOrder.Clear();
+
+        string saved = PlayerPrefs.GetString(SaveItemsKey, string.Empty);
+        if (string.IsNullOrEmpty(saved))
+        {
+            return;
+        }
+
+        string[] entries = saved.Split('\n');
+        for (int i = 0; i < entries.Length; i++)
+        {
+            string[] parts = entries[i].Split('|');
+            if (parts.Length != 2 || !int.TryParse(parts[1], out int count) || count <= 0)
+            {
+                continue;
+            }
+
+            itemCounts[parts[0]] = count;
+            itemOrder.Add(parts[0]);
+        }
     }
 }

@@ -1,94 +1,57 @@
-// Sets up the final Meryl scene, book interaction, cutscene, and ending handoff.
 using System.Collections;
-using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using AquariusMax.Fae.demo;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.Video;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
 public class MerylSceneController : MonoBehaviour
 {
     [Header("Player Setup")]
     [SerializeField] private string playerName = "AQM_FPS_Character";
     [SerializeField] private string visibleHeroName = "Walking";
-    [SerializeField] private string playerPrefabAssetPath = "Assets/Aquarius Fantasy - Fae Pack/Aquarius Max Character, Scripts/AQM_FPS_Character.prefab";
-    [SerializeField] private string visibleHeroAssetPath = "Assets/character/Walking.fbx";
-    [SerializeField] private string visibleHeroAnimatorControllerPath = "Assets/character/PlayerAnimator.controller";
     [SerializeField] private Vector3 playerCameraLocalPosition = new Vector3(0f, 2.25f, -1.6f);
-    [SerializeField] private Vector3 visibleHeroLocalPosition = new Vector3(0f, -0.128f, 0.349f);
-    [SerializeField] private float visibleHeroScale = 0.42f;
-    [SerializeField] private float visibleHeroFootGroundOffset = 0f;
+    [SerializeField] private Camera sceneMainCamera;
 
     [Header("Scene Flow")]
     [SerializeField] private float respawnFallY = -10f;
     [SerializeField] private float spawnLift = 0.02f;
-    [SerializeField] private float floorThickness = 0.3f;
-    [SerializeField] private float minFloorWidth = 0.8f;
     [SerializeField] private float groundRayStartHeight = 25f;
     [SerializeField] private float groundRayDistance = 80f;
-    [SerializeField] private float interactionDistance = 1.9f;
-    [SerializeField] private float endingLineDuration = 5f;
+    [SerializeField] private float ltTriggerDistance = 1.5f;
     [SerializeField] private float fallRespawnDelay = 5f;
 
-    private readonly string[] ltNames = { "lt1", "lt2", "lt3", "lt4", "lt5", "lt6", "lt7", "lt8", "lt9", "lt10" };
-    private readonly string[] endingLines =
-    {
-        "You entered the forest looking for magic.",
-        "You leave as a light in many hearts.",
-        "Keep going. The path to becoming a great mage is long.",
-        "To be continued in Magic Forest."
-    };
-
-    private readonly Dictionary<Collider, string> walkableGroundByCollider = new Dictionary<Collider, string>();
-    private readonly List<GameObject> generatedFloorObjects = new List<GameObject>();
+    [Header("Scene References")]
+    [SerializeField] private GameObject playerObject;
+    [SerializeField] private GameObject endObject;
+    [SerializeField] private Canvas uiCanvas;
+    [SerializeField] private GameObject promptPanelObject;
+    [SerializeField] private Text promptText;
+    [SerializeField] private GameObject videoOverlayObject;
+    [SerializeField] private RawImage videoImage;
+    [SerializeField] private AspectRatioFitter videoAspectFitter;
+    [SerializeField] private VideoPlayer videoPlayer;
+    [SerializeField] private AudioSource videoAudioSource;
 
     private Scene activeScene;
     private GameObject player;
     private CharacterController playerController;
-    private MonoBehaviour demoCharacterBehaviour;
+    private DemoCharacter demoCharacter;
     private Transform visibleHero;
-
-    private GameObject startObject;
-    private GameObject endObject;
-    private GameObject platformObject;
-    private GameObject stonePlatformObject;
-    private GameObject stoneObject;
-    private GameObject magicBoxLowObject;
-    private GameObject pictureObject;
-    private GameObject bookObject;
-
-    private Canvas uiCanvas;
-    private GameObject promptPanelObject;
-    private Text promptText;
-    private Image blackOverlay;
-    private Text endingText;
-    private GameObject videoOverlayObject;
-    private RawImage videoImage;
-    private AspectRatioFitter videoAspectFitter;
-
-    private VideoPlayer videoPlayer;
-    private AudioSource videoAudioSource;
     private RenderTexture activeVideoTexture;
     private bool videoFinished;
     private bool lt1Triggered;
-    private bool endingStarted;
-    private bool canInteractWithBook;
     private bool bootstrapComplete;
     private float fallBelowThresholdStartedAt = -1f;
+    private Vector3 initialPlayerPosition;
+    private bool hasInitialPlayerPosition;
 
     private enum FlowState
     {
         Bootstrapping,
         FreeRoam,
-        Lt1Sequence,
-        AwaitBookPickup,
-        Ending
+        Lt1Sequence
     }
 
     private FlowState flowState = FlowState.Bootstrapping;
@@ -96,17 +59,137 @@ public class MerylSceneController : MonoBehaviour
     private void Awake()
     {
         activeScene = SceneManager.GetActiveScene();
-        CacheSceneReferences();
-        EnsureUi();
-        EnsureVideoPlayer();
-        SetInitialSceneVisibility();
+        player = playerObject;
+
+        if (uiCanvas == null)
+        {
+            GameObject canvasObject = new GameObject("MerylSceneUI");
+            canvasObject.transform.SetParent(transform, false);
+
+            uiCanvas = canvasObject.AddComponent<Canvas>();
+            uiCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            uiCanvas.sortingOrder = 9999;
+
+            CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+
+            canvasObject.AddComponent<GraphicRaycaster>();
+        }
+
+        if (promptPanelObject == null)
+        {
+            promptPanelObject = new GameObject("PromptPanel");
+            promptPanelObject.transform.SetParent(uiCanvas.transform, false);
+
+            Image promptPanelImage = promptPanelObject.AddComponent<Image>();
+            promptPanelImage.color = new Color(0.04f, 0.06f, 0.06f, 0.78f);
+
+            RectTransform promptPanelRect = promptPanelObject.GetComponent<RectTransform>();
+            promptPanelRect.anchorMin = new Vector2(0.5f, 0f);
+            promptPanelRect.anchorMax = new Vector2(0.5f, 0f);
+            promptPanelRect.pivot = new Vector2(0.5f, 0f);
+            promptPanelRect.sizeDelta = new Vector2(900f, 80f);
+            promptPanelRect.anchoredPosition = new Vector2(0f, 74f);
+        }
+
+        if (promptText == null)
+        {
+            GameObject textObject = new GameObject("PromptText");
+            textObject.transform.SetParent(promptPanelObject.transform, false);
+
+            promptText = textObject.AddComponent<Text>();
+            promptText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            promptText.fontSize = 34;
+            promptText.alignment = TextAnchor.MiddleCenter;
+            promptText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            promptText.verticalOverflow = VerticalWrapMode.Overflow;
+            promptText.color = Color.white;
+
+            RectTransform promptRect = promptText.rectTransform;
+            promptRect.anchorMin = Vector2.zero;
+            promptRect.anchorMax = Vector2.one;
+            promptRect.offsetMin = new Vector2(18f, 8f);
+            promptRect.offsetMax = new Vector2(-18f, -8f);
+        }
+
+        if (videoOverlayObject == null)
+        {
+            videoOverlayObject = new GameObject("VideoOverlay");
+            videoOverlayObject.transform.SetParent(uiCanvas.transform, false);
+
+            Image background = videoOverlayObject.AddComponent<Image>();
+            background.color = Color.black;
+
+            RectTransform overlayRect = videoOverlayObject.GetComponent<RectTransform>();
+            overlayRect.anchorMin = Vector2.zero;
+            overlayRect.anchorMax = Vector2.one;
+            overlayRect.offsetMin = Vector2.zero;
+            overlayRect.offsetMax = Vector2.zero;
+            videoOverlayObject.SetActive(false);
+        }
+
+        if (videoImage == null)
+        {
+            GameObject imageObject = new GameObject("VideoImage");
+            imageObject.transform.SetParent(videoOverlayObject.transform, false);
+
+            videoImage = imageObject.AddComponent<RawImage>();
+            videoImage.color = Color.white;
+
+            RectTransform imageRect = videoImage.rectTransform;
+            imageRect.anchorMin = Vector2.zero;
+            imageRect.anchorMax = Vector2.one;
+            imageRect.offsetMin = Vector2.zero;
+            imageRect.offsetMax = Vector2.zero;
+        }
+
+        if (videoAspectFitter == null)
+        {
+            videoAspectFitter = videoImage.gameObject.AddComponent<AspectRatioFitter>();
+            videoAspectFitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+            videoAspectFitter.aspectRatio = 16f / 9f;
+        }
+
+        if (videoPlayer == null)
+        {
+            videoPlayer = gameObject.GetComponent<VideoPlayer>();
+        }
+
+        if (videoPlayer == null)
+        {
+            videoPlayer = gameObject.AddComponent<VideoPlayer>();
+        }
+
+        if (videoAudioSource == null)
+        {
+            videoAudioSource = gameObject.GetComponent<AudioSource>();
+        }
+
+        if (videoAudioSource == null)
+        {
+            videoAudioSource = gameObject.AddComponent<AudioSource>();
+        }
+
+        videoAudioSource.playOnAwake = false;
+        videoAudioSource.loop = false;
+        videoAudioSource.spatialBlend = 0f;
+
+        videoPlayer.playOnAwake = false;
+        videoPlayer.waitForFirstFrame = false;
+        videoPlayer.skipOnDrop = true;
+        videoPlayer.loopPointReached -= HandleVideoFinished;
+        videoPlayer.loopPointReached += HandleVideoFinished;
+        videoPlayer.errorReceived -= HandleVideoError;
+        videoPlayer.errorReceived += HandleVideoError;
+
+        SetPromptText(string.Empty);
     }
 
     private IEnumerator Start()
     {
         yield return null;
 
-        BuildWalkableGround();
         SetupPlayerForMeryl();
         RespawnPlayerToStart();
 
@@ -130,352 +213,82 @@ public class MerylSceneController : MonoBehaviour
             return;
         }
 
-        if (flowState != FlowState.Ending)
+        if (player.transform.position.y < respawnFallY)
         {
-            if (player.transform.position.y < respawnFallY)
+            if (fallBelowThresholdStartedAt < 0f)
             {
-                if (fallBelowThresholdStartedAt < 0f)
-                {
-                    fallBelowThresholdStartedAt = Time.time;
-                }
-                else if (Time.time - fallBelowThresholdStartedAt >= fallRespawnDelay)
-                {
-                    RespawnPlayerToStart();
-                }
+                fallBelowThresholdStartedAt = Time.time;
             }
-            else
+            else if (Time.time - fallBelowThresholdStartedAt >= fallRespawnDelay)
             {
-                fallBelowThresholdStartedAt = -1f;
+                RespawnPlayerToStart();
             }
         }
+        else
+        {
+            fallBelowThresholdStartedAt = -1f;
+        }
 
-        if (!lt1Triggered && flowState == FlowState.FreeRoam && IsStandingOnGround("lt1"))
+        if (!lt1Triggered && flowState == FlowState.FreeRoam && IsNearObject(endObject, ltTriggerDistance))
         {
             StartCoroutine(HandleLt1Sequence());
         }
-
-        UpdateBookPrompt();
-    }
-
-    private void CacheSceneReferences()
-    {
-        startObject = FindSceneObject("start");
-        endObject = FindSceneObject("end");
-        platformObject = FindSceneObject("platform");
-        stonePlatformObject = FindSceneObject("stone_platform");
-        stoneObject = FindSceneObject("stone");
-        magicBoxLowObject = FindSceneObject("Magic_box_low");
-        pictureObject = FindSceneObject("picture");
-        bookObject = FindSceneObject("book");
-    }
-
-    private void SetInitialSceneVisibility()
-    {
-        if (pictureObject != null)
-        {
-            pictureObject.SetActive(false);
-        }
-
-        if (magicBoxLowObject != null)
-        {
-            magicBoxLowObject.SetActive(false);
-        }
-
-        if (bookObject != null)
-        {
-            bookObject.SetActive(false);
-        }
-    }
-
-    private void BuildWalkableGround()
-    {
-        // The imported props have messy collision, so this scene uses clean invisible floors instead.
-        ClearGeneratedFloors();
-        walkableGroundByCollider.Clear();
-
-        Collider[] sceneColliders = Resources.FindObjectsOfTypeAll<Collider>();
-        for (int i = 0; i < sceneColliders.Length; i++)
-        {
-            Collider collider = sceneColliders[i];
-            if (collider == null || collider.gameObject.scene != activeScene)
-            {
-                continue;
-            }
-
-            collider.enabled = false;
-        }
-
-        CreateWalkableFloor(startObject, "start");
-        CreateWalkableFloor(endObject, "end");
-        CreateWalkableFloor(platformObject, "platform");
-        CreateWalkableFloor(stonePlatformObject != null ? stonePlatformObject : stoneObject, "stone_platform");
-
-        for (int i = 0; i < ltNames.Length; i++)
-        {
-            CreateWalkableFloor(FindSceneObject(ltNames[i]), ltNames[i]);
-        }
-    }
-
-    private void ClearGeneratedFloors()
-    {
-        for (int i = generatedFloorObjects.Count - 1; i >= 0; i--)
-        {
-            if (generatedFloorObjects[i] != null)
-            {
-                Destroy(generatedFloorObjects[i]);
-            }
-        }
-
-        generatedFloorObjects.Clear();
-    }
-
-    private void CreateWalkableFloor(GameObject sourceObject, string groundName)
-    {
-        if (sourceObject == null)
-        {
-            return;
-        }
-
-        if (!TryGetWalkableFloorBounds(sourceObject, out Bounds bounds))
-        {
-            return;
-        }
-
-        float sizeX = Mathf.Max(bounds.size.x, minFloorWidth);
-        float sizeZ = Mathf.Max(bounds.size.z, minFloorWidth);
-        Vector3 position = new Vector3(bounds.center.x, bounds.max.y - floorThickness * 0.5f, bounds.center.z);
-
-        GameObject floorObject = new GameObject("MerylFloor_" + groundName);
-        floorObject.transform.SetParent(transform, true);
-        floorObject.transform.position = position;
-        floorObject.transform.rotation = Quaternion.identity;
-
-        BoxCollider floorCollider = floorObject.AddComponent<BoxCollider>();
-        floorCollider.size = new Vector3(sizeX, floorThickness, sizeZ);
-        floorCollider.isTrigger = false;
-
-        walkableGroundByCollider[floorCollider] = groundName;
-        generatedFloorObjects.Add(floorObject);
-    }
-
-    private bool TryGetWalkableFloorBounds(GameObject target, out Bounds bounds)
-    {
-        if (TryGetColliderBounds(target, out bounds))
-        {
-            return true;
-        }
-
-        return TryGetRendererBounds(target, out bounds);
-    }
-
-    private bool TryGetColliderBounds(GameObject target, out Bounds bounds)
-    {
-        Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
-        bool hasBounds = false;
-        bounds = new Bounds(target.transform.position, Vector3.zero);
-
-        for (int i = 0; i < colliders.Length; i++)
-        {
-            Collider collider = colliders[i];
-            if (collider == null)
-            {
-                continue;
-            }
-
-            if (!hasBounds)
-            {
-                bounds = collider.bounds;
-                hasBounds = true;
-            }
-            else
-            {
-                bounds.Encapsulate(collider.bounds);
-            }
-        }
-
-        return hasBounds;
-    }
-
-    private bool TryGetRendererBounds(GameObject target, out Bounds bounds)
-    {
-        Renderer[] renderers = target.GetComponentsInChildren<Renderer>(true);
-        bool hasBounds = false;
-        bounds = new Bounds(target.transform.position, Vector3.zero);
-
-        for (int i = 0; i < renderers.Length; i++)
-        {
-            Renderer renderer = renderers[i];
-            if (renderer == null)
-            {
-                continue;
-            }
-
-            if (!hasBounds)
-            {
-                bounds = renderer.bounds;
-                hasBounds = true;
-            }
-            else
-            {
-                bounds.Encapsulate(renderer.bounds);
-            }
-        }
-
-        return hasBounds;
     }
 
     private void SetupPlayerForMeryl()
     {
-        player = FindExistingPlayer();
-        if (player == null)
+        if (playerObject == null)
         {
-            player = InstantiatePlayerPrefab();
-        }
-
-        if (player == null)
-        {
+            Debug.LogError("MerylSceneController is missing Player Object.", this);
             return;
         }
 
+        player = playerObject;
         player.name = playerName;
         player.SetActive(true);
-        DisableDuplicatePlayers(player);
-        EnsureVisibleHero(player);
-        ApplyPlayerCamera(player);
-        UseDemoCharacterMovement(player);
-        ResetDemoCharacterState();
-
-        playerController = player.GetComponent<CharacterController>();
-        visibleHero = FindChildByName(player.transform, visibleHeroName);
-    }
-
-    private GameObject FindExistingPlayer()
-    {
-        Transform[] transforms = Resources.FindObjectsOfTypeAll<Transform>();
-        for (int i = 0; i < transforms.Length; i++)
+        Transform hero = FindChildByName(player.transform, visibleHeroName);
+        if (hero != null)
         {
-            Transform candidate = transforms[i];
-            if (candidate == null || candidate.parent != null || !candidate.gameObject.scene.IsValid())
+            hero.name = visibleHeroName;
+            hero.SetParent(player.transform, false);
+            hero.gameObject.SetActive(true);
+
+            Camera[] cameras = hero.GetComponentsInChildren<Camera>(true);
+            for (int i = 0; i < cameras.Length; i++)
             {
-                continue;
-            }
-
-            if (candidate.name == playerName || candidate.name.StartsWith(playerName))
-            {
-                return candidate.gameObject;
-            }
-        }
-
-        return null;
-    }
-
-    private GameObject InstantiatePlayerPrefab()
-    {
-#if UNITY_EDITOR
-        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(playerPrefabAssetPath);
-        if (prefab == null)
-        {
-            return null;
-        }
-
-        Object instanceObject = PrefabUtility.InstantiatePrefab(prefab);
-        return instanceObject as GameObject;
-#else
-        return null;
-#endif
-    }
-
-    private void DisableDuplicatePlayers(GameObject keepPlayer)
-    {
-        Transform[] transforms = Resources.FindObjectsOfTypeAll<Transform>();
-        for (int i = 0; i < transforms.Length; i++)
-        {
-            Transform candidate = transforms[i];
-            if (candidate == null || candidate.parent != null || candidate.gameObject == keepPlayer || !candidate.gameObject.scene.IsValid())
-            {
-                continue;
-            }
-
-            if (candidate.name == playerName || candidate.name.StartsWith(playerName))
-            {
-                candidate.gameObject.SetActive(false);
-            }
-        }
-    }
-
-    private void EnsureVisibleHero(GameObject playerObject)
-    {
-        Transform hero = FindChildByName(playerObject.transform, visibleHeroName);
-        if (hero == null)
-        {
-#if UNITY_EDITOR
-            GameObject heroPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(visibleHeroAssetPath);
-            if (heroPrefab != null)
-            {
-                Object instanceObject = PrefabUtility.InstantiatePrefab(heroPrefab);
-                GameObject heroObject = instanceObject as GameObject;
-                if (heroObject != null)
+                if (cameras[i] != null)
                 {
-                    hero = heroObject.transform;
+                    cameras[i].gameObject.SetActive(false);
                 }
             }
-#endif
-        }
 
-        if (hero == null)
-        {
-            return;
-        }
-
-        hero.name = visibleHeroName;
-        hero.SetParent(playerObject.transform, false);
-        hero.localPosition = visibleHeroLocalPosition;
-        hero.localRotation = Quaternion.identity;
-        hero.localScale = Vector3.one * visibleHeroScale;
-        hero.gameObject.SetActive(true);
-        DisableNestedCameras(hero.gameObject);
-        ConfigureVisibleHeroAnimator(hero.gameObject);
-        AlignVisibleHeroFeetToController(playerObject, hero);
-    }
-
-    private void ConfigureVisibleHeroAnimator(GameObject heroObject)
-    {
-        Animator animator = heroObject.GetComponent<Animator>();
-        if (animator == null)
-        {
-            animator = heroObject.AddComponent<Animator>();
-        }
-
-#if UNITY_EDITOR
-        RuntimeAnimatorController controller = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(visibleHeroAnimatorControllerPath);
-        if (controller != null)
-        {
-            animator.runtimeAnimatorController = controller;
-        }
-#endif
-
-        animator.applyRootMotion = false;
-        animator.enabled = true;
-    }
-
-    private void DisableNestedCameras(GameObject heroObject)
-    {
-        Camera[] cameras = heroObject.GetComponentsInChildren<Camera>(true);
-        for (int i = 0; i < cameras.Length; i++)
-        {
-            if (cameras[i] != null)
+            AudioListener[] listeners = hero.GetComponentsInChildren<AudioListener>(true);
+            for (int i = 0; i < listeners.Length; i++)
             {
-                cameras[i].gameObject.SetActive(false);
+                if (listeners[i] != null)
+                {
+                    listeners[i].enabled = false;
+                }
+            }
+
+            Animator animator = hero.GetComponent<Animator>();
+            if (animator != null)
+            {
+                animator.applyRootMotion = false;
+                animator.enabled = true;
             }
         }
 
-        AudioListener[] listeners = heroObject.GetComponentsInChildren<AudioListener>(true);
-        for (int i = 0; i < listeners.Length; i++)
+        ApplyPlayerCamera(player);
+        SetupDemoCharacter(player);
+        playerController = player.GetComponent<CharacterController>();
+        ResetDemoCharacterState();
+        visibleHero = FindChildByName(player.transform, visibleHeroName);
+
+        if (!hasInitialPlayerPosition)
         {
-            if (listeners[i] != null)
-            {
-                listeners[i].enabled = false;
-            }
+            initialPlayerPosition = player.transform.position;
+            hasInitialPlayerPosition = true;
         }
     }
 
@@ -487,6 +300,7 @@ public class MerylSceneController : MonoBehaviour
             return;
         }
 
+        DisableSceneMainCamera(playerCamera);
         playerCamera.transform.localPosition = playerCameraLocalPosition;
         playerCamera.transform.localRotation = Quaternion.identity;
         playerCamera.gameObject.SetActive(true);
@@ -499,66 +313,70 @@ public class MerylSceneController : MonoBehaviour
         }
     }
 
-    private void UseDemoCharacterMovement(GameObject playerObject)
+    private void DisableSceneMainCamera(Camera playerCamera)
     {
-        MonoBehaviour[] behaviours = playerObject.GetComponentsInChildren<MonoBehaviour>(true);
-        demoCharacterBehaviour = null;
-
-        for (int i = 0; i < behaviours.Length; i++)
+        if (sceneMainCamera != null && sceneMainCamera != playerCamera)
         {
-            MonoBehaviour behaviour = behaviours[i];
-            if (behaviour == null)
-            {
-                continue;
-            }
+            DisableCamera(sceneMainCamera);
+            return;
+        }
 
-            string typeName = behaviour.GetType().Name;
-            if (typeName == "DemoCharacter")
+        GameObject[] roots = activeScene.GetRootGameObjects();
+        for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
+        {
+            Camera[] sceneCameras = roots[rootIndex].GetComponentsInChildren<Camera>(true);
+            for (int i = 0; i < sceneCameras.Length; i++)
             {
-                demoCharacterBehaviour = behaviour;
-                behaviour.enabled = true;
-                SetPrivateBool(behaviour, "blockSolidObstacles", false);
-                SetPrivateBool(behaviour, "usePreciseBodyCollision", false);
-            }
-            else if (typeName == "PlayerCharacterController")
-            {
-                behaviour.enabled = false;
+                Camera camera = sceneCameras[i];
+                if (camera == null || camera == playerCamera)
+                {
+                    continue;
+                }
+
+                if (camera.transform.IsChildOf(playerCamera.transform) || playerCamera.transform.IsChildOf(camera.transform))
+                {
+                    continue;
+                }
+
+                if (camera.CompareTag("MainCamera") || camera.name == "Main Camera")
+                {
+                    DisableCamera(camera);
+                }
             }
         }
     }
 
+    private void SetupDemoCharacter(GameObject playerObject)
+    {
+        demoCharacter = playerObject.GetComponentInChildren<DemoCharacter>(true);
+        if (demoCharacter == null)
+        {
+            return;
+        }
+
+        demoCharacter.enabled = true;
+        demoCharacter.SetCollisionOptions(false, false);
+    }
+
     private void ResetDemoCharacterState()
     {
-        DemoCharacter.LockPlayerInput = false;
-        DemoCharacter.LockMovementInput = false;
-        DemoCharacter.ForceWalkAnimation = false;
-        DemoCharacter.UseLookPadInput = false;
-        DemoCharacter.LookPadInput = Vector2.zero;
-
+        DemoCharacter.ResetControlFlags();
         ClearPlayerMotionState();
     }
 
     private void ClearPlayerMotionState()
     {
-        if (demoCharacterBehaviour == null)
+        if (demoCharacter == null)
         {
             return;
         }
 
-        SetPrivateField(demoCharacterBehaviour, "moveInput", Vector2.zero);
-        SetPrivateField(demoCharacterBehaviour, "move", Vector3.zero);
-        SetPrivateField(demoCharacterBehaviour, "jumpPressed", false);
-        SetPrivateField(demoCharacterBehaviour, "isJumping", false);
-        SetPrivateField(demoCharacterBehaviour, "isCrouching", false);
+        demoCharacter.ClearMotionState();
     }
 
     private void SetPlayerLocked(bool locked)
     {
-        DemoCharacter.LockPlayerInput = locked;
-        DemoCharacter.LockMovementInput = locked;
-        DemoCharacter.ForceWalkAnimation = false;
-        DemoCharacter.UseLookPadInput = false;
-        DemoCharacter.LookPadInput = Vector2.zero;
+        DemoCharacter.SetControlLocked(locked);
 
         if (!locked)
         {
@@ -568,26 +386,22 @@ public class MerylSceneController : MonoBehaviour
 
     private void RespawnPlayerToStart()
     {
-        if (player == null || startObject == null)
+        if (player == null)
         {
             return;
         }
 
         fallBelowThresholdStartedAt = -1f;
-        Vector3 spawnPosition = GetGroundedPositionAt(startObject.transform.position);
+        Vector3 spawnPosition = hasInitialPlayerPosition ? initialPlayerPosition : player.transform.position;
         TeleportPlayer(spawnPosition);
         SetPromptText(string.Empty);
 
         if (flowState == FlowState.Lt1Sequence)
         {
             flowState = FlowState.FreeRoam;
-            canInteractWithBook = false;
         }
 
-        if (flowState != FlowState.Ending)
-        {
-            SetPlayerLocked(false);
-        }
+        SetPlayerLocked(false);
     }
 
     private void TeleportPlayer(Vector3 targetPosition)
@@ -609,7 +423,6 @@ public class MerylSceneController : MonoBehaviour
         }
 
         player.transform.position = targetPosition;
-        AlignVisibleHeroFeetToController(player, visibleHero != null ? visibleHero : FindChildByName(player.transform, visibleHeroName));
         ClearPlayerMotionState();
 
         if (playerController != null)
@@ -644,65 +457,28 @@ public class MerylSceneController : MonoBehaviour
         return position;
     }
 
-    private bool IsStandingOnGround(string groundName)
+    private bool IsNearObject(GameObject targetObject, float distance)
     {
-        if (player == null)
+        if (player == null || targetObject == null)
         {
             return false;
         }
 
-        Collider groundCollider = GetGroundBelowPlayer();
-        return groundCollider != null &&
-               walkableGroundByCollider.TryGetValue(groundCollider, out string currentGroundName) &&
-               currentGroundName == groundName;
-    }
-
-    private Collider GetGroundBelowPlayer()
-    {
-        if (player == null)
-        {
-            return null;
-        }
-
-        if (playerController == null)
-        {
-            playerController = player.GetComponent<CharacterController>();
-        }
-
-        Vector3 origin = player.transform.position + Vector3.up * 0.8f;
-        float distance = 2.2f;
-
-        if (playerController != null)
-        {
-            origin = player.transform.TransformPoint(playerController.center) + Vector3.up * 0.1f;
-            distance = Mathf.Max(1.4f, playerController.height * 0.75f + 0.6f);
-        }
-
-        if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, distance, Physics.AllLayers, QueryTriggerInteraction.Ignore))
-        {
-            if (hit.collider != null && walkableGroundByCollider.ContainsKey(hit.collider))
-            {
-                return hit.collider;
-            }
-        }
-
-        return null;
+        Vector3 playerPosition = player.transform.position;
+        Vector3 targetPosition = targetObject.transform.position;
+        playerPosition.y = 0f;
+        targetPosition.y = 0f;
+        return Vector3.Distance(playerPosition, targetPosition) <= distance;
     }
 
     private IEnumerator HandleLt1Sequence()
     {
         lt1Triggered = true;
         flowState = FlowState.Lt1Sequence;
-        canInteractWithBook = false;
         SetPromptText(string.Empty);
 
-        if (pictureObject != null)
-        {
-            pictureObject.SetActive(true);
-        }
-
         SetPlayerLocked(true);
-        GameObject lt1Target = endObject != null ? endObject : magicBoxLowObject;
+        GameObject lt1Target = endObject;
         Vector3 targetPosition = lt1Target != null ? GetGroundedPositionAt(lt1Target.transform.position) : player.transform.position;
         TeleportPlayer(targetPosition);
         yield return null;
@@ -714,27 +490,17 @@ public class MerylSceneController : MonoBehaviour
         }
 
         yield return StartCoroutine(PlayVideoCutscene());
-
-        if (magicBoxLowObject != null)
-        {
-            magicBoxLowObject.SetActive(true);
-        }
-
-        SetPlayerLocked(false);
-        flowState = FlowState.AwaitBookPickup;
-        canInteractWithBook = true;
+        SceneManager.LoadScene("MainMenu");
     }
 
     private IEnumerator PlayVideoCutscene()
     {
-        // Keep the cutscene self-contained: load it, wait for it, then let cleanup handle the texture.
         string videoPath = Path.Combine(Application.dataPath, "new/final/video.mp4");
         if (!File.Exists(videoPath) || videoPlayer == null)
         {
             yield break;
         }
 
-        EnsureVideoSurface();
         if (videoImage == null)
         {
             yield break;
@@ -797,75 +563,6 @@ public class MerylSceneController : MonoBehaviour
         CleanupVideoPlayback();
     }
 
-    private void EnsureVideoPlayer()
-    {
-        videoPlayer = gameObject.GetComponent<VideoPlayer>();
-        if (videoPlayer == null)
-        {
-            videoPlayer = gameObject.AddComponent<VideoPlayer>();
-        }
-
-        videoAudioSource = gameObject.GetComponent<AudioSource>();
-        if (videoAudioSource == null)
-        {
-            videoAudioSource = gameObject.AddComponent<AudioSource>();
-        }
-
-        videoAudioSource.playOnAwake = false;
-        videoAudioSource.loop = false;
-        videoAudioSource.spatialBlend = 0f;
-
-        videoPlayer.playOnAwake = false;
-        videoPlayer.waitForFirstFrame = false;
-        videoPlayer.skipOnDrop = true;
-        videoPlayer.loopPointReached -= HandleVideoFinished;
-        videoPlayer.loopPointReached += HandleVideoFinished;
-        videoPlayer.errorReceived -= HandleVideoError;
-        videoPlayer.errorReceived += HandleVideoError;
-    }
-
-    private void EnsureVideoSurface()
-    {
-        if (videoOverlayObject != null)
-        {
-            return;
-        }
-
-        EnsureUi();
-        if (uiCanvas == null)
-        {
-            return;
-        }
-
-        videoOverlayObject = new GameObject("VideoOverlay");
-        videoOverlayObject.transform.SetParent(uiCanvas.transform, false);
-
-        Image background = videoOverlayObject.AddComponent<Image>();
-        background.color = Color.black;
-        RectTransform overlayRect = background.rectTransform;
-        overlayRect.anchorMin = Vector2.zero;
-        overlayRect.anchorMax = Vector2.one;
-        overlayRect.offsetMin = Vector2.zero;
-        overlayRect.offsetMax = Vector2.zero;
-
-        GameObject imageObject = new GameObject("VideoImage");
-        imageObject.transform.SetParent(videoOverlayObject.transform, false);
-        videoImage = imageObject.AddComponent<RawImage>();
-        videoImage.color = Color.white;
-
-        RectTransform imageRect = videoImage.rectTransform;
-        imageRect.anchorMin = Vector2.zero;
-        imageRect.anchorMax = Vector2.one;
-        imageRect.offsetMin = Vector2.zero;
-        imageRect.offsetMax = Vector2.zero;
-
-        videoAspectFitter = imageObject.AddComponent<AspectRatioFitter>();
-        videoAspectFitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
-        videoAspectFitter.aspectRatio = 16f / 9f;
-
-        videoOverlayObject.SetActive(false);
-    }
-
     private void CleanupVideoPlayback()
     {
         if (videoOverlayObject != null)
@@ -908,169 +605,6 @@ public class MerylSceneController : MonoBehaviour
         videoFinished = true;
     }
 
-    private void UpdateBookPrompt()
-    {
-        if (promptText == null)
-        {
-            return;
-        }
-
-        bool canShowPrompt = flowState == FlowState.AwaitBookPickup &&
-                             canInteractWithBook &&
-                             magicBoxLowObject != null &&
-                             magicBoxLowObject.activeInHierarchy &&
-                             player != null;
-
-        if (!canShowPrompt)
-        {
-            SetPromptText(string.Empty);
-            return;
-        }
-
-        Vector3 playerPosition = player.transform.position;
-        Vector3 boxPosition = magicBoxLowObject.transform.position;
-        playerPosition.y = 0f;
-        boxPosition.y = 0f;
-
-        bool isNear = Vector3.Distance(playerPosition, boxPosition) <= interactionDistance;
-        SetPromptText(isNear ? "Press E to take the magic book" : string.Empty);
-
-        if (isNear && Input.GetKeyDown(KeyCode.E))
-        {
-            GameAudioManager.PlayFetch();
-            StartCoroutine(PlayEndingSequence());
-        }
-    }
-
-    private IEnumerator PlayEndingSequence()
-    {
-        if (endingStarted)
-        {
-            yield break;
-        }
-
-        endingStarted = true;
-        flowState = FlowState.Ending;
-        canInteractWithBook = false;
-        SetPromptText(string.Empty);
-        SetPlayerLocked(true);
-
-        if (bookObject != null)
-        {
-            bookObject.SetActive(true);
-        }
-
-        blackOverlay.gameObject.SetActive(true);
-        blackOverlay.color = Color.black;
-        endingText.gameObject.SetActive(true);
-
-        for (int i = 0; i < endingLines.Length; i++)
-        {
-            endingText.text = endingLines[i];
-            yield return new WaitForSecondsRealtime(endingLineDuration);
-        }
-
-        endingText.text = string.Empty;
-    }
-
-    private void EnsureUi()
-    {
-        if (uiCanvas != null)
-        {
-            return;
-        }
-
-        GameObject canvasObject = new GameObject("MerylSceneUI");
-        canvasObject.transform.SetParent(transform, false);
-
-        uiCanvas = canvasObject.AddComponent<Canvas>();
-        uiCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        uiCanvas.sortingOrder = 9999;
-
-        CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-
-        canvasObject.AddComponent<GraphicRaycaster>();
-
-        promptPanelObject = new GameObject("PromptPanel");
-        promptPanelObject.transform.SetParent(canvasObject.transform, false);
-        Image promptPanelImage = promptPanelObject.AddComponent<Image>();
-        promptPanelImage.color = new Color(0.04f, 0.06f, 0.06f, 0.78f);
-        RectTransform promptPanelRect = promptPanelObject.GetComponent<RectTransform>();
-        promptPanelRect.anchorMin = new Vector2(0.5f, 0f);
-        promptPanelRect.anchorMax = new Vector2(0.5f, 0f);
-        promptPanelRect.pivot = new Vector2(0.5f, 0f);
-        promptPanelRect.sizeDelta = new Vector2(900f, 80f);
-        promptPanelRect.anchoredPosition = new Vector2(0f, 74f);
-
-        promptText = CreateText("PromptText", promptPanelObject.transform, 34, TextAnchor.MiddleCenter);
-        RectTransform promptRect = promptText.rectTransform;
-        promptRect.anchorMin = Vector2.zero;
-        promptRect.anchorMax = Vector2.one;
-        promptRect.offsetMin = new Vector2(18f, 8f);
-        promptRect.offsetMax = new Vector2(-18f, -8f);
-        SetPromptText(string.Empty);
-
-        GameObject overlayObject = new GameObject("BlackOverlay");
-        overlayObject.transform.SetParent(canvasObject.transform, false);
-        blackOverlay = overlayObject.AddComponent<Image>();
-        blackOverlay.color = Color.black;
-        RectTransform overlayRect = blackOverlay.rectTransform;
-        overlayRect.anchorMin = Vector2.zero;
-        overlayRect.anchorMax = Vector2.one;
-        overlayRect.offsetMin = Vector2.zero;
-        overlayRect.offsetMax = Vector2.zero;
-        blackOverlay.gameObject.SetActive(false);
-
-        endingText = CreateText("EndingText", overlayObject.transform, 52, TextAnchor.MiddleCenter);
-        RectTransform endingRect = endingText.rectTransform;
-        endingRect.anchorMin = new Vector2(0.5f, 0.5f);
-        endingRect.anchorMax = new Vector2(0.5f, 0.5f);
-        endingRect.sizeDelta = new Vector2(1400f, 240f);
-        endingRect.anchoredPosition = Vector2.zero;
-        endingText.gameObject.SetActive(false);
-        endingText.text = string.Empty;
-    }
-
-    private Text CreateText(string objectName, Transform parent, int fontSize, TextAnchor anchor)
-    {
-        GameObject textObject = new GameObject(objectName);
-        textObject.transform.SetParent(parent, false);
-
-        Text text = textObject.AddComponent<Text>();
-        Font builtInFont = null;
-        try
-        {
-            builtInFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        }
-        catch
-        {
-            builtInFont = null;
-        }
-
-        if (builtInFont == null)
-        {
-            Font[] fonts = Resources.FindObjectsOfTypeAll<Font>();
-            if (fonts != null && fonts.Length > 0)
-            {
-                builtInFont = fonts[0];
-            }
-        }
-
-        text.font = builtInFont;
-        text.fontSize = fontSize;
-        text.alignment = anchor;
-        text.horizontalOverflow = HorizontalWrapMode.Wrap;
-        text.verticalOverflow = VerticalWrapMode.Overflow;
-        text.color = Color.white;
-
-        RectTransform rect = text.rectTransform;
-        rect.localScale = Vector3.one;
-
-        return text;
-    }
-
     private void SetPromptText(string value)
     {
         if (promptText != null)
@@ -1082,26 +616,6 @@ public class MerylSceneController : MonoBehaviour
         {
             promptPanelObject.SetActive(!string.IsNullOrEmpty(value));
         }
-    }
-
-    private GameObject FindSceneObject(string objectName)
-    {
-        Transform[] transforms = Resources.FindObjectsOfTypeAll<Transform>();
-        for (int i = 0; i < transforms.Length; i++)
-        {
-            Transform candidate = transforms[i];
-            if (candidate == null || candidate.gameObject.scene != activeScene)
-            {
-                continue;
-            }
-
-            if (candidate.name == objectName)
-            {
-                return candidate.gameObject;
-            }
-        }
-
-        return null;
     }
 
     private Transform FindChildByName(Transform root, string childName)
@@ -1123,69 +637,15 @@ public class MerylSceneController : MonoBehaviour
         return null;
     }
 
-    private void AlignVisibleHeroFeetToController(GameObject playerObject, Transform hero)
+    private void DisableCamera(Camera camera)
     {
-        if (playerObject == null || hero == null)
+        AudioListener extraListener = camera.GetComponent<AudioListener>();
+        if (extraListener != null)
         {
-            return;
+            extraListener.enabled = false;
         }
 
-        CharacterController controller = playerObject.GetComponent<CharacterController>();
-        if (controller == null)
-        {
-            return;
-        }
-
-        Renderer[] renderers = hero.GetComponentsInChildren<Renderer>(true);
-        bool hasBounds = false;
-        Bounds bounds = new Bounds();
-
-        for (int i = 0; i < renderers.Length; i++)
-        {
-            Renderer renderer = renderers[i];
-            if (renderer == null || !renderer.enabled)
-            {
-                continue;
-            }
-
-            if (!hasBounds)
-            {
-                bounds = renderer.bounds;
-                hasBounds = true;
-            }
-            else
-            {
-                bounds.Encapsulate(renderer.bounds);
-            }
-        }
-
-        if (!hasBounds)
-        {
-            return;
-        }
-
-        float controllerScaleY = Mathf.Abs(playerObject.transform.lossyScale.y);
-        Vector3 controllerCenter = playerObject.transform.TransformPoint(controller.center);
-        float footY = controllerCenter.y - controller.height * controllerScaleY * 0.5f + visibleHeroFootGroundOffset;
-        float deltaY = footY - bounds.min.y;
-        hero.position += Vector3.up * deltaY;
+        camera.gameObject.SetActive(false);
     }
 
-    private void SetPrivateBool(MonoBehaviour behaviour, string fieldName, bool value)
-    {
-        FieldInfo field = behaviour.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
-        if (field != null && field.FieldType == typeof(bool))
-        {
-            field.SetValue(behaviour, value);
-        }
-    }
-
-    private void SetPrivateField(MonoBehaviour behaviour, string fieldName, object value)
-    {
-        FieldInfo field = behaviour.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
-        if (field != null)
-        {
-            field.SetValue(behaviour, value);
-        }
-    }
 }
