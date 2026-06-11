@@ -1,3 +1,4 @@
+// Builds the cover screen, menu buttons, credits, music, and opening video flow.
 using System.Collections;
 using System.IO;
 using UnityEngine;
@@ -7,24 +8,21 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.Video;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 [DisallowMultipleComponent]
 public class MainMenuController : MonoBehaviour
 {
-    private static bool skipCoverOnce;
-    private static GameObject backgroundHost;
-    private static AudioSource backgroundSource;
-    private static AudioClip backgroundClip;
-    private static AudioListener backgroundListener;
-    private static bool backgroundLoading;
-
     [Header("Scene Names")]
     [SerializeField] private string menuSceneName = "Mainmenu";
-    [SerializeField] private string gameSceneName = "Assets/Scenes/Enchanted Forest A.unity";
+    [SerializeField] private string gameSceneName = "Enchanted Forest A";
 
     [Header("Audio And Video")]
     [SerializeField] private string backgroundAudioPath = "Audio/background.mp3";
     [SerializeField] private string openingVideoPath = "Audio/openingvideo.mp4";
-    [SerializeField] private float backgroundVolume = 0.6f;
+    [SerializeField] private float backgroundVolume = 0.55f;
     [SerializeField] private float videoVolume = 1f;
 
     [Header("Cover")]
@@ -33,7 +31,6 @@ public class MainMenuController : MonoBehaviour
 
     [Header("Panels")]
     [SerializeField] private GameObject mainMenuPanel;
-    [SerializeField] private GameObject continuePanel;
     [SerializeField] private GameObject introPanel;
     [SerializeField] private GameObject controlsPanel;
     [SerializeField] private GameObject settingsPanel;
@@ -41,8 +38,6 @@ public class MainMenuController : MonoBehaviour
 
     [Header("Main Buttons")]
     [SerializeField] private Button startGameButton;
-    [SerializeField] private Button continueGameButton;
-    [SerializeField] private Button newGameButton;
     [SerializeField] private Button introButton;
     [SerializeField] private Button controlsButton;
     [SerializeField] private Button settingsButton;
@@ -50,38 +45,80 @@ public class MainMenuController : MonoBehaviour
     [SerializeField] private Button exitButton;
 
     [Header("Back Buttons")]
-    [SerializeField] private Button continueBackButton;
     [SerializeField] private Button introBackButton;
     [SerializeField] private Button controlsBackButton;
     [SerializeField] private Button settingsBackButton;
     [SerializeField] private Button creditsBackButton;
 
-    [Header("Settings Controls")]
-    [SerializeField] private Slider volumeSlider;
-    [SerializeField] private Toggle muteToggle;
+    [Header("Panel Text")]
+    [TextArea(3, 8)]
+    [SerializeField] private string introText =
+        "You wake up in a strange forest with a missing story to put back together. Talk to the locals, solve their puzzles, and follow the pages home."; 
 
-    [Header("Cover And Video UI")]
-    [SerializeField] private Canvas menuCanvas;
-    [SerializeField] private RawImage coverBackgroundImage;
-    [SerializeField] private AspectRatioFitter coverAspectFitter;
-    [SerializeField] private GameObject openingVideoOverlayObject;
-    [SerializeField] private RawImage openingVideoImage;
-    [SerializeField] private AspectRatioFitter openingVideoAspectFitter;
+    [TextArea(3, 8)]
+    [SerializeField] private string controlsText =
+        "WASD: Move\nMouse: Look\nSpace: Jump\nE: Interact\nEsc: Back or close"; 
 
+    [TextArea(12, 24)]
+    [SerializeField] private string creditsText =
+        "================== CREDITS ==================\n\n" +
+        "[Unity Asset Pack]\n" +
+        "Aquarius Fantasy - Fae Pack (Unity Asset Store)\n" +
+        "License: Single Entity License\n\n" +
+        "[Character Animations and Models]\n" +
+        "Mixamo (Adobe) - all character animations and some models\n" +
+        "License: Royalty Free\n\n" +
+        "[3D Models]\n" +
+        "CGTrader - portals, bird nests, keys, feathers, workbench, etc.\n" +
+        "Sketchfab - fairies, foxes, treasure chests, magic circles, etc.\n" +
+        "License: Royalty Free / CC Attribution / CC BY-NC\n\n" +
+        "[Sound Effects]\n" +
+        "Game Sound Factory - all game sound effects\n" +
+        "License: Non-Commercial Only\n\n" +
+        "============================================\n" +
+        "Made as a class project and shared only for study and discussion.\n" +
+        "See the project document Credits.md for the full attribution list.";
+
+    private static GameObject backgroundHost;
+    private static AudioSource backgroundSource;
+    private static AudioClip backgroundClip;
+    private static bool backgroundLoading;
+
+    private Canvas menuCanvas;
+    private RawImage coverBackgroundImage;
+    private AspectRatioFitter coverAspectFitter;
     private bool coverSequenceStarted;
     private bool coverSequenceComplete;
     private bool startingGame;
 
-    private void OnEnable()
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void RegisterSceneLoaded()
     {
         SceneManager.sceneLoaded -= HandleSceneLoaded;
         SceneManager.sceneLoaded += HandleSceneLoaded;
-        SetBackgroundListenerEnabled(IsMenuScene(SceneManager.GetActiveScene().name));
+        EnsureControllerForActiveMenuScene();
     }
 
-    private void OnDisable()
+    private static void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        SceneManager.sceneLoaded -= HandleSceneLoaded;
+        EnsureControllerForActiveMenuScene();
+    }
+
+    private static void EnsureControllerForActiveMenuScene()
+    {
+        Scene activeScene = SceneManager.GetActiveScene();
+        if (!IsMenuScene(activeScene.name))
+        {
+            return;
+        }
+
+        if (FindObjectOfType<MainMenuController>() != null)
+        {
+            return;
+        }
+
+        GameObject host = new GameObject("MainMenuController");
+        host.AddComponent<MainMenuController>();
     }
 
     private void Awake()
@@ -92,61 +129,15 @@ public class MainMenuController : MonoBehaviour
             return;
         }
 
-        if (mainMenuPanel == null ||
-            continuePanel == null ||
-            introPanel == null ||
-            controlsPanel == null ||
-            settingsPanel == null ||
-            creditsPanel == null ||
-            startGameButton == null ||
-            continueGameButton == null ||
-            newGameButton == null ||
-            introButton == null ||
-            controlsButton == null ||
-            settingsButton == null ||
-            creditsButton == null ||
-            exitButton == null ||
-            continueBackButton == null ||
-            introBackButton == null ||
-            controlsBackButton == null ||
-            settingsBackButton == null ||
-            creditsBackButton == null ||
-            volumeSlider == null ||
-            muteToggle == null ||
-            menuCanvas == null ||
-            coverBackgroundImage == null ||
-            coverAspectFitter == null ||
-            openingVideoOverlayObject == null ||
-            openingVideoImage == null ||
-            openingVideoAspectFitter == null)
+        if (mainMenuPanel == null)
         {
-            Debug.LogError("MainMenuController is missing Inspector references.", this);
-            enabled = false;
-            return;
+            BuildDefaultMenuUi();
         }
 
         BindButtons();
-        mainMenuPanel.SetActive(false);
-        continuePanel.SetActive(false);
-        introPanel.SetActive(false);
-        controlsPanel.SetActive(false);
-        settingsPanel.SetActive(false);
-        creditsPanel.SetActive(false);
-
-        if (skipCoverOnce)
-        {
-            skipCoverOnce = false;
-            coverSequenceStarted = true;
-            coverSequenceComplete = true;
-            coverBackgroundImage.transform.SetAsFirstSibling();
-            ShowMainMenu();
-        }
-        else
-        {
-            StartCoroutine(ShowCoverThenMenu());
-        }
-
-        StartCoroutine(LoadBackgroundMusic());
+        HideAllPanels();
+        StartCoroutine(ShowCoverThenMenu());
+        StartCoroutine(EnsureBackgroundMusic());
     }
 
     private void Update()
@@ -157,11 +148,6 @@ public class MainMenuController : MonoBehaviour
         }
     }
 
-    public static void SkipCoverOnNextMenuLoad()
-    {
-        skipCoverOnce = true;
-    }
-
     public void StartGame()
     {
         if (startingGame)
@@ -169,135 +155,45 @@ public class MainMenuController : MonoBehaviour
             return;
         }
 
-        if (GlobalGameMenuUI.HasSave())
-        {
-            mainMenuPanel.SetActive(false);
-            continuePanel.SetActive(true);
-            introPanel.SetActive(false);
-            controlsPanel.SetActive(false);
-            settingsPanel.SetActive(false);
-            creditsPanel.SetActive(false);
-        }
-        else
-        {
-            StartNewGame();
-        }
-    }
-
-    public void ContinueGame()
-    {
-        if (startingGame)
-        {
-            return;
-        }
-
-        mainMenuPanel.SetActive(false);
-        continuePanel.SetActive(false);
-        introPanel.SetActive(false);
-        controlsPanel.SetActive(false);
-        settingsPanel.SetActive(false);
-        creditsPanel.SetActive(false);
-        GlobalGameMenuUI.PrepareContinueLoad();
-        StartCoroutine(StartGameRoutine(GlobalGameMenuUI.GetSavedSceneName(gameSceneName), false));
-    }
-
-    public void StartNewGame()
-    {
-        if (startingGame)
-        {
-            return;
-        }
-
-        mainMenuPanel.SetActive(false);
-        continuePanel.SetActive(false);
-        introPanel.SetActive(false);
-        controlsPanel.SetActive(false);
-        settingsPanel.SetActive(false);
-        creditsPanel.SetActive(false);
-        GlobalGameMenuUI.ClearSave();
-        GlobalBackpackUI.ClearAllItems();
-        StartCoroutine(StartGameRoutine(gameSceneName, true));
+        StartCoroutine(StartGameRoutine());
     }
 
     public void ShowIntro()
     {
-        mainMenuPanel.SetActive(false);
-        continuePanel.SetActive(false);
-        introPanel.SetActive(true);
-        controlsPanel.SetActive(false);
-        settingsPanel.SetActive(false);
-        creditsPanel.SetActive(false);
+        ShowPanel(introPanel);
     }
 
     public void ShowControls()
     {
-        mainMenuPanel.SetActive(false);
-        continuePanel.SetActive(false);
-        introPanel.SetActive(false);
-        controlsPanel.SetActive(true);
-        settingsPanel.SetActive(false);
-        creditsPanel.SetActive(false);
+        ShowPanel(controlsPanel);
     }
 
     public void ShowSettings()
     {
-        SyncSettingsControls();
-        mainMenuPanel.SetActive(false);
-        continuePanel.SetActive(false);
-        introPanel.SetActive(false);
-        controlsPanel.SetActive(false);
-        settingsPanel.SetActive(true);
-        creditsPanel.SetActive(false);
+        ShowPanel(settingsPanel);
     }
 
     public void ShowCredits()
     {
-        mainMenuPanel.SetActive(false);
-        continuePanel.SetActive(false);
-        introPanel.SetActive(false);
-        controlsPanel.SetActive(false);
-        settingsPanel.SetActive(false);
-        creditsPanel.SetActive(true);
+        ShowPanel(creditsPanel);
     }
 
     public void ShowMainMenu()
     {
-        mainMenuPanel.SetActive(true);
-        continuePanel.SetActive(false);
-        introPanel.SetActive(false);
-        controlsPanel.SetActive(false);
-        settingsPanel.SetActive(false);
-        creditsPanel.SetActive(false);
+        SetPanelActive(mainMenuPanel, true);
+        SetPanelActive(introPanel, false);
+        SetPanelActive(controlsPanel, false);
+        SetPanelActive(settingsPanel, false);
+        SetPanelActive(creditsPanel, false);
     }
 
     public void ExitGame()
     {
 #if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
+        EditorApplication.isPlaying = false;
 #else
         Application.Quit();
 #endif
-    }
-
-    public static void PauseBackgroundMusicForSceneAudio()
-    {
-        if (backgroundSource != null && backgroundSource.isPlaying)
-        {
-            backgroundSource.Pause();
-        }
-    }
-
-    public static void ResumeBackgroundMusicAfterSceneAudio()
-    {
-        if (backgroundSource != null && backgroundSource.clip != null && !backgroundSource.isPlaying)
-        {
-            backgroundSource.UnPause();
-        }
-    }
-
-    private static void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        SetBackgroundListenerEnabled(IsMenuScene(scene.name));
     }
 
     private static bool IsMenuScene(string sceneName)
@@ -311,77 +207,287 @@ public class MainMenuController : MonoBehaviour
         return string.Equals(sceneName, menuSceneName, System.StringComparison.OrdinalIgnoreCase) || IsMenuScene(sceneName);
     }
 
+    private void ShowPanel(GameObject panel)
+    {
+        SetPanelActive(mainMenuPanel, false);
+        SetPanelActive(introPanel, panel == introPanel);
+        SetPanelActive(controlsPanel, panel == controlsPanel);
+        SetPanelActive(settingsPanel, panel == settingsPanel);
+        SetPanelActive(creditsPanel, panel == creditsPanel);
+    }
+
+    private static void SetPanelActive(GameObject panel, bool active)
+    {
+        if (panel != null)
+        {
+            panel.SetActive(active);
+        }
+    }
+
+    private void HideAllPanels()
+    {
+        SetPanelActive(mainMenuPanel, false);
+        SetPanelActive(introPanel, false);
+        SetPanelActive(controlsPanel, false);
+        SetPanelActive(settingsPanel, false);
+        SetPanelActive(creditsPanel, false);
+    }
+
     private void BindButtons()
     {
-        startGameButton.onClick.RemoveAllListeners();
-        startGameButton.onClick.AddListener(StartGame);
-        continueGameButton.onClick.RemoveAllListeners();
-        continueGameButton.onClick.AddListener(ContinueGame);
-        newGameButton.onClick.RemoveAllListeners();
-        newGameButton.onClick.AddListener(StartNewGame);
-        introButton.onClick.RemoveAllListeners();
-        introButton.onClick.AddListener(ShowIntro);
-        controlsButton.onClick.RemoveAllListeners();
-        controlsButton.onClick.AddListener(ShowControls);
-        settingsButton.onClick.RemoveAllListeners();
-        settingsButton.onClick.AddListener(ShowSettings);
-        creditsButton.onClick.RemoveAllListeners();
-        creditsButton.onClick.AddListener(ShowCredits);
-        exitButton.onClick.RemoveAllListeners();
-        exitButton.onClick.AddListener(ExitGame);
-        continueBackButton.onClick.RemoveAllListeners();
-        continueBackButton.onClick.AddListener(ShowMainMenu);
-        introBackButton.onClick.RemoveAllListeners();
-        introBackButton.onClick.AddListener(ShowMainMenu);
-        controlsBackButton.onClick.RemoveAllListeners();
-        controlsBackButton.onClick.AddListener(ShowMainMenu);
-        settingsBackButton.onClick.RemoveAllListeners();
-        settingsBackButton.onClick.AddListener(ShowMainMenu);
-        creditsBackButton.onClick.RemoveAllListeners();
-        creditsBackButton.onClick.AddListener(ShowMainMenu);
-
-        volumeSlider.onValueChanged.RemoveAllListeners();
-        volumeSlider.onValueChanged.AddListener(HandleVolumeChanged);
-
-        muteToggle.onValueChanged.RemoveAllListeners();
-        muteToggle.onValueChanged.AddListener(HandleMuteChanged);
+        BindButton(startGameButton, StartGame);
+        BindButton(introButton, ShowIntro);
+        BindButton(controlsButton, ShowControls);
+        BindButton(settingsButton, ShowSettings);
+        BindButton(creditsButton, ShowCredits);
+        BindButton(exitButton, ExitGame);
+        BindButton(introBackButton, ShowMainMenu);
+        BindButton(controlsBackButton, ShowMainMenu);
+        BindButton(settingsBackButton, ShowMainMenu);
+        BindButton(creditsBackButton, ShowMainMenu);
     }
 
-    private void SyncSettingsControls()
+    private static void BindButton(Button button, UnityEngine.Events.UnityAction action)
     {
-        volumeSlider.SetValueWithoutNotify(GlobalGameMenuUI.Muted ? 0f : GlobalGameMenuUI.MasterVolume);
-        muteToggle.SetIsOnWithoutNotify(GlobalGameMenuUI.Muted);
-        GlobalGameMenuUI.ApplySavedAudioSettings();
+        if (button == null)
+        {
+            return;
+        }
+
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(action);
     }
 
-    private void HandleVolumeChanged(float value)
+    private void BuildDefaultMenuUi()
     {
-        GlobalGameMenuUI.SetAudioSettings(value, muteToggle.isOn);
+        EnsureEventSystem();
+
+        GameObject canvasObject = new GameObject("MainMenuCanvas");
+        canvasObject.transform.SetParent(transform, false);
+
+        Canvas canvas = canvasObject.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 1000;
+        menuCanvas = canvas;
+
+        CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        scaler.matchWidthOrHeight = 0.5f;
+
+        canvasObject.AddComponent<GraphicRaycaster>();
+
+        CreateCoverBackground(canvasObject.transform);
+        mainMenuPanel = CreateMainMenuPanel(canvasObject.transform);
+        introPanel = CreateInfoPanel(canvasObject.transform, "IntroPanel", "Game Intro", introText, out introBackButton);
+        controlsPanel = CreateInfoPanel(canvasObject.transform, "ControlsPanel", "Controls", controlsText, out controlsBackButton);
+        settingsPanel = CreateInfoPanel(canvasObject.transform, "SettingsPanel", "Settings", "No extra settings for this build.", out settingsBackButton);
+        creditsPanel = CreateInfoPanel(canvasObject.transform, "CreditsPanel", "CREDITS", creditsText, out creditsBackButton);
     }
 
-    private void HandleMuteChanged(bool muted)
+    private GameObject CreateMainMenuPanel(Transform parent)
     {
-        GlobalGameMenuUI.SetAudioSettings(volumeSlider.value, muted);
+        GameObject panel = CreatePanelRoot("MainMenuPanel", parent);
+        Image panelImage = panel.GetComponent<Image>();
+        if (panelImage != null)
+        {
+            panelImage.color = new Color(0f, 0f, 0f, 0f);
+        }
+
+        RectTransform rect = panel.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(560f, 760f);
+        rect.anchoredPosition = Vector2.zero;
+
+        VerticalLayoutGroup layout = panel.AddComponent<VerticalLayoutGroup>();
+        layout.padding = new RectOffset(48, 48, 46, 46);
+        layout.spacing = 20f;
+        layout.childAlignment = TextAnchor.MiddleCenter;
+        layout.childControlWidth = true;
+        layout.childControlHeight = false;
+        layout.childForceExpandWidth = true;
+        layout.childForceExpandHeight = false;
+
+       
+
+        startGameButton = CreateButton("StartGame", panel.transform, "Start Game");
+        introButton = CreateButton("Intro", panel.transform, "Game Intro");
+        controlsButton = CreateButton("Controls", panel.transform, "Controls");
+        settingsButton = CreateButton("Settings", panel.transform, "Settings");
+        creditsButton = CreateButton("Credits", panel.transform, "CREDITS");
+        exitButton = CreateButton("Exit", panel.transform, "Exit Game");
+
+        return panel;
     }
 
-    private IEnumerator StartGameRoutine(string targetSceneName, bool playOpeningVideo)
+    private GameObject CreateInfoPanel(Transform parent, string objectName, string title, string body, out Button backButton)
     {
+        GameObject panel = CreatePanelRoot(objectName, parent);
+        RectTransform rect = panel.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(980f, 780f);
+        rect.anchoredPosition = Vector2.zero;
+
+        VerticalLayoutGroup layout = panel.AddComponent<VerticalLayoutGroup>();
+        layout.padding = new RectOffset(58, 58, 46, 46);
+        layout.spacing = 28f;
+        layout.childAlignment = TextAnchor.MiddleCenter;
+        layout.childControlWidth = true;
+        layout.childControlHeight = false;
+        layout.childForceExpandWidth = true;
+        layout.childForceExpandHeight = false;
+
+        Text titleText = CreateText("Title", panel.transform, title, 44, TextAnchor.MiddleCenter);
+        LayoutElement titleLayout = titleText.gameObject.AddComponent<LayoutElement>();
+        titleLayout.preferredHeight = 70f;
+
+        Text bodyText = CreateText("Body", panel.transform, body, 28, TextAnchor.UpperLeft);
+        LayoutElement bodyLayout = bodyText.gameObject.AddComponent<LayoutElement>();
+        bodyLayout.preferredHeight = 460f;
+
+        backButton = CreateButton("Back", panel.transform, "Back");
+        return panel;
+    }
+
+    private static GameObject CreatePanelRoot(string objectName, Transform parent)
+    {
+        GameObject panel = new GameObject(objectName);
+        panel.transform.SetParent(parent, false);
+
+        RectTransform rect = panel.AddComponent<RectTransform>();
+        rect.localScale = Vector3.one;
+
+        Image image = panel.AddComponent<Image>();
+        image.color = new Color(0.06f, 0.08f, 0.09f, 0.88f);
+
+        return panel;
+    }
+
+    private void CreateCoverBackground(Transform parent)
+    {
+        GameObject background = new GameObject("CoverBackground");
+        background.transform.SetParent(parent, false);
+
+        coverBackgroundImage = background.AddComponent<RawImage>();
+        coverBackgroundImage.color = Color.black;
+        coverAspectFitter = background.AddComponent<AspectRatioFitter>();
+        coverAspectFitter.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+        coverAspectFitter.aspectRatio = 16f / 9f;
+
+        RectTransform rect = coverBackgroundImage.rectTransform;
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+        background.transform.SetAsFirstSibling();
+    }
+
+    private void EnsureCoverBackground()
+    {
+        if (coverBackgroundImage != null)
+        {
+            coverBackgroundImage.transform.SetAsFirstSibling();
+            return;
+        }
+
+        Canvas canvas = EnsureMenuCanvas();
+        CreateCoverBackground(canvas.transform);
+    }
+
+    private static Button CreateButton(string objectName, Transform parent, string label)
+    {
+        GameObject buttonObject = new GameObject(objectName);
+        buttonObject.transform.SetParent(parent, false);
+
+        Image image = buttonObject.AddComponent<Image>();
+        image.color = new Color(0.82f, 0.68f, 0.36f, 1f);
+
+        Button button = buttonObject.AddComponent<Button>();
+        ColorBlock colors = button.colors;
+        colors.normalColor = new Color(0.82f, 0.68f, 0.36f, 1f);
+        colors.highlightedColor = new Color(0.96f, 0.82f, 0.48f, 1f);
+        colors.pressedColor = new Color(0.62f, 0.48f, 0.22f, 1f);
+        colors.selectedColor = colors.highlightedColor;
+        button.colors = colors;
+
+        LayoutElement layout = buttonObject.AddComponent<LayoutElement>();
+        layout.preferredHeight = 78f;
+
+        RectTransform rect = buttonObject.GetComponent<RectTransform>();
+        rect.localScale = Vector3.one;
+
+        Text text = CreateText("Text", buttonObject.transform, label, 30, TextAnchor.MiddleCenter);
+        text.color = new Color(0.08f, 0.07f, 0.05f, 1f);
+        RectTransform textRect = text.rectTransform;
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+
+        return button;
+    }
+
+    private static Text CreateText(string objectName, Transform parent, string value, int fontSize, TextAnchor alignment)
+    {
+        GameObject textObject = new GameObject(objectName);
+        textObject.transform.SetParent(parent, false);
+
+        Text text = textObject.AddComponent<Text>();
+        text.text = value;
+        text.font = GetDefaultFont();
+        text.fontSize = fontSize;
+        text.alignment = alignment;
+        text.horizontalOverflow = HorizontalWrapMode.Wrap;
+        text.verticalOverflow = VerticalWrapMode.Overflow;
+        text.color = Color.white;
+
+        RectTransform rect = text.rectTransform;
+        rect.localScale = Vector3.one;
+
+        return text;
+    }
+
+    private static Font GetDefaultFont()
+    {
+        Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        if (font != null)
+        {
+            return font;
+        }
+
+        return Resources.GetBuiltinResource<Font>("Arial.ttf");
+    }
+
+    private static void EnsureEventSystem()
+    {
+        if (FindObjectOfType<EventSystem>() != null)
+        {
+            return;
+        }
+
+        GameObject eventSystem = new GameObject("EventSystem");
+        eventSystem.AddComponent<EventSystem>();
+        eventSystem.AddComponent<StandaloneInputModule>();
+    }
+
+    private IEnumerator StartGameRoutine()
+    {
+        // The menu hands off to the opening video first, then loads the first playable scene.
         startingGame = true;
-        GlobalBackpackUI.EnableForGameSession();
         SetMenuButtonsInteractable(false);
         StopBackgroundMusic();
 
-        if (playOpeningVideo)
-        {
-            yield return StartCoroutine(PlayOpeningVideo());
-        }
+        yield return StartCoroutine(PlayOpeningVideo());
 
-        yield return StartCoroutine(LoadBackgroundMusic());
-        SceneManager.LoadScene(targetSceneName);
+        yield return StartCoroutine(EnsureBackgroundMusic());
+        SceneManager.LoadScene(gameSceneName);
     }
 
     private IEnumerator ShowCoverThenMenu()
     {
+        // Let the cover sit for a moment before the buttons appear.
         if (coverSequenceStarted)
         {
             yield break;
@@ -389,13 +495,8 @@ public class MainMenuController : MonoBehaviour
 
         coverSequenceStarted = true;
         coverSequenceComplete = false;
-        mainMenuPanel.SetActive(false);
-        continuePanel.SetActive(false);
-        introPanel.SetActive(false);
-        controlsPanel.SetActive(false);
-        settingsPanel.SetActive(false);
-        creditsPanel.SetActive(false);
-        coverBackgroundImage.transform.SetAsFirstSibling();
+        HideAllPanels();
+        EnsureCoverBackground();
 
         yield return StartCoroutine(LoadCoverImage());
         yield return new WaitForSecondsRealtime(Mathf.Max(0f, coverOnlyDuration));
@@ -406,6 +507,12 @@ public class MainMenuController : MonoBehaviour
 
     private IEnumerator LoadCoverImage()
     {
+        EnsureCoverBackground();
+        if (coverBackgroundImage == null)
+        {
+            yield break;
+        }
+
         string path = Path.Combine(Application.dataPath, coverImagePath);
         if (!File.Exists(path))
         {
@@ -425,7 +532,7 @@ public class MainMenuController : MonoBehaviour
             Texture2D texture = DownloadHandlerTexture.GetContent(request);
             coverBackgroundImage.texture = texture;
             coverBackgroundImage.color = Color.white;
-            if (texture.width > 0 && texture.height > 0)
+            if (texture.width > 0 && texture.height > 0 && coverAspectFitter != null)
             {
                 coverAspectFitter.aspectRatio = (float)texture.width / texture.height;
             }
@@ -434,23 +541,19 @@ public class MainMenuController : MonoBehaviour
 
     private IEnumerator PlayOpeningVideo()
     {
+        // The video is optional. If the file is missing, the game just starts normally.
         string path = Path.Combine(Application.dataPath, openingVideoPath);
         if (!File.Exists(path))
         {
             yield break;
         }
 
-        if (FindObjectOfType<EventSystem>() == null)
-        {
-            GameObject eventSystem = new GameObject("EventSystem");
-            eventSystem.AddComponent<EventSystem>();
-            eventSystem.AddComponent<StandaloneInputModule>();
-        }
-
+        EnsureEventSystem();
+        Canvas canvas = EnsureMenuCanvas();
+        GameObject overlay = CreateVideoOverlay(canvas.transform, out RawImage videoImage);
         RenderTexture texture = new RenderTexture(1920, 1080, 0, RenderTextureFormat.ARGB32);
         texture.Create();
-        openingVideoImage.texture = texture;
-        openingVideoOverlayObject.SetActive(true);
+        videoImage.texture = texture;
 
         GameObject playerObject = new GameObject("OpeningVideoPlayer");
         playerObject.transform.SetParent(transform, false);
@@ -508,29 +611,76 @@ public class MainMenuController : MonoBehaviour
             player.Stop();
         }
 
-        openingVideoImage.texture = null;
-        openingVideoOverlayObject.SetActive(false);
+        videoImage.texture = null;
         player.targetTexture = null;
         texture.Release();
         Destroy(texture);
         Destroy(playerObject);
+        Destroy(overlay);
     }
 
-    private IEnumerator LoadBackgroundMusic()
+    private Canvas EnsureMenuCanvas()
     {
-        if (backgroundSource == null)
+        if (menuCanvas != null)
         {
-            backgroundHost = new GameObject("PersistentBackgroundMusic");
-            DontDestroyOnLoad(backgroundHost);
-            backgroundSource = backgroundHost.AddComponent<AudioSource>();
-            backgroundSource.playOnAwake = false;
-            backgroundSource.spatialBlend = 0f;
-            backgroundSource.ignoreListenerPause = true;
-            backgroundListener = backgroundHost.AddComponent<AudioListener>();
-            backgroundListener.enabled = false;
+            return menuCanvas;
         }
 
-        SetBackgroundListenerEnabled(IsMenuScene(SceneManager.GetActiveScene().name));
+        menuCanvas = GetComponentInChildren<Canvas>();
+        if (menuCanvas != null)
+        {
+            return menuCanvas;
+        }
+
+        GameObject canvasObject = new GameObject("OpeningVideoCanvas");
+        canvasObject.transform.SetParent(transform, false);
+        menuCanvas = canvasObject.AddComponent<Canvas>();
+        menuCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        menuCanvas.sortingOrder = 2000;
+
+        CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        scaler.matchWidthOrHeight = 0.5f;
+
+        canvasObject.AddComponent<GraphicRaycaster>();
+        return menuCanvas;
+    }
+
+    private static GameObject CreateVideoOverlay(Transform parent, out RawImage videoImage)
+    {
+        GameObject overlay = new GameObject("OpeningVideoOverlay");
+        overlay.transform.SetParent(parent, false);
+
+        Image background = overlay.AddComponent<Image>();
+        background.color = Color.black;
+        RectTransform overlayRect = background.rectTransform;
+        overlayRect.anchorMin = Vector2.zero;
+        overlayRect.anchorMax = Vector2.one;
+        overlayRect.offsetMin = Vector2.zero;
+        overlayRect.offsetMax = Vector2.zero;
+
+        GameObject imageObject = new GameObject("OpeningVideoImage");
+        imageObject.transform.SetParent(overlay.transform, false);
+        videoImage = imageObject.AddComponent<RawImage>();
+        videoImage.color = Color.white;
+
+        RectTransform imageRect = videoImage.rectTransform;
+        imageRect.anchorMin = Vector2.zero;
+        imageRect.anchorMax = Vector2.one;
+        imageRect.offsetMin = Vector2.zero;
+        imageRect.offsetMax = Vector2.zero;
+
+        AspectRatioFitter fitter = imageObject.AddComponent<AspectRatioFitter>();
+        fitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+        fitter.aspectRatio = 16f / 9f;
+
+        return overlay;
+    }
+
+    private IEnumerator EnsureBackgroundMusic()
+    {
+        EnsureBackgroundSource();
 
         if (backgroundClip == null && !backgroundLoading)
         {
@@ -555,10 +705,8 @@ public class MainMenuController : MonoBehaviour
         {
             backgroundSource.clip = backgroundClip;
             backgroundSource.volume = backgroundVolume;
-            backgroundSource.priority = 200;
             backgroundSource.loop = true;
             backgroundSource.spatialBlend = 0f;
-            backgroundSource.ignoreListenerPause = true;
 
             if (!backgroundSource.isPlaying)
             {
@@ -567,44 +715,42 @@ public class MainMenuController : MonoBehaviour
         }
     }
 
+    private static void EnsureBackgroundSource()
+    {
+        if (backgroundSource != null)
+        {
+            return;
+        }
+
+        backgroundHost = new GameObject("PersistentBackgroundMusic");
+        DontDestroyOnLoad(backgroundHost);
+        backgroundSource = backgroundHost.AddComponent<AudioSource>();
+        backgroundSource.playOnAwake = false;
+    }
+
     private static void StopBackgroundMusic()
     {
         if (backgroundSource != null)
         {
             backgroundSource.Stop();
         }
-
-        SetBackgroundListenerEnabled(false);
-    }
-
-    private static void SetBackgroundListenerEnabled(bool enabledInMenu)
-    {
-        if (backgroundListener == null)
-        {
-            return;
-        }
-
-        AudioListener[] listeners = FindObjectsOfType<AudioListener>();
-        for (int i = 0; i < listeners.Length; i++)
-        {
-            AudioListener listener = listeners[i];
-            if (listener != null && listener.enabled && listener != backgroundListener)
-            {
-                backgroundListener.enabled = false;
-                return;
-            }
-        }
-
-        backgroundListener.enabled = enabledInMenu;
     }
 
     private void SetMenuButtonsInteractable(bool interactable)
     {
-        startGameButton.interactable = interactable;
-        introButton.interactable = interactable;
-        controlsButton.interactable = interactable;
-        settingsButton.interactable = interactable;
-        creditsButton.interactable = interactable;
-        exitButton.interactable = interactable;
+        SetButtonInteractable(startGameButton, interactable);
+        SetButtonInteractable(introButton, interactable);
+        SetButtonInteractable(controlsButton, interactable);
+        SetButtonInteractable(settingsButton, interactable);
+        SetButtonInteractable(creditsButton, interactable);
+        SetButtonInteractable(exitButton, interactable);
+    }
+
+    private static void SetButtonInteractable(Button button, bool interactable)
+    {
+        if (button != null)
+        {
+            button.interactable = interactable;
+        }
     }
 }

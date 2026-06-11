@@ -1,3 +1,4 @@
+// Runs the merchant cart repair side quest and its reward conversation.
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -18,7 +19,6 @@ public class MerchantDeliverySideQuest : MonoBehaviour
     [SerializeField] private string rewardItemName = "Glow Berry";
 
     [Header("Animation")]
-    [SerializeField] private Animator merchantAnimator;
     [SerializeField] private Avatar merchantAvatar;
     [SerializeField] private RuntimeAnimatorController merchantMoveController;
     [SerializeField] private RuntimeAnimatorController merchantStandController;
@@ -52,6 +52,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
     private GUIStyle continueHintStyle;
     private GUIStyle choiceTitleStyle;
     private GUIStyle choiceOptionStyle;
+
     private readonly string[] merchantConversation =
     {
         "Player: What happened?",
@@ -82,33 +83,12 @@ public class MerchantDeliverySideQuest : MonoBehaviour
     private void Update()
     {
         UpdateNearFlags();
-
-        if (!questAccepted && !merchantConversationRunning && !merchantChoiceVisible && !nearMerchant && merchantAnimator != null && merchantMoveController != null)
-        {
-            if (merchantAnimator.runtimeAnimatorController != merchantMoveController)
-            {
-                merchantAnimator.runtimeAnimatorController = merchantMoveController;
-            }
-
-            if (merchantAvatar != null && merchantAnimator.avatar != merchantAvatar)
-            {
-                merchantAnimator.avatar = merchantAvatar;
-            }
-
-            merchantAnimator.applyRootMotion = false;
-            merchantAnimator.enabled = true;
-        }
-
+        UpdateMerchantAnimation();
         UpdateInput();
     }
 
     private void OnGUI()
     {
-        if (Event.current.type != EventType.Repaint)
-        {
-            return;
-        }
-
         DrawQuestPanel();
         DrawInteractPrompt();
         DrawTimedMessage();
@@ -119,7 +99,16 @@ public class MerchantDeliverySideQuest : MonoBehaviour
     {
         if (merchantChoiceVisible)
         {
-            HandleChoiceInput();
+            if (Input.GetKeyDown(KeyCode.A))
+            {
+                AcceptQuest();
+            }
+            else if (Input.GetKeyDown(KeyCode.B))
+            {
+                merchantChoiceVisible = false;
+                ShowTimedMessage(null, 0f, false);
+            }
+
             return;
         }
 
@@ -138,27 +127,44 @@ public class MerchantDeliverySideQuest : MonoBehaviour
             return;
         }
 
-        bool interactPressed = Input.GetKeyDown(interactKey);
-
-        if (interactPressed && nearMerchant)
+        if (Input.GetKeyDown(interactKey) && nearMerchant)
         {
-            HandleMerchantInteraction();
+            if (repairCompleted && !merchantRewardGiven)
+            {
+                PlayMerchantStand();
+                StartConversation(merchantRewardConversation);
+            }
+            else if (questCompleted)
+            {
+                PlayMerchantStand();
+                ShowTimedMessage("Merchant: Thank you.", 3f, false);
+            }
+            else if (questAccepted)
+            {
+                PlayMerchantStand();
+                ShowTimedMessage("Merchant: The worker should be west of here.", 3f, false);
+            }
+            else
+            {
+                StartConversation(merchantConversation);
+            }
+
             return;
         }
 
-        if (repairTaskAdded && !hasRepairTools && interactPressed && nearTools)
+        if (repairTaskAdded && !hasRepairTools && Input.GetKeyDown(interactKey) && nearTools)
         {
             PickRepairTools();
             return;
         }
 
-        if (repairTaskAdded && hasRepairTools && !repairCompleted && interactPressed && nearWorker)
+        if (repairTaskAdded && hasRepairTools && !repairCompleted && Input.GetKeyDown(interactKey) && nearWorker)
         {
             StartCoroutine(RepairCart());
             return;
         }
 
-        if (questAccepted && !repairTaskAdded && interactPressed && nearWorker)
+        if (questAccepted && !repairTaskAdded && Input.GetKeyDown(interactKey) && nearWorker)
         {
             StartConversation(workerConversation);
         }
@@ -166,22 +172,7 @@ public class MerchantDeliverySideQuest : MonoBehaviour
 
     private void StartConversation(string[] conversation)
     {
-        if (merchantAnimator != null && merchantStandController != null)
-        {
-            if (merchantAnimator.runtimeAnimatorController != merchantStandController)
-            {
-                merchantAnimator.runtimeAnimatorController = merchantStandController;
-            }
-
-            if (merchantAvatar != null && merchantAnimator.avatar != merchantAvatar)
-            {
-                merchantAnimator.avatar = merchantAvatar;
-            }
-
-            merchantAnimator.applyRootMotion = false;
-            merchantAnimator.enabled = true;
-        }
-
+        PlayMerchantStand();
         merchantConversationRunning = true;
         conversationIndex = 0;
         activeConversation = conversation;
@@ -198,11 +189,33 @@ public class MerchantDeliverySideQuest : MonoBehaviour
             return;
         }
 
-        string[] finishedConversation = activeConversation;
         merchantConversationRunning = false;
-        ClearTimedMessage();
+        timedMessageWaitsForContinue = false;
+        showContinueHint = false;
+        timedMessage = null;
+
+        if (activeConversation == merchantConversation)
+        {
+            merchantChoiceVisible = true;
+        }
+        else if (activeConversation == workerConversation)
+        {
+            repairTaskAdded = true;
+            ShowTimedMessage("Side quest updated: repair the cart.", 3f, false);
+        }
+        else if (activeConversation == workerRepairCompleteConversation)
+        {
+            CompleteRepairTask();
+        }
+        else if (activeConversation == merchantRewardConversation)
+        {
+            merchantRewardGiven = true;
+            questCompleted = true;
+            GlobalBackpackUI.AddItem(rewardItemName);
+            ShowTimedMessage("Side quest complete: delivery checked.", 3f, false);
+        }
+
         activeConversation = null;
-        HandleConversationFinished(finishedConversation);
     }
 
     private void AcceptQuest()
@@ -242,6 +255,56 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         ShowTimedMessage("Side quest complete: cart repaired.", 3f, false);
     }
 
+    private void UpdateMerchantAnimation()
+    {
+        if (merchant == null)
+        {
+            return;
+        }
+
+        if (!questAccepted && !merchantConversationRunning && !merchantChoiceVisible && !nearMerchant)
+        {
+            PlayMerchantMove();
+        }
+    }
+
+    private void PlayMerchantMove()
+    {
+        ApplyMerchantController(merchantMoveController);
+    }
+
+    private void PlayMerchantStand()
+    {
+        ApplyMerchantController(merchantStandController);
+    }
+
+    private void ApplyMerchantController(RuntimeAnimatorController controller)
+    {
+        if (merchant == null || controller == null)
+        {
+            return;
+        }
+
+        Animator animator = merchant.GetComponent<Animator>();
+        if (animator == null)
+        {
+            animator = merchant.gameObject.AddComponent<Animator>();
+        }
+
+        if (animator.runtimeAnimatorController != controller)
+        {
+            animator.runtimeAnimatorController = controller;
+        }
+
+        if (merchantAvatar != null && animator.avatar != merchantAvatar)
+        {
+            animator.avatar = merchantAvatar;
+        }
+
+        animator.applyRootMotion = false;
+        animator.enabled = true;
+    }
+
     private void DrawQuestPanel()
     {
         if (!questAccepted || questCompleted)
@@ -249,20 +312,20 @@ public class MerchantDeliverySideQuest : MonoBehaviour
             return;
         }
 
-        float width = 600f;
-        float height = repairTaskAdded ? 240f : 170f;
+        float width = 420f;
+        float height = repairTaskAdded ? 112f : 78f;
         Rect rect = GameUiStyle.SideQuestRect(width, height);
-        GameUiStyle.DrawDialoguePanel(rect);
+        GameUiStyle.DrawPanel(rect);
 
-        GUIStyle titleStyle = GameUiStyle.LabelStyle(ref questTitleStyle, 26, TextAnchor.MiddleLeft, FontStyle.Bold);
-        GUIStyle itemStyle = GameUiStyle.LabelStyle(ref questItemStyle, 24, TextAnchor.MiddleLeft);
+        GUIStyle titleStyle = GetStyle(ref questTitleStyle, 26, TextAnchor.MiddleLeft, FontStyle.Bold);
+        GUIStyle itemStyle = GetStyle(ref questItemStyle, 24, TextAnchor.MiddleLeft, FontStyle.Normal);
 
-        GUI.Label(new Rect(rect.x + 22f, rect.y + 18f, rect.width - 44f, 56f), "Side Quest", titleStyle);
-        GUI.Label(new Rect(rect.x + 22f, rect.y + 86f, rect.width - 44f, 54f), "Check the merchant delivery", itemStyle);
+        GUI.Label(new Rect(rect.x + 18f, rect.y + 10f, rect.width - 36f, 26f), "Side Quest", titleStyle);
+        GUI.Label(new Rect(rect.x + 18f, rect.y + 42f, rect.width - 36f, 24f), "Check the merchant delivery", itemStyle);
 
         if (repairTaskAdded)
         {
-            GUI.Label(new Rect(rect.x + 22f, rect.y + 154f, rect.width - 44f, 54f), "Repair the cart", itemStyle);
+            GUI.Label(new Rect(rect.x + 18f, rect.y + 72f, rect.width - 36f, 24f), "Repair the cart", itemStyle);
         }
     }
 
@@ -282,10 +345,10 @@ public class MerchantDeliverySideQuest : MonoBehaviour
             return;
         }
 
-        GUIStyle style = GameUiStyle.LabelStyle(ref promptStyle, 34, TextAnchor.MiddleCenter, FontStyle.Bold);
+        GUIStyle style = GetStyle(ref promptStyle, 34, TextAnchor.MiddleCenter, FontStyle.Bold);
 
         Rect rect = GameUiStyle.InteractionPromptRect(420f, 60f);
-        GameUiStyle.DrawDialoguePanel(rect);
+        GameUiStyle.DrawPanel(rect);
         string text = showToolPrompt ? "Press E to pick up" : (showRepairPrompt ? "Press E to repair" : "Press E to talk");
         GUI.Label(rect, text, style);
     }
@@ -297,18 +360,18 @@ public class MerchantDeliverySideQuest : MonoBehaviour
             return;
         }
 
-        Rect rect = GameUiStyle.DialogueRect(260f);
-        GameUiStyle.DrawDialoguePanel(rect);
+        Rect rect = GameUiStyle.DialogueRect(190f);
+        GameUiStyle.DrawPanel(rect);
 
-        GUIStyle style = GameUiStyle.LabelStyle(ref messageStyle, 34, TextAnchor.MiddleCenter, FontStyle.Normal, true);
+        GUIStyle style = GetStyle(ref messageStyle, 34, TextAnchor.MiddleCenter, FontStyle.Normal, true);
 
-        GUI.Label(new Rect(rect.x + 36f, rect.y + 30f, rect.width - 72f, rect.height - 126f), timedMessage, style);
+        GUI.Label(new Rect(rect.x + 28f, rect.y + 18f, rect.width - 56f, rect.height - 58f), timedMessage, style);
 
         if (showContinueHint)
         {
-            GUIStyle hintStyle = GameUiStyle.LabelStyle(ref continueHintStyle, 22, TextAnchor.MiddleRight);
+            GUIStyle hintStyle = GetStyle(ref continueHintStyle, 22, TextAnchor.MiddleRight, FontStyle.Normal);
             hintStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f);
-            GUI.Label(new Rect(rect.x + 36f, rect.y + rect.height - 72f, rect.width - 72f, 48f), "Press C to continue", hintStyle);
+            GUI.Label(new Rect(rect.x + 28f, rect.y + rect.height - 40f, rect.width - 56f, 28f), "Press C to continue", hintStyle);
         }
     }
 
@@ -319,16 +382,16 @@ public class MerchantDeliverySideQuest : MonoBehaviour
             return;
         }
 
-        float width = Mathf.Min(900f, Screen.width - 80f);
-        Rect rect = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.5f - 180f, width, 360f);
-        GameUiStyle.DrawDialoguePanel(rect);
+        float width = Mathf.Min(680f, Screen.width - 80f);
+        Rect rect = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.5f - 92f, width, 184f);
+        GameUiStyle.DrawPanel(rect);
 
-        GUIStyle titleStyle = GameUiStyle.LabelStyle(ref choiceTitleStyle, 32, TextAnchor.MiddleCenter, FontStyle.Bold);
-        GUIStyle optionStyle = GameUiStyle.LabelStyle(ref choiceOptionStyle, 28, TextAnchor.MiddleLeft);
+        GUIStyle titleStyle = GetStyle(ref choiceTitleStyle, 32, TextAnchor.MiddleCenter, FontStyle.Bold);
+        GUIStyle optionStyle = GetStyle(ref choiceOptionStyle, 28, TextAnchor.MiddleLeft, FontStyle.Normal);
 
-        GUI.Label(new Rect(rect.x + 36f, rect.y + 28f, rect.width - 72f, 68f), "Choose", titleStyle);
-        GUI.Label(new Rect(rect.x + 56f, rect.y + 124f, rect.width - 112f, 78f), "A: I will check", optionStyle);
-        GUI.Label(new Rect(rect.x + 56f, rect.y + 222f, rect.width - 112f, 78f), "B: Leave", optionStyle);
+        GUI.Label(new Rect(rect.x + 24f, rect.y + 16f, rect.width - 48f, 32f), "Choose", titleStyle);
+        GUI.Label(new Rect(rect.x + 48f, rect.y + 70f, rect.width - 96f, 30f), "A: I will check", optionStyle);
+        GUI.Label(new Rect(rect.x + 48f, rect.y + 112f, rect.width - 96f, 30f), "B: Leave", optionStyle);
     }
 
     private void ShowTimedMessage(string message, float seconds, bool waitForContinue)
@@ -348,126 +411,43 @@ public class MerchantDeliverySideQuest : MonoBehaviour
         }
     }
 
-    private void ClearTimedMessage()
+    private GUIStyle GetStyle(ref GUIStyle style, int fontSize, TextAnchor alignment, FontStyle fontStyle, bool wordWrap = false)
     {
-        timedMessageWaitsForContinue = false;
-        showContinueHint = false;
-        timedMessage = null;
+        if (style == null)
+        {
+            style = new GUIStyle(GUI.skin.label);
+        }
+
+        style.fontSize = fontSize;
+        style.alignment = alignment;
+        style.fontStyle = fontStyle;
+        style.wordWrap = wordWrap;
+        style.normal.textColor = Color.white;
+        return style;
     }
 
     private void UpdateNearFlags()
     {
         nearMerchant = IsNear(player, merchant);
-        nearWorker = IsNear(player, worker) &&
-            ((questAccepted && !repairTaskAdded) || (repairTaskAdded && !repairCompleted));
+        nearWorker = questAccepted && !repairTaskAdded && IsNear(player, worker);
+        if (repairTaskAdded && !repairCompleted)
+        {
+            nearWorker = IsNear(player, worker);
+        }
+
         nearTools = repairTaskAdded && !hasRepairTools && IsNear(player, tools);
     }
 
     private void SetupSceneObjects()
     {
+        EnsureQuestColliders();
         ShowQuestObjects(questAccepted && !repairCompleted);
         if (hasRepairTools)
         {
             HideToolParts();
         }
 
-        if (merchantAnimator != null && merchantMoveController != null)
-        {
-            merchantAnimator.runtimeAnimatorController = merchantMoveController;
-            if (merchantAvatar != null)
-            {
-                merchantAnimator.avatar = merchantAvatar;
-            }
-
-            merchantAnimator.applyRootMotion = false;
-            merchantAnimator.enabled = true;
-        }
-    }
-
-    private void HandleChoiceInput()
-    {
-        if (Input.GetKeyDown(KeyCode.A))
-        {
-            AcceptQuest();
-            return;
-        }
-
-        if (Input.GetKeyDown(KeyCode.B))
-        {
-            merchantChoiceVisible = false;
-            ClearTimedMessage();
-        }
-    }
-
-    private void HandleMerchantInteraction()
-    {
-        if (merchantAnimator != null && merchantStandController != null)
-        {
-            if (merchantAnimator.runtimeAnimatorController != merchantStandController)
-            {
-                merchantAnimator.runtimeAnimatorController = merchantStandController;
-            }
-
-            if (merchantAvatar != null && merchantAnimator.avatar != merchantAvatar)
-            {
-                merchantAnimator.avatar = merchantAvatar;
-            }
-
-            merchantAnimator.applyRootMotion = false;
-            merchantAnimator.enabled = true;
-        }
-
-        if (repairCompleted && !merchantRewardGiven)
-        {
-            StartConversation(merchantRewardConversation);
-            return;
-        }
-
-        if (questCompleted)
-        {
-            ShowTimedMessage("Merchant: Thank you.", 3f, false);
-            return;
-        }
-
-        if (questAccepted)
-        {
-            ShowTimedMessage("Merchant: The worker should be west of here.", 3f, false);
-            return;
-        }
-
-        StartConversation(merchantConversation);
-    }
-
-    private void HandleConversationFinished(string[] finishedConversation)
-    {
-        if (finishedConversation == merchantConversation)
-        {
-            merchantChoiceVisible = true;
-            return;
-        }
-
-        if (finishedConversation == workerConversation)
-        {
-            repairTaskAdded = true;
-            ShowTimedMessage("Side quest updated: repair the cart.", 3f, false);
-            return;
-        }
-
-        if (finishedConversation == workerRepairCompleteConversation)
-        {
-            CompleteRepairTask();
-            return;
-        }
-
-        if (finishedConversation != merchantRewardConversation)
-        {
-            return;
-        }
-
-        merchantRewardGiven = true;
-        questCompleted = true;
-        GlobalBackpackUI.AddItem(rewardItemName);
-        ShowTimedMessage("Side quest complete: delivery checked.", 3f, false);
+        PlayMerchantMove();
     }
 
     private void ShowQuestObjects(bool show)
@@ -489,6 +469,109 @@ public class MerchantDeliverySideQuest : MonoBehaviour
                 apple.SetActive(show);
             }
         }
+    }
+
+    private void EnsureQuestColliders()
+    {
+        EnsureSolidCollider(merchant);
+        EnsureSolidCollider(worker);
+        EnsureSolidCollider(tools);
+
+        if (cart != null)
+        {
+            EnsureSolidCollider(cart.transform);
+        }
+
+        foreach (GameObject apple in apples)
+        {
+            if (apple != null)
+            {
+                EnsureSolidCollider(apple.transform);
+            }
+        }
+    }
+
+    private void EnsureSolidCollider(Transform target)
+    {
+        if (target == null || HasSolidCollider(target))
+        {
+            return;
+        }
+
+        AddRendererBoxColliders(target);
+    }
+
+    private bool HasSolidCollider(Transform target)
+    {
+        Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
+        foreach (Collider collider in colliders)
+        {
+            if (collider != null && !collider.isTrigger)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool AddRendererBoxColliders(Transform target)
+    {
+        if (!TryGetWorldBounds(target, out Bounds bounds))
+        {
+            return false;
+        }
+
+        BoxCollider collider = target.GetComponent<BoxCollider>();
+        if (collider == null)
+        {
+            collider = target.gameObject.AddComponent<BoxCollider>();
+        }
+
+        collider.isTrigger = false;
+        collider.center = target.InverseTransformPoint(bounds.center);
+        collider.size = DivideByLossyScale(bounds.size, target.lossyScale);
+        return true;
+    }
+
+    private bool TryGetWorldBounds(Transform target, out Bounds bounds)
+    {
+        Renderer[] renderers = target.GetComponentsInChildren<Renderer>(true);
+        bounds = new Bounds(target.position, Vector3.zero);
+        bool hasBounds = false;
+
+        foreach (Renderer renderer in renderers)
+        {
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            if (!hasBounds)
+            {
+                bounds = renderer.bounds;
+                hasBounds = true;
+            }
+            else
+            {
+                bounds.Encapsulate(renderer.bounds);
+            }
+        }
+
+        return hasBounds;
+    }
+
+    private Vector3 DivideByLossyScale(Vector3 size, Vector3 lossyScale)
+    {
+        return new Vector3(
+            DivideByScale(size.x, lossyScale.x),
+            DivideByScale(size.y, lossyScale.y),
+            DivideByScale(size.z, lossyScale.z));
+    }
+
+    private float DivideByScale(float value, float scale)
+    {
+        return Mathf.Abs(scale) > 0.0001f ? value / Mathf.Abs(scale) : value;
     }
 
     private void HideToolParts()
@@ -514,14 +597,17 @@ public class MerchantDeliverySideQuest : MonoBehaviour
             return false;
         }
 
+        return GetClosestDistance(source.position, target) <= interactDistance;
+    }
+
+    private float GetClosestDistance(Vector3 point, Transform target)
+    {
         Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
         float closestSqrDistance = float.PositiveInfinity;
-        bool foundCollider = false;
-        Vector3 point = source.position;
+        bool found = false;
 
-        for (int i = 0; i < colliders.Length; i++)
+        foreach (Collider collider in colliders)
         {
-            Collider collider = colliders[i];
             if (collider == null)
             {
                 continue;
@@ -532,15 +618,16 @@ public class MerchantDeliverySideQuest : MonoBehaviour
             if (sqrDistance < closestSqrDistance)
             {
                 closestSqrDistance = sqrDistance;
-                foundCollider = true;
+                found = true;
             }
         }
 
-        if (foundCollider)
+        if (found)
         {
-            return Mathf.Sqrt(closestSqrDistance) <= interactDistance;
+            return Mathf.Sqrt(closestSqrDistance);
         }
 
-        return Vector3.Distance(point, target.position) <= interactDistance;
+        return Vector3.Distance(point, target.position);
     }
+
 }

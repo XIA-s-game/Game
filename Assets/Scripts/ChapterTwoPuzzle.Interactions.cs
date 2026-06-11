@@ -1,4 +1,6 @@
+// Handles chapter two NPC talks, pickups, keys, honey, and door interactions.
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -14,45 +16,43 @@ public partial class ChapterTwoPuzzle
 
     private void UpdateExplorationInput()
     {
-        bool interactPressed = Input.GetKeyDown(interactKey);
-
-        if (!hasPass && IsNearStartTile() && interactPressed)
+        if (!hasPass && IsNearStartTile() && Input.GetKeyDown(interactKey))
         {
             StartBoardGame();
             return;
         }
 
-        if (waitingForHoneyBottle && !hasHoneyBottle && IsNearHoney() && interactPressed)
+        if (waitingForHoneyBottle && !hasHoneyBottle && IsNearHoney() && Input.GetKeyDown(interactKey))
         {
             PickHoneyBottle();
             return;
         }
 
-        if (bearAskedForSilverLeaf && !hasSilverLeaf && IsNearSilverLeaf() && interactPressed)
+        if (bearAskedForSilverLeaf && !hasSilverLeaf && IsNearSilverLeaf() && Input.GetKeyDown(interactKey))
         {
             PickSilverLeaf();
             return;
         }
 
-        if (honeyPourReady && !hasFullHoneyBottle && IsNearHoneyGive() && interactPressed)
+        if (honeyPourReady && !hasFullHoneyBottle && IsNearHoneyGive() && Input.GetKeyDown(interactKey))
         {
             PourHoney();
             return;
         }
 
-        if (!lockedHouseOpened && HasAllFourKeys() && IsNearLockedHouse() && interactPressed)
+        if (!lockedHouseOpened && HasAllFourKeys() && IsNearLockedHouse() && Input.GetKeyDown(interactKey))
         {
             StartCoroutine(OpenLockedHouse());
             return;
         }
 
-        if (lockedHouseOpened && waitingForFourthPagePickup && !fourthPagePicked && IsNearBox() && interactPressed)
+        if (lockedHouseOpened && waitingForFourthPagePickup && !fourthPagePicked && IsNearBox() && Input.GetKeyDown(interactKey))
         {
             PickFourthPage();
             return;
         }
 
-        if (thirdPagePortalUnlocked && IsNearThirdPagePortal() && interactPressed)
+        if (thirdPagePortalUnlocked && IsNearThirdPagePortal() && Input.GetKeyDown(interactKey))
         {
             SceneManager.LoadScene(nextSceneName);
             return;
@@ -72,26 +72,26 @@ public partial class ChapterTwoPuzzle
             return;
         }
 
-        if (!listenerDialogueShown && IsNearListener() && interactPressed)
+        if (!listenerDialogueShown && IsNearListener() && Input.GetKeyDown(interactKey))
         {
             listenerDialogueShown = true;
             StartDialogue(listenerDialogue, null);
             return;
         }
 
-        if (IsNearBaker() && interactPressed)
+        if (IsNearBaker() && Input.GetKeyDown(interactKey))
         {
             HandleBakerInteraction();
             return;
         }
 
-        if (IsNearBear() && interactPressed)
+        if (IsNearBear() && Input.GetKeyDown(interactKey))
         {
             HandleBearInteraction();
             return;
         }
 
-        if (IsNearGuard() && interactPressed)
+        if (IsNearGuard() && Input.GetKeyDown(interactKey))
         {
             HandleGuardInteraction();
             return;
@@ -113,7 +113,7 @@ public partial class ChapterTwoPuzzle
             return;
         }
 
-        if (hasFullHoneyBottle)
+        if (hasFullHoneyBottle && !bakerQuestCompleted)
         {
             bakerQuestCompleted = true;
             RemoveInventoryItem(fullHoneyJarItemName);
