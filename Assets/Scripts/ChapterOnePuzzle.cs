@@ -1,13 +1,10 @@
+// Runs the first chapter puzzle manager: player checks, state flags, and the main update loop.
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public partial class ChapterOnePuzzle : MonoBehaviour
 {
-    private const string SaveKeyPrefix = "ChapterOnePuzzle.";
-    private const string SaveSceneName = "Enchanted Forest A";
-    private static ChapterOnePuzzle activeInstance;
-
     [System.Serializable]
     private class PushStep
     {
@@ -16,6 +13,7 @@ public partial class ChapterOnePuzzle : MonoBehaviour
         public Vector3 solvedLocalPosition;
     }
 
+    [SerializeField] private bool requireForestAttackDialogueBeforeEnemies = true;
     [SerializeField] private string nextSceneName = "Fae Homes Demo";
     [SerializeField] private RuntimeAnimatorController heroWalkController;
     [SerializeField] private RuntimeAnimatorController heroAttackController;
@@ -86,6 +84,7 @@ public partial class ChapterOnePuzzle : MonoBehaviour
 
     private readonly List<Transform> pushBlocks = new List<Transform>();
     private readonly List<Transform> pushMarkers = new List<Transform>();
+    private readonly HashSet<Transform> colliderReadyTargets = new HashSet<Transform>();
     private Vector3[] runtimeSolvedLocalPositions;
     private Vector3[] initialLocalPositions;
     private bool[] completedPushes;
@@ -148,34 +147,11 @@ public partial class ChapterOnePuzzle : MonoBehaviour
 
     private void Awake()
     {
-        activeInstance = this;
         RefreshReferences();
-        LoadPersistentState();
-    }
-
-    private void OnDestroy()
-    {
-        if (activeInstance == this)
-        {
-            activeInstance = null;
-        }
-    }
-
-    private void Start()
-    {
-        RefreshReferences();
-        if (!rescueApplied)
-        {
-            SetAudioSourcesPlayingInHierarchy(cage, true);
-        }
-
-        ApplyRuntimeStateToScene();
     }
 
     private void OnDisable()
     {
-        StopAudioSourcesInHierarchy(cage);
-        GameAudioManager.StopRoarLoop();
         if (enemiesActivated && !heroCombatFinished)
         {
             GameAudioManager.StopEnemyLoop();
@@ -227,8 +203,10 @@ public partial class ChapterOnePuzzle : MonoBehaviour
 
     private void RefreshReferences()
     {
-        CacheHeroAnimator();
-
+        if (hero != null && heroAnimator == null)
+        {
+            heroAnimator = hero.GetComponentInChildren<Animator>(true);
+        }
         if (!forestAttackDialogueFinished && !enemiesActivated)
         {
             SetHeroVisible(false);
@@ -236,20 +214,7 @@ public partial class ChapterOnePuzzle : MonoBehaviour
 
         if (!portalUnlocked)
         {
-            if (portalTrigger != null && portalTrigger.gameObject.activeSelf)
-            {
-                portalTrigger.gameObject.SetActive(false);
-            }
-
-            if (portalDoor != null && portalDoor.activeSelf)
-            {
-                portalDoor.SetActive(false);
-            }
-        }
-
-        if (!rescueApplied)
-        {
-            SetAudioSourcesPlayingInHierarchy(cage, true);
+            SetPortalVisible(false);
         }
 
         SetIndicatorVisible(redIndicator, false);
@@ -263,6 +228,7 @@ public partial class ChapterOnePuzzle : MonoBehaviour
         RefreshPushReferences();
 
         BuildRuntimeSolvedLocalPositions();
+        EnsureSolidCollider(center);
         int expectedPushCount = pushSteps != null ? pushSteps.Length : 0;
         referencesReady = player != null && puzzleRoot != null && center != null && pushBlocks.Count == expectedPushCount;
     }
@@ -276,398 +242,5 @@ public partial class ChapterOnePuzzle : MonoBehaviour
         }
 
         return Vector3.Distance(flatPoint, Flatten(target.position));
-    }
-
-    public static void SavePersistentStateForActiveScene()
-    {
-        if (SceneManager.GetActiveScene().name != SaveSceneName)
-        {
-            return;
-        }
-
-        ChapterOnePuzzle instance = activeInstance;
-        if (instance == null)
-        {
-            return;
-        }
-
-        instance.SavePersistentState();
-    }
-
-    public static void ClearPersistentState()
-    {
-        DeleteSaveKeys(
-            "CurrentIndex",
-            "RecognizeHelpShown",
-            "InitialHelpDialogueFinished",
-            "RescueApplied",
-            "PageRewardFinished",
-            "ForestAttackDialogueFinished",
-            "EnemiesActivated",
-            "HeroWarningShown",
-            "HeroCombatFinished",
-            "HeroPostCombatDialogueFinished",
-            "PortalUnlocked",
-            "FirstPageAddedToBackpack",
-            "CompletedPushes",
-            "BlockPositions",
-            "EnemyActiveStates");
-    }
-
-    private void SavePersistentState()
-    {
-        PlayerPrefs.SetInt(SaveKey("CurrentIndex"), currentIndex);
-        SaveBool("RecognizeHelpShown", recognizeHelpShown);
-        SaveBool("InitialHelpDialogueFinished", initialHelpDialogueFinished);
-        SaveBool("RescueApplied", rescueApplied);
-        SaveBool("PageRewardFinished", pageRewardFinished);
-        SaveBool("ForestAttackDialogueFinished", forestAttackDialogueFinished);
-        SaveBool("EnemiesActivated", enemiesActivated);
-        SaveBool("HeroWarningShown", heroWarningShown);
-        SaveBool("HeroCombatFinished", heroCombatFinished);
-        SaveBool("HeroPostCombatDialogueFinished", heroPostCombatDialogueFinished);
-        SaveBool("PortalUnlocked", portalUnlocked);
-        SaveBool("FirstPageAddedToBackpack", firstPageAddedToBackpack);
-        PlayerPrefs.SetString(SaveKey("CompletedPushes"), SerializeBoolArray(completedPushes));
-        PlayerPrefs.SetString(SaveKey("BlockPositions"), SerializeBlockPositions());
-        PlayerPrefs.SetString(SaveKey("EnemyActiveStates"), SerializeEnemyStates());
-    }
-
-    private void LoadPersistentState()
-    {
-        currentIndex = PlayerPrefs.GetInt(SaveKey("CurrentIndex"), currentIndex);
-        recognizeHelpShown = LoadBool("RecognizeHelpShown", recognizeHelpShown);
-        initialHelpDialogueFinished = LoadBool("InitialHelpDialogueFinished", initialHelpDialogueFinished);
-        rescueApplied = LoadBool("RescueApplied", rescueApplied);
-        pageRewardFinished = LoadBool("PageRewardFinished", pageRewardFinished);
-        forestAttackDialogueFinished = LoadBool("ForestAttackDialogueFinished", forestAttackDialogueFinished);
-        enemiesActivated = LoadBool("EnemiesActivated", enemiesActivated);
-        heroWarningShown = LoadBool("HeroWarningShown", heroWarningShown);
-        heroCombatFinished = LoadBool("HeroCombatFinished", heroCombatFinished);
-        heroPostCombatDialogueFinished = LoadBool("HeroPostCombatDialogueFinished", heroPostCombatDialogueFinished);
-        portalUnlocked = LoadBool("PortalUnlocked", portalUnlocked);
-        firstPageAddedToBackpack = LoadBool("FirstPageAddedToBackpack", firstPageAddedToBackpack);
-    }
-
-    private void ApplyRuntimeStateToScene()
-    {
-        ApplySavedPushState();
-
-        if (rescueApplied)
-        {
-            ApplyRescueSceneState();
-            SetIndicatorVisible(greenIndicator, currentIndex >= requiredOrderedPushCount);
-            SetIndicatorVisible(redIndicator, false);
-        }
-
-        if (forestAttackDialogueFinished && fairy != null)
-        {
-            fairy.gameObject.SetActive(false);
-        }
-
-        if (enemiesActivated)
-        {
-            if (!heroCombatFinished)
-            {
-                GameAudioManager.StartRoarLoop();
-            }
-
-            ApplyEnemySceneState();
-        }
-        else if (!forestAttackDialogueFinished)
-        {
-            SetHeroVisible(false);
-        }
-
-        if (heroCombatFinished && hero != null)
-        {
-            SetHeroVisible(true);
-        }
-
-        if (portalUnlocked)
-        {
-            if (portalTrigger != null && !portalTrigger.gameObject.activeSelf)
-            {
-                portalTrigger.gameObject.SetActive(true);
-            }
-
-            if (portalDoor != null && !portalDoor.activeSelf)
-            {
-                portalDoor.SetActive(true);
-            }
-        }
-    }
-
-    private void ApplySavedPushState()
-    {
-        if (pushBlocks.Count == 0)
-        {
-            return;
-        }
-
-        string completedPushesValue = PlayerPrefs.GetString(SaveKey("CompletedPushes"), string.Empty);
-        string blockPositionsValue = PlayerPrefs.GetString(SaveKey("BlockPositions"), string.Empty);
-
-        if (!string.IsNullOrEmpty(completedPushesValue))
-        {
-            ApplySerializedBoolArray(completedPushesValue);
-        }
-
-        if (!string.IsNullOrEmpty(blockPositionsValue))
-        {
-            ApplySerializedBlockPositions(blockPositionsValue);
-        }
-    }
-
-    private string SerializeBoolArray(bool[] values)
-    {
-        if (values == null || values.Length == 0)
-        {
-            return string.Empty;
-        }
-
-        string[] parts = new string[values.Length];
-        for (int i = 0; i < values.Length; i++)
-        {
-            parts[i] = values[i] ? "1" : "0";
-        }
-
-        return string.Join(",", parts);
-    }
-
-    private void ApplySerializedBoolArray(string serialized)
-    {
-        if (completedPushes == null || string.IsNullOrEmpty(serialized))
-        {
-            return;
-        }
-
-        string[] parts = serialized.Split(',');
-        for (int i = 0; i < completedPushes.Length && i < parts.Length; i++)
-        {
-            completedPushes[i] = parts[i] == "1";
-        }
-    }
-
-    private string SerializeBlockPositions()
-    {
-        if (pushBlocks.Count == 0)
-        {
-            return string.Empty;
-        }
-
-        string[] parts = new string[pushBlocks.Count];
-        for (int i = 0; i < pushBlocks.Count; i++)
-        {
-            Transform block = pushBlocks[i];
-            if (block == null)
-            {
-                parts[i] = string.Empty;
-                continue;
-            }
-
-            Vector3 position = block.localPosition;
-            parts[i] = position.x + "|" + position.y + "|" + position.z;
-        }
-
-        return string.Join(";", parts);
-    }
-
-    private void ApplySerializedBlockPositions(string serialized)
-    {
-        if (string.IsNullOrEmpty(serialized))
-        {
-            return;
-        }
-
-        string[] blockEntries = serialized.Split(';');
-        for (int i = 0; i < pushBlocks.Count && i < blockEntries.Length; i++)
-        {
-            Transform block = pushBlocks[i];
-            if (block == null || string.IsNullOrEmpty(blockEntries[i]))
-            {
-                continue;
-            }
-
-            string[] parts = blockEntries[i].Split('|');
-            if (parts.Length != 3)
-            {
-                continue;
-            }
-
-            float x;
-            float y;
-            float z;
-            if (!float.TryParse(parts[0], out x) ||
-                !float.TryParse(parts[1], out y) ||
-                !float.TryParse(parts[2], out z))
-            {
-                continue;
-            }
-
-            block.localPosition = new Vector3(x, y, z);
-        }
-    }
-
-    private string SerializeEnemyStates()
-    {
-        if (delayedEnemyObjects == null || delayedEnemyObjects.Length == 0)
-        {
-            return string.Empty;
-        }
-
-        string[] parts = new string[delayedEnemyObjects.Length];
-        for (int i = 0; i < delayedEnemyObjects.Length; i++)
-        {
-            GameObject enemy = delayedEnemyObjects[i];
-            parts[i] = enemy != null && enemy.activeSelf ? "1" : "0";
-        }
-
-        return string.Join(",", parts);
-    }
-
-    private void ApplyRescueSceneState()
-    {
-        if (cage != null && cage.childCount > 0)
-        {
-            cage.GetChild(0).localPosition = cageChildSolvedLocalPosition;
-            StopAudioSourcesInHierarchy(cage);
-        }
-
-        if (fairy != null)
-        {
-            fairy.position = fairySolvedWorldPosition;
-            fairy.rotation *= Quaternion.Euler(fairySolvedEulerOffset);
-        }
-    }
-
-    private void ApplyEnemySceneState()
-    {
-        PrepareDelayedEnemies();
-
-        string savedEnemyStates = PlayerPrefs.GetString(SaveKey("EnemyActiveStates"), string.Empty);
-        string[] enemyStateParts = string.IsNullOrEmpty(savedEnemyStates) ? null : savedEnemyStates.Split(',');
-        bool anyEnemyActive = false;
-
-        for (int i = 0; i < delayedEnemies.Count; i++)
-        {
-            GameObject enemy = delayedEnemies[i];
-            if (enemy == null)
-            {
-                continue;
-            }
-
-            bool shouldBeActive = enemyStateParts == null || i >= enemyStateParts.Length || enemyStateParts[i] == "1";
-            enemy.SetActive(shouldBeActive);
-            if (!shouldBeActive)
-            {
-                continue;
-            }
-
-            anyEnemyActive = true;
-            SetAudioSourcesPlayingInHierarchy(enemy.transform, true);
-        }
-
-        for (int i = 0; i < delayedEnemyRenderers.Count; i++)
-        {
-            if (delayedEnemyRenderers[i] != null)
-            {
-                delayedEnemyRenderers[i].enabled = delayedEnemyRenderers[i].gameObject.activeInHierarchy;
-            }
-        }
-
-        for (int i = 0; i < delayedEnemyColliders.Count; i++)
-        {
-            if (delayedEnemyColliders[i] != null)
-            {
-                delayedEnemyColliders[i].enabled = delayedEnemyColliders[i].gameObject.activeInHierarchy;
-            }
-        }
-
-        for (int i = 0; i < delayedEnemyWalkers.Count; i++)
-        {
-            if (delayedEnemyWalkers[i] != null)
-            {
-                delayedEnemyWalkers[i].enabled = delayedEnemyWalkers[i].gameObject.activeInHierarchy;
-            }
-        }
-
-        for (int i = 0; i < delayedEnemyAnimators.Count; i++)
-        {
-            if (delayedEnemyAnimators[i] != null)
-            {
-                delayedEnemyAnimators[i].enabled = delayedEnemyAnimators[i].gameObject.activeInHierarchy;
-            }
-        }
-
-        if (hero == null)
-        {
-            return;
-        }
-
-        SetHeroVisible(true);
-        heroCombatY = hero.position.y;
-
-        if (heroCombatFinished)
-        {
-            heroCombatActive = false;
-            heroAttacking = false;
-            if (heroAnimator != null)
-            {
-                heroAnimator.speed = 0f;
-            }
-
-            GameAudioManager.StopEnemyLoop();
-            return;
-        }
-
-        if (!anyEnemyActive)
-        {
-            GameAudioManager.StopEnemyLoop();
-            FinishHeroCombat();
-            return;
-        }
-
-        GameAudioManager.StartEnemyLoop();
-        heroCombatActive = true;
-        heroAttacking = false;
-        heroTargetEnemy = FindNextHeroTarget();
-        if (heroTargetEnemy != null)
-        {
-            PlayHeroAnimation(heroWalkController, heroWalkStateName);
-        }
-    }
-
-    private static string SaveKey(string keySuffix)
-    {
-        return SaveKeyPrefix + keySuffix;
-    }
-
-    private static void SaveBool(string keySuffix, bool value)
-    {
-        PlayerPrefs.SetInt(SaveKey(keySuffix), value ? 1 : 0);
-    }
-
-    private static bool LoadBool(string keySuffix, bool defaultValue)
-    {
-        return PlayerPrefs.GetInt(SaveKey(keySuffix), defaultValue ? 1 : 0) == 1;
-    }
-
-    private static void DeleteSaveKeys(params string[] keySuffixes)
-    {
-        for (int i = 0; i < keySuffixes.Length; i++)
-        {
-            PlayerPrefs.DeleteKey(SaveKey(keySuffixes[i]));
-        }
-    }
-
-    private void CacheHeroAnimator()
-    {
-        if (hero == null || heroAnimator != null)
-        {
-            return;
-        }
-
-        heroAnimator = hero.GetComponentInChildren<Animator>(true);
     }
 }
