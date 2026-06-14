@@ -24,6 +24,12 @@ The complete list of assets and their sources is documented in the `Credits.md` 
 
 ---
 
+## About My Own Contribution
+
+My personal contributions to this project, including game concept, story design, scene building, quest and puzzle design, UI adjustment, asset integration, testing, debugging, and final design decisions, are documented in the `my_contribution.md` file.
+
+---
+
 ## About AI Coding Assistance
 
 Global control, mini map and compass were implemented with reference to AI‑generated code, which I then adapted and integrated into the project.
