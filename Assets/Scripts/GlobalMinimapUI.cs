@@ -1,37 +1,36 @@
-using System.Collections;
 using UnityEngine;
 
 public class GlobalMinimapUI : MonoBehaviour
 {
+    // Built with AI assistance to keep shared menu layout consistent across scenes.
     [Header("Scene References")]
+    // Each scene drags its own map camera and player instead of relying on scene-name checks.
     [SerializeField] private Camera mapCamera;
     [SerializeField] private Transform player;
-    [SerializeField] private Transform sceneBoundsRoot;
+
+    [Header("Display")]
+    [SerializeField] private bool showMap = true;
+    [SerializeField] private bool showCompactMap = true;
+
+    [Header("Render")]
     [SerializeField] private int textureSize = 512;
-    [SerializeField] private float scenePadding = 24f;
-    [SerializeField] private float cameraExtraHeight = 80f;
     [SerializeField] private float mapWidth = 340f;
     [SerializeField] private float mapHeight = 230f;
     [SerializeField] private float expandedWidthRatio = 0.72f;
     [SerializeField] private float expandedHeightRatio = 0.72f;
     [SerializeField] private float sideQuestPanelHeight = 260f;
-    [SerializeField] private Vector3 faeHomesMazeCenter = new Vector3(356.34f, 16.58f, 663.52f);
-    [SerializeField] private Vector2 faeHomesMazeSize = new Vector2(150f, 150f);
-    [SerializeField] private float faeHomesMazeForwardOffset = 18f;
-    [SerializeField] private float faeHomesMazeHeight = 60f;
     [SerializeField] private Color playerColor = new Color(1f, 0.86f, 0.18f, 1f);
     private RenderTexture mapTexture;
-    private Bounds sceneBounds;
     private Rect mapWorldRect;
-    private bool hasSceneBounds;
+    private bool hasMapView;
     private bool mapExpanded;
-    private bool showCompactMap = true;
     private Texture2D markerTexture;
     private GUIStyle titleStyle;
     private bool mapNeedsRender;
 
     private void Awake()
     {
+        // Map renders to a private texture so the UI can draw it with IMGUI.
         if (mapTexture == null)
         {
             mapTexture = new RenderTexture(textureSize, textureSize, 16, RenderTextureFormat.ARGB32);
@@ -46,20 +45,15 @@ public class GlobalMinimapUI : MonoBehaviour
 
         if (mapCamera != null)
         {
-            mapCamera.orthographic = true;
-            mapCamera.clearFlags = CameraClearFlags.Skybox;
             mapCamera.targetTexture = mapTexture;
-            mapCamera.depth = -100f;
             mapCamera.enabled = false;
-            mapCamera.allowHDR = false;
-            mapCamera.allowMSAA = false;
         }
 
-        hasSceneBounds = false;
+        hasMapView = false;
         mapWorldRect = default;
         mapNeedsRender = true;
         SetCameraActive(false);
-        RefreshScene();
+        DrawMapOnce();
     }
 
     private void OnDestroy()
@@ -78,6 +72,7 @@ public class GlobalMinimapUI : MonoBehaviour
 
     private void Update()
     {
+        // M toggles the expanded map while the compact map remains scene-configurable.
         if (!ShouldShowMap())
         {
             mapExpanded = false;
@@ -91,10 +86,9 @@ public class GlobalMinimapUI : MonoBehaviour
             mapNeedsRender = true;
         }
 
-        if (!hasSceneBounds)
+        if (!hasMapView)
         {
-            CalculateSceneBounds();
-            ConfigureCamera();
+            ReadMapCameraArea();
         }
 
         UpdateMapRender();
@@ -102,7 +96,7 @@ public class GlobalMinimapUI : MonoBehaviour
 
     private void OnGUI()
     {
-        if (Event.current.type != EventType.Repaint || !ShouldShowMap() || mapTexture == null || !hasSceneBounds)
+        if (Event.current.type != EventType.Repaint || !ShouldShowMap() || mapTexture == null || !hasMapView)
         {
             return;
         }
@@ -120,117 +114,60 @@ public class GlobalMinimapUI : MonoBehaviour
         DrawPlayerMarker(rect);
     }
 
-    private void RefreshScene()
+    private void DrawMapOnce()
     {
-        CalculateSceneBounds();
-        ConfigureCamera();
+        ReadMapCameraArea();
         RenderMap();
         mapNeedsRender = false;
     }
 
-    private void CalculateSceneBounds()
+    private void ReadMapCameraArea()
     {
-        hasSceneBounds = false;
-        sceneBounds = new Bounds(Vector3.zero, Vector3.zero);
+        // Orthographic camera bounds define the playable area shown by the marker.
+        hasMapView = false;
 
-        if (TryUseFaeHomesMazeBounds())
+        if (mapCamera == null)
         {
             return;
         }
 
-        if (sceneBoundsRoot != null)
+        if (mapCamera.orthographic)
         {
-            Renderer[] renderers = sceneBoundsRoot.GetComponentsInChildren<Renderer>(true);
-            Collider[] colliders = sceneBoundsRoot.GetComponentsInChildren<Collider>(true);
-            bool foundBounds = false;
-
-            for (int i = 0; i < renderers.Length; i++)
-            {
-                Renderer renderer = renderers[i];
-                if (renderer == null)
-                {
-                    continue;
-                }
-
-                if (!foundBounds)
-                {
-                    sceneBounds = renderer.bounds;
-                    foundBounds = true;
-                }
-                else
-                {
-                    sceneBounds.Encapsulate(renderer.bounds);
-                }
-            }
-
-            for (int i = 0; i < colliders.Length; i++)
-            {
-                Collider collider = colliders[i];
-                if (collider == null)
-                {
-                    continue;
-                }
-
-                if (!foundBounds)
-                {
-                    sceneBounds = collider.bounds;
-                    foundBounds = true;
-                }
-                else
-                {
-                    sceneBounds.Encapsulate(collider.bounds);
-                }
-            }
-
-            if (foundBounds)
-            {
-                hasSceneBounds = true;
-                return;
-            }
+            float viewDepth = mapCamera.orthographicSize * 2f;
+            float viewWidth = viewDepth * mapCamera.aspect;
+            Vector3 center = mapCamera.transform.position;
+            mapWorldRect = new Rect(center.x - viewWidth * 0.5f, center.z - viewDepth * 0.5f, viewWidth, viewDepth);
+        }
+        else
+        {
+            mapWorldRect = new Rect(mapCamera.transform.position.x - 0.5f, mapCamera.transform.position.z - 0.5f, 1f, 1f);
         }
 
-        if (!hasSceneBounds && player != null)
-        {
-            sceneBounds = new Bounds(player.position, new Vector3(120f, 40f, 120f));
-            hasSceneBounds = true;
-        }
-    }
-
-    private void ConfigureCamera()
-    {
-        if (mapCamera == null || !hasSceneBounds)
-        {
-            return;
-        }
-
-        Vector3 center = sceneBounds.center;
-        float height = sceneBounds.max.y + cameraExtraHeight;
-        float width = Mathf.Max(sceneBounds.size.x + scenePadding * 2f, 1f);
-        float depth = Mathf.Max(sceneBounds.size.z + scenePadding * 2f, 1f);
-        float aspect = Mathf.Clamp(width / depth, 0.25f, 4f);
-        float orthographicSize = Mathf.Max(depth * 0.5f, width / aspect * 0.5f);
-        float viewWidth = orthographicSize * 2f * aspect;
-        float viewDepth = orthographicSize * 2f;
-
-        mapCamera.transform.position = new Vector3(center.x, height, center.z);
-        mapCamera.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-        mapCamera.aspect = aspect;
-        mapCamera.orthographicSize = orthographicSize;
-        mapCamera.nearClipPlane = 0.1f;
-        mapCamera.farClipPlane = Mathf.Max(cameraExtraHeight * 2f, height - sceneBounds.min.y + cameraExtraHeight);
-        mapWorldRect = new Rect(center.x - viewWidth * 0.5f, center.z - viewDepth * 0.5f, viewWidth, viewDepth);
+        hasMapView = true;
     }
 
     private void DrawPlayerMarker(Rect panelRect)
     {
-        if (player == null || markerTexture == null)
+        // Player marker is drawn from the map camera viewport position.
+        if (player == null || markerTexture == null || mapCamera == null)
         {
             return;
         }
 
         Rect mapRect = new Rect(panelRect.x + 12f, panelRect.y + 42f, panelRect.width - 24f, panelRect.height - 54f);
-        float x = Mathf.InverseLerp(mapWorldRect.xMin, mapWorldRect.xMax, player.position.x);
-        float z = Mathf.InverseLerp(mapWorldRect.yMin, mapWorldRect.yMax, player.position.z);
+        Vector3 viewportPoint = mapCamera.WorldToViewportPoint(player.position);
+        if (viewportPoint.z < 0f)
+        {
+            return;
+        }
+
+        float x = viewportPoint.x;
+        float z = viewportPoint.y;
+        if (x < 0f || x > 1f || z < 0f || z > 1f)
+        {
+            return;
+        }
+
         float markerSize = 18f;
         Rect markerRect = new Rect(
             mapRect.x + x * mapRect.width - markerSize * 0.5f,
@@ -239,24 +176,6 @@ public class GlobalMinimapUI : MonoBehaviour
             markerSize);
 
         GUI.DrawTexture(markerRect, markerTexture);
-    }
-
-    private bool TryUseFaeHomesMazeBounds()
-    {
-        if (!IsFaeHomesScene())
-        {
-            return false;
-        }
-
-        Vector3 center = faeHomesMazeCenter + Vector3.forward * faeHomesMazeForwardOffset;
-        sceneBounds = new Bounds(
-            center,
-            new Vector3(
-                Mathf.Max(1f, faeHomesMazeSize.x),
-                Mathf.Max(1f, faeHomesMazeHeight),
-                Mathf.Max(1f, faeHomesMazeSize.y)));
-        hasSceneBounds = true;
-        return true;
     }
 
     private Rect GetMapRect()
@@ -289,7 +208,7 @@ public class GlobalMinimapUI : MonoBehaviour
 
     private void UpdateMapRender()
     {
-        if (mapCamera == null || !hasSceneBounds)
+        if (mapCamera == null || !hasMapView)
         {
             return;
         }
@@ -305,7 +224,8 @@ public class GlobalMinimapUI : MonoBehaviour
 
     private void RenderMap()
     {
-        if (mapCamera == null || mapTexture == null || !ShouldShowMap() || !hasSceneBounds)
+        // Renders only when the map is opened or marked dirty, avoiding a camera render every frame.
+        if (mapCamera == null || mapTexture == null || !ShouldShowMap() || !hasMapView)
         {
             return;
         }
@@ -321,20 +241,7 @@ public class GlobalMinimapUI : MonoBehaviour
 
     private bool ShouldShowMap()
     {
-        string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-        return IsEnchantedForestScene() ||
-            IsFaeHomesScene() ||
-            string.Equals(sceneName, "my scene", System.StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsFaeHomesScene()
-    {
-        return string.Equals(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, "Fae Homes Demo", System.StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsEnchantedForestScene()
-    {
-        return string.Equals(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, "Enchanted Forest A", System.StringComparison.OrdinalIgnoreCase);
+        return showMap;
     }
 
     private static Texture2D CreateCircleTexture(int size, Color color)

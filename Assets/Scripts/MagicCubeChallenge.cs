@@ -1,4 +1,3 @@
-// Runs the magic cube timing challenge and awards the blue key.
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -54,7 +53,6 @@ public class MagicCubeChallenge : MonoBehaviour
     private readonly List<GameObject> tiles = new List<GameObject>();
     private readonly List<int> tileColorIndices = new List<int>();
 
-    private CharacterController controller;
     private Vector3 returnPosition;
     private Quaternion returnRotation;
     private Material[] colorMaterials;
@@ -118,20 +116,24 @@ public class MagicCubeChallenge : MonoBehaviour
 
         if (waitingForRound && Time.time >= roundEndsAt)
         {
-            ResolveRound();
+            FinishRound();
         }
     }
 
     private void OnGUI()
     {
-        if (!active && IsNearInteractObject())
+        if (Event.current.type != EventType.Repaint)
         {
-            DrawPrompt("Press E to start");
             return;
         }
 
         if (!active)
         {
+            if (IsNearInteractObject())
+            {
+                DrawPrompt("Press E to start");
+            }
+
             return;
         }
 
@@ -161,13 +163,12 @@ public class MagicCubeChallenge : MonoBehaviour
 
         returnPosition = player.position;
         returnRotation = player.rotation;
-        EnsureArena();
+        OpenArena();
         currentRound = 0;
         active = true;
         failed = false;
         won = false;
         showingResult = false;
-        BuildGrid();
         MovePlayer(GetArenaPlayerStartPosition(), Quaternion.identity);
         StartRound();
     }
@@ -179,7 +180,7 @@ public class MagicCubeChallenge : MonoBehaviour
         roundEndsAt = Time.time + roundSeconds[Mathf.Clamp(currentRound, 0, roundSeconds.Length - 1)];
     }
 
-    private void ResolveRound()
+    private void FinishRound()
     {
         waitingForRound = false;
         int targetColor = targetColorIndices[currentRound];
@@ -276,7 +277,7 @@ public class MagicCubeChallenge : MonoBehaviour
             yield break;
         }
 
-        controller = player.GetComponent<CharacterController>();
+        CharacterController controller = player.GetComponent<CharacterController>();
         bool wasEnabled = controller != null && controller.enabled;
         if (controller != null)
         {
@@ -304,9 +305,9 @@ public class MagicCubeChallenge : MonoBehaviour
         fallRoutine = null;
     }
 
-    private void EnsureArena()
+    private void OpenArena()
     {
-        EnsureMaterials();
+        BuildMaterials();
         if (arenaRoot == null)
         {
             return;
@@ -322,7 +323,7 @@ public class MagicCubeChallenge : MonoBehaviour
     private void BuildGrid()
     {
         ClearTiles();
-        EnsureMaterials();
+        BuildMaterials();
 
         float offset = (gridSize - 1) * tileSize * 0.5f;
         for (int z = 0; z < gridSize; z++)
@@ -332,8 +333,9 @@ public class MagicCubeChallenge : MonoBehaviour
                 int colorIndex = Random.Range(0, TileColors.Length);
                 GameObject tile = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 tile.name = "MagicCubeTile";
-                tile.transform.SetParent(arenaRoot, false);
+                tile.transform.SetParent(null, true);
                 tile.transform.position = arenaCenter + new Vector3(x * tileSize - offset, 0f, z * tileSize - offset);
+                tile.transform.rotation = Quaternion.identity;
                 tile.transform.localScale = new Vector3(tileSize * 0.96f, tileHeight, tileSize * 0.96f);
                 Renderer renderer = tile.GetComponent<Renderer>();
                 if (renderer != null)
@@ -413,7 +415,7 @@ public class MagicCubeChallenge : MonoBehaviour
             return;
         }
 
-        controller = player.GetComponent<CharacterController>();
+        CharacterController controller = player.GetComponent<CharacterController>();
         bool wasEnabled = controller != null && controller.enabled;
         if (controller != null)
         {
@@ -442,7 +444,7 @@ public class MagicCubeChallenge : MonoBehaviour
             return 0f;
         }
 
-        controller = player.GetComponent<CharacterController>();
+        CharacterController controller = player.GetComponent<CharacterController>();
         if (controller == null)
         {
             return 0f;
@@ -454,40 +456,21 @@ public class MagicCubeChallenge : MonoBehaviour
     private void DrawPrompt(string text)
     {
         Rect rect = GameUiStyle.InteractionPromptRect(560f, 64f);
-        DrawPanel(rect);
-        GUI.Label(rect, text, GetStyle(ref promptStyle, 26, TextAnchor.MiddleCenter, FontStyle.Bold));
+        GameUiStyle.DrawPanel(rect);
+        GUI.Label(rect, text, GameUiStyle.LabelStyle(ref promptStyle, 26, TextAnchor.MiddleCenter, FontStyle.Bold));
     }
 
     private void DrawResultPanel(string title)
     {
         Rect rect = GameUiStyle.SystemPromptRect(480f, 220f);
-        DrawPanel(rect);
-        GUI.Label(new Rect(rect.x + 20f, rect.y + 22f, rect.width - 40f, 44f), title, GetStyle(ref titleStyle, 28, TextAnchor.MiddleCenter, FontStyle.Bold));
-
-        GUI.Label(new Rect(rect.x + 20f, rect.y + 96f, rect.width - 40f, 34f), "Press A to restart", GetStyle(ref promptStyle, 22, TextAnchor.MiddleCenter, FontStyle.Bold));
-        GUI.Label(new Rect(rect.x + 20f, rect.y + 132f, rect.width - 40f, 34f), "Press B to exit", GetStyle(ref promptStyle, 22, TextAnchor.MiddleCenter, FontStyle.Bold));
-    }
-
-    private void DrawPanel(Rect rect)
-    {
         GameUiStyle.DrawPanel(rect);
+        GUI.Label(new Rect(rect.x + 20f, rect.y + 22f, rect.width - 40f, 44f), title, GameUiStyle.LabelStyle(ref titleStyle, 28, TextAnchor.MiddleCenter, FontStyle.Bold));
+
+        GUI.Label(new Rect(rect.x + 20f, rect.y + 96f, rect.width - 40f, 34f), "Press A to restart", GameUiStyle.LabelStyle(ref promptStyle, 22, TextAnchor.MiddleCenter, FontStyle.Bold));
+        GUI.Label(new Rect(rect.x + 20f, rect.y + 132f, rect.width - 40f, 34f), "Press B to exit", GameUiStyle.LabelStyle(ref promptStyle, 22, TextAnchor.MiddleCenter, FontStyle.Bold));
     }
 
-    private GUIStyle GetStyle(ref GUIStyle style, int fontSize, TextAnchor alignment, FontStyle fontStyle)
-    {
-        if (style == null)
-        {
-            style = new GUIStyle(GUI.skin.label);
-        }
-
-        style.fontSize = fontSize;
-        style.alignment = alignment;
-        style.fontStyle = fontStyle;
-        style.normal.textColor = Color.white;
-        return style;
-    }
-
-    private void EnsureMaterials()
+    private void BuildMaterials()
     {
         if (colorMaterials != null && whiteMaterial != null)
         {
@@ -510,4 +493,5 @@ public class MagicCubeChallenge : MonoBehaviour
     {
         return player != null && interactObject != null && Vector3.Distance(player.position, interactObject.position) <= interactDistance;
     }
+
 }
