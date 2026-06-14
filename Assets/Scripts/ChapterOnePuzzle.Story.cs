@@ -1,52 +1,113 @@
-// Runs chapter one story beats, rewards, enemy reveal, and portal unlocks.
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public partial class ChapterOnePuzzle
 {
-    private void UpdateHelpStory()
+    private void UpdateMainlineStory()
     {
-        if (helpDialogueActive)
+        // Story order: hear help, inspect altar, ask fairy, solve puzzle, then start the attack sequence.
+        if (UpdateActiveDialogue())
         {
-            if (Input.GetKeyDown(activeDialogueContinueKey))
-            {
-                helpDialogueIndex++;
-                if (activeDialogueLines == null || helpDialogueIndex >= activeDialogueLines.Length)
-                {
-                    FinishActiveDialogue();
-                }
-            }
-
             return;
         }
 
-        if (!recognizeHelpShown && IsPlayerNearTransform(recognizeHelp, storyAreaReachDistance))
+        UpdateRecognizeHelpPrompt();
+        UpdateStrangeAltarPrompt();
+        UpdateAskHelpInteraction();
+    }
+
+    private bool UpdateActiveDialogue()
+    {
+        // Dialogue consumes input while open so puzzle and portal interactions do not fire underneath it.
+        if (!helpDialogueActive)
         {
-            recognizeHelpShown = true;
-            storyPrompt = recognizeHelpPrompt;
-            storyPromptEndsAt = Time.time + 3f;
-            GameAudioManager.PlayKnob();
+            return false;
+        }
+
+        if (activeDialogueLines == null || activeDialogueLines.Length == 0)
+        {
+            EndDialogueWithoutResult();
+            return true;
+        }
+
+        if (helpDialogueIndex < 0 || helpDialogueIndex >= activeDialogueLines.Length)
+        {
+            FinishActiveDialogue();
+            return true;
+        }
+
+        if (Input.GetKeyDown(activeDialogueContinueKey))
+        {
+            interactionInputConsumed = true;
+            helpDialogueIndex++;
+            if (activeDialogueLines == null || helpDialogueIndex >= activeDialogueLines.Length)
+            {
+                FinishActiveDialogue();
+            }
+        }
+
+        return true;
+    }
+
+    private void UpdateRecognizeHelpPrompt()
+    {
+        // First story hint is shown once when the player reaches the help marker.
+        if (recognizeHelpShown || !IsPlayerNearStoryTarget(recognizeHelp))
+        {
+            return;
+        }
+
+        recognizeHelpShown = true;
+        storyPrompt = recognizeHelpPrompt;
+        storyPromptEndsAt = Time.time + 3f;
+        GameAudioManager.PlayKnob();
+    }
+
+    private void UpdateStrangeAltarPrompt()
+    {
+        // The altar prompt explains the puzzle area before the fairy gives the six-step clue.
+        if (strangeAltarPromptShown || !IsPlayerNearStoryTarget(strangeAltar))
+        {
+            return;
+        }
+
+        strangeAltarPromptShown = true;
+        storyPrompt = strangeAltarPrompt;
+        storyPromptEndsAt = Time.time + 3f;
+    }
+
+    private void UpdateAskHelpInteraction()
+    {
+        // Before rescue this is the ask-help point; after rescue it becomes the fairy reward talk.
+        if (forestAttackDialogueFinished)
+        {
+            return;
         }
 
         Transform interactionTarget = rescueApplied ? fairy : askHelp;
-        askHelpPromptVisible = IsPlayerNearTransform(interactionTarget, storyAreaReachDistance) &&
-            !forestAttackDialogueFinished &&
-            (!rescueApplied || !pageRewardFinished);
-        if (askHelpPromptVisible && Input.GetKeyDown(KeyCode.E))
+        if (rescueApplied && pageRewardFinished)
         {
-            if (rescueApplied && !pageRewardFinished)
-            {
-                StartDialogue(pageRewardDialogueLines, KeyCode.E, "Press E to continue");
-            }
-            else if (initialHelpDialogueFinished)
-            {
-                StartDialogue(clueDialogueLines, KeyCode.C, "Press C to continue");
-            }
-            else
-            {
-                StartDialogue(helpDialogueLines, KeyCode.C, "Press C to continue");
-            }
+            return;
+        }
+
+        askHelpPromptVisible = IsPlayerNearStoryTarget(interactionTarget);
+        if (!askHelpPromptVisible || !Input.GetKeyDown(KeyCode.E))
+        {
+            return;
+        }
+
+        interactionInputConsumed = true;
+        if (rescueApplied)
+        {
+            StartDialogue(pageRewardDialogueLines, KeyCode.E, "Press E to continue");
+        }
+        else if (initialHelpDialogueFinished)
+        {
+            StartDialogue(clueDialogueLines, KeyCode.C, "Press C to continue");
+        }
+        else
+        {
+            StartDialogue(helpDialogueLines, KeyCode.C, "Press C to continue");
         }
     }
 
@@ -65,11 +126,22 @@ public partial class ChapterOnePuzzle
         helpDialogueIndex = 0;
     }
 
+    private void EndDialogueWithoutResult()
+    {
+        helpDialogueActive = false;
+        helpDialogueIndex = 0;
+        activeDialogueLines = null;
+        RestorePlayerAfterDialogue();
+    }
+
     private void FinishActiveDialogue()
     {
+        // Dialogue completion advances the story flags that unlock later encounters.
         string[] finishedLines = activeDialogueLines;
         helpDialogueActive = false;
         helpDialogueIndex = 0;
+        activeDialogueLines = null;
+        RestorePlayerAfterDialogue();
 
         if (finishedLines == helpDialogueLines)
         {
@@ -79,6 +151,7 @@ public partial class ChapterOnePuzzle
         {
             pageRewardFinished = true;
             AddFirstPageToBackpack();
+            GameAudioManager.StartRoarLoop();
             StartDialogue(forestAttackDialogueLines, KeyCode.C, "Press C to continue");
         }
         else if (finishedLines == forestAttackDialogueLines)
@@ -98,6 +171,7 @@ public partial class ChapterOnePuzzle
 
     private void AddFirstPageToBackpack()
     {
+        // The first page is awarded once, even if dialogue state is refreshed.
         if (firstPageAddedToBackpack)
         {
             return;
@@ -109,6 +183,7 @@ public partial class ChapterOnePuzzle
 
     private void ApplyRescueResult()
     {
+        // Puzzle success opens the cage and moves the fairy to the post-rescue position.
         if (rescueApplied)
         {
             return;
@@ -128,9 +203,10 @@ public partial class ChapterOnePuzzle
         }
     }
 
-    private void PrepareDelayedEnemies()
+    private void CollectDelayedEnemies()
     {
-        if (enemiesPrepared)
+        // Enemies start hidden so the forest attack feels triggered by the story beat.
+        if (delayedEnemiesCollected)
         {
             return;
         }
@@ -142,7 +218,7 @@ public partial class ChapterOnePuzzle
         delayedEnemyAnimators.Clear();
         if (delayedEnemyObjects == null)
         {
-            enemiesPrepared = true;
+            delayedEnemiesCollected = true;
             return;
         }
 
@@ -156,9 +232,10 @@ public partial class ChapterOnePuzzle
 
             delayedEnemies.Add(enemy);
             HideDelayedEnemy(enemy);
+            SetAudioSourcesPlayingInHierarchy(enemy.transform, false);
         }
 
-        enemiesPrepared = true;
+        delayedEnemiesCollected = true;
     }
 
     private void HideDelayedEnemy(GameObject enemy)
@@ -206,6 +283,7 @@ public partial class ChapterOnePuzzle
 
     private void UpdateEnemyAmbush()
     {
+        // After the attack dialogue, entering the trigger wakes the hidden enemies.
         if (enemiesActivated || !forestAttackDialogueFinished)
         {
             return;
@@ -221,8 +299,10 @@ public partial class ChapterOnePuzzle
 
     private void ActivateDelayedEnemies()
     {
-        PrepareDelayedEnemies();
+        // Restores enemy visuals, colliders, walking scripts, and audio at the same time.
+        CollectDelayedEnemies();
         enemiesActivated = true;
+        GameAudioManager.StartEnemyLoop();
 
         for (int i = 0; i < delayedEnemies.Count; i++)
         {
@@ -233,15 +313,12 @@ public partial class ChapterOnePuzzle
             }
 
             RouteWaypointWalker walker = enemy.GetComponent<RouteWaypointWalker>();
-            if (walker == null)
-            {
-                walker = enemy.AddComponent<RouteWaypointWalker>();
-            }
-
-            if (!delayedEnemyWalkers.Contains(walker))
+            if (walker != null && !delayedEnemyWalkers.Contains(walker))
             {
                 delayedEnemyWalkers.Add(walker);
             }
+
+            SetAudioSourcesPlayingInHierarchy(enemy.transform, true);
         }
 
         for (int i = 0; i < delayedEnemyRenderers.Count; i++)
@@ -281,18 +358,14 @@ public partial class ChapterOnePuzzle
 
     private void StartHeroCombat()
     {
+        // Hero appears after the ambush and automatically fights the delayed enemies.
         if (hero == null)
         {
             return;
         }
 
-        GameAudioManager.StartEnemyLoop();
         SetHeroVisible(true);
-
-        if (heroAnimator == null)
-        {
-            heroAnimator = hero.GetComponentInChildren<Animator>(true);
-        }
+        CacheHeroAnimator();
 
         if (heroAnimator != null)
         {
@@ -320,10 +393,7 @@ public partial class ChapterOnePuzzle
             return;
         }
 
-        if (heroAnimator == null)
-        {
-            heroAnimator = hero.GetComponentInChildren<Animator>(true);
-        }
+        CacheHeroAnimator();
 
         if (heroAnimator != null)
         {
@@ -351,10 +421,12 @@ public partial class ChapterOnePuzzle
 
     private void FinishHeroCombat()
     {
+        // Combat ending stops attack audio and unlocks the final hero conversation.
         heroCombatActive = false;
         heroAttacking = false;
         heroCombatFinished = true;
         heroPromptVisible = false;
+        GameAudioManager.StopRoarLoop();
         GameAudioManager.StopEnemyLoop();
 
         if (heroAnimator != null)
@@ -365,6 +437,7 @@ public partial class ChapterOnePuzzle
 
     private void UpdateHeroStory()
     {
+        // Player can talk to the hero during combat for warning, then after combat for portal unlock.
         heroPromptVisible = false;
         if (helpDialogueActive || hero == null || !enemiesActivated)
         {
@@ -390,6 +463,7 @@ public partial class ChapterOnePuzzle
         heroPromptVisible = true;
         if (Input.GetKeyDown(KeyCode.E))
         {
+            interactionInputConsumed = true;
             heroPromptVisible = false;
             StartDialogue(heroAfterCombatDialogueLines, KeyCode.C, "Press C to continue");
         }
@@ -397,19 +471,38 @@ public partial class ChapterOnePuzzle
 
     private void UnlockPortal()
     {
+        // Portal is only visible after the hero explains the next destination.
         portalUnlocked = true;
-        SetPortalVisible(true);
+
+        if (portalTrigger != null && !portalTrigger.gameObject.activeSelf)
+        {
+            portalTrigger.gameObject.SetActive(true);
+        }
+
+        if (portalDoor != null && !portalDoor.activeSelf)
+        {
+            portalDoor.SetActive(true);
+        }
     }
 
     private void UpdatePortalInteraction()
     {
+        // Final Chapter One interaction moves the player to Fae Homes Demo.
         portalPromptVisible = false;
         if (!portalUnlocked || helpDialogueActive)
         {
             return;
         }
 
-        SetPortalVisible(true);
+        if (portalTrigger != null && !portalTrigger.gameObject.activeSelf)
+        {
+            portalTrigger.gameObject.SetActive(true);
+        }
+
+        if (portalDoor != null && !portalDoor.activeSelf)
+        {
+            portalDoor.SetActive(true);
+        }
 
         if (!IsPlayerOnTrigger(portalTrigger, portalInteractDistance))
         {
@@ -419,20 +512,8 @@ public partial class ChapterOnePuzzle
         portalPromptVisible = true;
         if (Input.GetKeyDown(KeyCode.E))
         {
+            interactionInputConsumed = true;
             SceneManager.LoadScene(nextSceneName);
-        }
-    }
-
-    private void SetPortalVisible(bool visible)
-    {
-        if (portalTrigger != null && portalTrigger.gameObject.activeSelf != visible)
-        {
-            portalTrigger.gameObject.SetActive(visible);
-        }
-
-        if (portalDoor != null && portalDoor.activeSelf != visible)
-        {
-            portalDoor.SetActive(visible);
         }
     }
 }

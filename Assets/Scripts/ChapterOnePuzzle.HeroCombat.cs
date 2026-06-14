@@ -1,12 +1,10 @@
-// Handles the helper hero combat scene in chapter one.
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public partial class ChapterOnePuzzle
 {
     private void UpdateHeroCombat()
     {
+        // Hero combat is autonomous: choose a target, walk to range, attack, repeat.
         if (!heroCombatActive || hero == null)
         {
             return;
@@ -69,6 +67,7 @@ public partial class ChapterOnePuzzle
 
     private void KeepHeroAtCombatHeight()
     {
+        // Imported attack clips should not drift the hero above or below the combat floor.
         Vector3 position = hero.position;
         if (Mathf.Abs(position.y - heroCombatY) <= 0.001f)
         {
@@ -81,6 +80,7 @@ public partial class ChapterOnePuzzle
 
     private GameObject FindNextHeroTarget()
     {
+        // Picks the closest undefeated enemy from the delayed ambush group.
         GameObject bestEnemy = null;
         float bestSqrDistance = float.PositiveInfinity;
         Vector3 heroPosition = hero != null ? hero.position : Vector3.zero;
@@ -119,6 +119,7 @@ public partial class ChapterOnePuzzle
 
     private void DefeatEnemy(GameObject enemy)
     {
+        // Defeated enemies are hidden and silenced instead of destroyed, keeping scene references stable.
         if (enemy == null)
         {
             return;
@@ -137,6 +138,7 @@ public partial class ChapterOnePuzzle
 
     private static void StopAudioSourcesInHierarchy(Transform root)
     {
+        // Used when a story object should become silent without changing its hierarchy.
         if (root == null)
         {
             return;
@@ -152,16 +154,67 @@ public partial class ChapterOnePuzzle
         }
     }
 
-    private void PlayHeroAnimation(RuntimeAnimatorController controller, string stateName)
+    private static void SetAudioSourcesPlayingInHierarchy(Transform root, bool shouldPlay)
     {
-        if (heroAnimator == null)
+        // Starts or stops ambience attached to enemies as the ambush is enabled.
+        if (root == null)
         {
             return;
         }
 
+        AudioSource[] audioSources = root.GetComponentsInChildren<AudioSource>(true);
+        for (int i = 0; i < audioSources.Length; i++)
+        {
+            AudioSource audioSource = audioSources[i];
+            if (audioSource == null)
+            {
+                continue;
+            }
+
+            if (shouldPlay)
+            {
+                if (!audioSource.enabled || !audioSource.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                if (!audioSource.isPlaying)
+                {
+                    audioSource.Play();
+                }
+            }
+            else
+            {
+                audioSource.Stop();
+            }
+        }
+    }
+
+    private void PlayHeroAnimation(RuntimeAnimatorController controller, string stateName)
+    {
+        // Hero clips are assigned through Inspector controllers so the story code stays clip-name agnostic.
+        if (heroAnimator == null)
+        {
+            CacheHeroAnimator();
+            if (heroAnimator == null)
+            {
+                return;
+            }
+        }
+
+        heroAnimator.enabled = true;
+        heroAnimator.speed = 1f;
+        heroAnimator.applyRootMotion = false;
+        heroAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+
         if (controller != null)
         {
             heroAnimator.runtimeAnimatorController = controller;
+        }
+
+        if (heroAnimator.layerCount > 0)
+        {
+            heroAnimator.SetLayerWeight(0, 1f);
         }
 
         if (string.IsNullOrEmpty(stateName))

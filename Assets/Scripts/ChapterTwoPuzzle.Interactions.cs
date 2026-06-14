@@ -1,6 +1,4 @@
-// Handles chapter two NPC talks, pickups, keys, honey, and door interactions.
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -16,104 +14,40 @@ public partial class ChapterTwoPuzzle
 
     private void UpdateExplorationInput()
     {
-        if (!hasPass && IsNearStartTile() && Input.GetKeyDown(interactKey))
+        // Exploration tries specific interactions first, then falls back to NPC dialogue.
+        bool interactPressed = Input.GetKeyDown(interactKey);
+
+        if (TryHandleBoardGameInteraction(interactPressed))
         {
-            StartBoardGame();
             return;
         }
 
-        if (waitingForHoneyBottle && !hasHoneyBottle && IsNearHoney() && Input.GetKeyDown(interactKey))
+        if (TryHandleHoneyQuestInteraction(interactPressed))
         {
-            PickHoneyBottle();
             return;
         }
 
-        if (bearAskedForSilverLeaf && !hasSilverLeaf && IsNearSilverLeaf() && Input.GetKeyDown(interactKey))
+        if (TryHandleLockedHouseInteraction(interactPressed))
         {
-            PickSilverLeaf();
             return;
         }
 
-        if (honeyPourReady && !hasFullHoneyBottle && IsNearHoneyGive() && Input.GetKeyDown(interactKey))
+        if (TryHandleNpcInteraction(interactPressed))
         {
-            PourHoney();
             return;
-        }
-
-        if (!lockedHouseOpened && HasAllFourKeys() && IsNearLockedHouse() && Input.GetKeyDown(interactKey))
-        {
-            StartCoroutine(OpenLockedHouse());
-            return;
-        }
-
-        if (lockedHouseOpened && waitingForFourthPagePickup && !fourthPagePicked && IsNearBox() && Input.GetKeyDown(interactKey))
-        {
-            PickFourthPage();
-            return;
-        }
-
-        if (thirdPagePortalUnlocked && IsNearThirdPagePortal() && Input.GetKeyDown(interactKey))
-        {
-            SceneManager.LoadScene(nextSceneName);
-            return;
-        }
-
-        if (lockedHouseOpened && !boxDialogueShown && !fourthPagePicked && IsNearBox())
-        {
-            boxDialogueShown = true;
-            StartDialogue(boxFoundDialogue, () => waitingForFourthPagePickup = true);
-            return;
-        }
-
-        if (!lockedHouseDialogueShown && !HasAllFourKeys() && IsNearLockedHouse())
-        {
-            lockedHouseDialogueShown = true;
-            StartDialogue(lockedHouseDialogue, null);
-            return;
-        }
-
-        if (!listenerDialogueShown && IsNearListener() && Input.GetKeyDown(interactKey))
-        {
-            listenerDialogueShown = true;
-            StartDialogue(listenerDialogue, null);
-            return;
-        }
-
-        if (IsNearBaker() && Input.GetKeyDown(interactKey))
-        {
-            HandleBakerInteraction();
-            return;
-        }
-
-        if (IsNearBear() && Input.GetKeyDown(interactKey))
-        {
-            HandleBearInteraction();
-            return;
-        }
-
-        if (IsNearGuard() && Input.GetKeyDown(interactKey))
-        {
-            HandleGuardInteraction();
-            return;
-        }
-
-        if (mazeOpened && !exitedMaze && IsNearExit())
-        {
-            exitedMaze = true;
-            HideMazeBlock();
-            StartDialogue(mazeExitDialogue, null);
         }
     }
 
     private void HandleBakerInteraction()
     {
+        // Baker branch trades the full honey jar for the yellow key.
         if (bakerQuestCompleted)
         {
             StartDialogue(bakerReadyDialogue, null);
             return;
         }
 
-        if (hasFullHoneyBottle && !bakerQuestCompleted)
+        if (hasFullHoneyBottle)
         {
             bakerQuestCompleted = true;
             RemoveInventoryItem(fullHoneyJarItemName);
@@ -145,6 +79,7 @@ public partial class ChapterTwoPuzzle
 
     private void HandleBearInteraction()
     {
+        // Bear branch turns the silver leaf into permission to fill the honey jar.
         if (hasFullHoneyBottle || bakerQuestCompleted)
         {
             StartDialogue(bearEmptyDialogue, null);
@@ -180,6 +115,7 @@ public partial class ChapterTwoPuzzle
 
     private void PickHoneyBottle()
     {
+        // Empty jar is a temporary quest item and becomes full after the honey station.
         hasHoneyBottle = true;
         waitingForHoneyBottle = false;
         AddInventoryItem(honeyJarItemName);
@@ -209,6 +145,7 @@ public partial class ChapterTwoPuzzle
 
     private IEnumerator OpenLockedHouse()
     {
+        // Final house lock consumes the four keys and lowers the lock parts before opening the door.
         if (unlockingHouse || lockedHouseOpened)
         {
             yield break;
@@ -255,52 +192,9 @@ public partial class ChapterTwoPuzzle
             }
         }
 
-        GameObject[] keyObjects = { redKeyObject, blueKeyObject, greenKeyObject, yellowKeyObject };
-        Vector3[] keyStarts = new Vector3[keyObjects.Length];
-        Vector3[] keyTargets = new Vector3[keyObjects.Length];
-        for (int i = 0; i < keyObjects.Length; i++)
-        {
-            if (keyObjects[i] == null)
-            {
-                continue;
-            }
-
-            keyStarts[i] = keyObjects[i].transform.position;
-            keyTargets[i] = keyStarts[i] + Vector3.down * keyDropDistance;
-        }
-
-        elapsed = 0f;
-        while (elapsed < finalUnlockMoveSeconds)
-        {
-            elapsed += Time.deltaTime;
-            float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / finalUnlockMoveSeconds));
-            for (int i = 0; i < keyObjects.Length; i++)
-            {
-                if (keyObjects[i] != null)
-                {
-                    keyObjects[i].transform.position = Vector3.Lerp(keyStarts[i], keyTargets[i], t);
-                }
-            }
-
-            yield return null;
-        }
-
-        for (int i = 0; i < keyObjects.Length; i++)
-        {
-            if (keyObjects[i] != null)
-            {
-                keyObjects[i].SetActive(false);
-            }
-        }
-
         if (finalDoorObject != null)
         {
             finalDoorObject.SetActive(false);
-        }
-
-        if (finalWindowObject != null)
-        {
-            finalWindowObject.SetActive(false);
         }
 
         RemoveInventoryItem(redKeyItemName);
@@ -315,6 +209,7 @@ public partial class ChapterTwoPuzzle
 
     private void PickFourthPage()
     {
+        // The page inside the locked house unlocks the portal to my scene.
         fourthPagePicked = true;
         waitingForFourthPagePickup = false;
         AddInventoryItem(thirdPageItemName);
@@ -361,6 +256,7 @@ public partial class ChapterTwoPuzzle
 
     private void HandleGuardInteraction()
     {
+        // Guard controls maze entry, quiz retry, and the second page reward path.
         if (quizCompleted)
         {
             StartDialogue(guardDoneDialogue, null);
@@ -388,5 +284,114 @@ public partial class ChapterTwoPuzzle
         {
             StartDialogue(guardNoPassDialogue, null);
         }
+    }
+
+    private bool TryHandleBoardGameInteraction(bool interactPressed)
+    {
+        if (!hasPass && IsNearStartTile() && interactPressed)
+        {
+            StartBoardGame();
+            return true;
+        }
+
+        if (mazeOpened && !exitedMaze && IsNearExit())
+        {
+            exitedMaze = true;
+            HideMazeBlock();
+            StartDialogue(mazeExitDialogue, null);
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryHandleHoneyQuestInteraction(bool interactPressed)
+    {
+        if (waitingForHoneyBottle && !hasHoneyBottle && IsNearHoney() && interactPressed)
+        {
+            PickHoneyBottle();
+            return true;
+        }
+
+        if (bearAskedForSilverLeaf && !hasSilverLeaf && IsNearSilverLeaf() && interactPressed)
+        {
+            PickSilverLeaf();
+            return true;
+        }
+
+        if (honeyPourReady && !hasFullHoneyBottle && IsNearHoneyGive() && interactPressed)
+        {
+            PourHoney();
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryHandleLockedHouseInteraction(bool interactPressed)
+    {
+        if (!lockedHouseOpened && HasAllFourKeys() && IsNearLockedHouse() && interactPressed)
+        {
+            StartCoroutine(OpenLockedHouse());
+            return true;
+        }
+
+        if (lockedHouseOpened && waitingForFourthPagePickup && !fourthPagePicked && IsNearBox() && interactPressed)
+        {
+            PickFourthPage();
+            return true;
+        }
+
+        if (thirdPagePortalUnlocked && IsNearThirdPagePortal() && interactPressed)
+        {
+            SceneManager.LoadScene(nextSceneName);
+            return true;
+        }
+
+        if (lockedHouseOpened && !boxDialogueShown && !fourthPagePicked && IsNearBox())
+        {
+            boxDialogueShown = true;
+            StartDialogue(boxFoundDialogue, () => waitingForFourthPagePickup = true);
+            return true;
+        }
+
+        if (!lockedHouseDialogueShown && !HasAllFourKeys() && IsNearLockedHouse())
+        {
+            lockedHouseDialogueShown = true;
+            StartDialogue(lockedHouseDialogue, null);
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryHandleNpcInteraction(bool interactPressed)
+    {
+        if (!listenerDialogueShown && IsNearListener() && interactPressed)
+        {
+            listenerDialogueShown = true;
+            StartDialogue(listenerDialogue, null);
+            return true;
+        }
+
+        if (IsNearBaker() && interactPressed)
+        {
+            HandleBakerInteraction();
+            return true;
+        }
+
+        if (IsNearBear() && interactPressed)
+        {
+            HandleBearInteraction();
+            return true;
+        }
+
+        if (IsNearGuard() && interactPressed)
+        {
+            HandleGuardInteraction();
+            return true;
+        }
+
+        return false;
     }
 }

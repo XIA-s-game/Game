@@ -1,12 +1,34 @@
-// Handles the stone pushing puzzle and its reset/win checks.
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public partial class ChapterOnePuzzle
 {
+    private void UpdatePushPuzzleInteraction()
+    {
+        // Lets every unfinished block show as interactable, but only the required order solves the puzzle.
+        if (!HasPushPuzzleReady() || currentIndex >= requiredOrderedPushCount)
+        {
+            return;
+        }
+
+        int hoveredIndex = GetHoveredPushIndex();
+        if (hoveredIndex < 0)
+        {
+            return;
+        }
+
+        promptVisible = true;
+        if (!Input.GetKeyDown(KeyCode.E))
+        {
+            return;
+        }
+
+        interactionInputConsumed = true;
+        StartPushingBlock(hoveredIndex);
+    }
+
     private void StartPushingBlock(int index)
     {
+        // Wrong blocks still move once, then the puzzle resets after they reach their target.
         if (index < 0 || index >= pushBlocks.Count || pushBlocks[index] == null)
         {
             return;
@@ -21,6 +43,7 @@ public partial class ChapterOnePuzzle
 
     private void MoveActiveBlock()
     {
+        // Push motion is time-based so the block completes even after the player releases input.
         if (movingBlockIndex < 0 || movingBlockIndex >= pushBlocks.Count || pushBlocks[movingBlockIndex] == null)
         {
             movingBlockIndex = -1;
@@ -28,7 +51,9 @@ public partial class ChapterOnePuzzle
             return;
         }
 
-        bool arrived = MoveBlockTowardLocalTarget(pushBlocks[movingBlockIndex], GetSolvedLocalPosition(pushBlocks[movingBlockIndex], movingBlockIndex));
+        Transform movingBlock = pushBlocks[movingBlockIndex];
+        Vector3 targetLocalPosition = GetSolvedLocalPosition(movingBlock, movingBlockIndex);
+        bool arrived = MoveBlockTowardLocalTarget(movingBlock, targetLocalPosition);
         if (!arrived)
         {
             return;
@@ -40,7 +65,11 @@ public partial class ChapterOnePuzzle
             return;
         }
 
-        completedPushes[movingBlockIndex] = true;
+        if (completedPushes != null && movingBlockIndex < completedPushes.Length)
+        {
+            completedPushes[movingBlockIndex] = true;
+        }
+
         currentIndex++;
         movingBlockIndex = -1;
         movingWrongBlock = false;
@@ -55,50 +84,101 @@ public partial class ChapterOnePuzzle
 
     private int GetHoveredPushIndex()
     {
-        for (int i = 0; i < pushMarkers.Count; i++)
+        // Chooses the closest valid block/marker pair near the player.
+        int pushCount = Mathf.Min(pushMarkers.Count, pushBlocks.Count);
+        if (pushCount <= 0)
+        {
+            return -1;
+        }
+
+        int bestIndex = -1;
+        float bestDistance = float.PositiveInfinity;
+        if (player == null)
+        {
+            return -1;
+        }
+
+        Vector3 playerPosition = Flatten(player.position);
+
+        for (int i = 0; i < pushCount; i++)
         {
             if (completedPushes != null && i < completedPushes.Length && completedPushes[i])
             {
                 continue;
             }
 
-            if (IsPlayerInPushArea(i))
+            if (!IsPlayerInPushArea(i))
             {
-                return i;
+                continue;
+            }
+
+            float distance = GetPushInteractionDistance(playerPosition, i);
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                bestIndex = i;
             }
         }
 
-        return -1;
+        return bestIndex;
     }
 
     private bool IsPlayerInPushArea(int index)
     {
+        if (player == null)
+        {
+            return false;
+        }
+
         Vector3 playerPosition = Flatten(player.position);
+        Transform marker = index >= 0 && index < pushMarkers.Count ? pushMarkers[index] : null;
+        Transform block = index >= 0 && index < pushBlocks.Count ? pushBlocks[index] : null;
+
+        bool nearMarker = false;
+        if (marker != null)
+        {
+            float directMarkerDistance = Vector3.Distance(playerPosition, Flatten(marker.position));
+            float markerDistance = GetHorizontalDistanceToObject(playerPosition, marker);
+            float markerTriggerDistance = Mathf.Max(markerReachDistance, 3.2f);
+            nearMarker = directMarkerDistance <= markerTriggerDistance || markerDistance <= markerTriggerDistance;
+        }
+
+        bool nearBlock = false;
+        if (block != null)
+        {
+            float directBlockDistance = Vector3.Distance(playerPosition, Flatten(block.position));
+            float distance = GetHorizontalDistanceToObject(playerPosition, block);
+            float blockReachDistance = Mathf.Min(playerPushDistance, Mathf.Max(markerReachDistance + 1.6f, 4.2f));
+            nearBlock = directBlockDistance <= blockReachDistance || distance <= blockReachDistance;
+        }
+
+        if (marker != null)
+        {
+            return nearMarker || nearBlock;
+        }
+
+        return nearBlock;
+    }
+
+    private float GetPushInteractionDistance(Vector3 playerPosition, int index)
+    {
+        float bestDistance = float.PositiveInfinity;
+
         Transform marker = index >= 0 && index < pushMarkers.Count ? pushMarkers[index] : null;
         if (marker != null)
         {
-            float markerDistance = GetHorizontalDistanceToObject(playerPosition, marker);
-            if (markerDistance > markerReachDistance)
-            {
-                return false;
-            }
+            bestDistance = Mathf.Min(bestDistance, Vector3.Distance(playerPosition, Flatten(marker.position)));
+            bestDistance = Mathf.Min(bestDistance, GetHorizontalDistanceToObject(playerPosition, marker));
         }
-        else
+
+        Transform block = index >= 0 && index < pushBlocks.Count ? pushBlocks[index] : null;
+        if (block != null)
         {
-            Transform block = index >= 0 && index < pushBlocks.Count ? pushBlocks[index] : null;
-            if (block == null)
-            {
-                return false;
-            }
-
-            float distance = GetHorizontalDistanceToObject(playerPosition, block);
-            if (distance > playerPushDistance)
-            {
-                return false;
-            }
+            bestDistance = Mathf.Min(bestDistance, Vector3.Distance(playerPosition, Flatten(block.position)));
+            bestDistance = Mathf.Min(bestDistance, GetHorizontalDistanceToObject(playerPosition, block));
         }
 
-        return true;
+        return bestDistance;
     }
 
     private Transform GetCurrentPushMarker()
@@ -106,8 +186,9 @@ public partial class ChapterOnePuzzle
         return currentIndex >= 0 && currentIndex < pushMarkers.Count ? pushMarkers[currentIndex] : null;
     }
 
-    private void RefreshPushReferences()
+    private void LoadPushStepReferences()
     {
+        // Copies Inspector push steps into lists used by the runtime puzzle loop.
         pushBlocks.Clear();
         pushMarkers.Clear();
 
@@ -126,7 +207,6 @@ public partial class ChapterOnePuzzle
 
             pushBlocks.Add(step.block);
             pushMarkers.Add(step.marker);
-            EnsureSolidCollider(step.block);
         }
     }
 
@@ -148,19 +228,34 @@ public partial class ChapterOnePuzzle
 
     private Vector3 GetSolvedLocalPosition(Transform block, int index)
     {
-        if (runtimeSolvedLocalPositions != null &&
+        if (solvedBlockPositions != null &&
             index >= 0 &&
-            index < runtimeSolvedLocalPositions.Length)
+            index < solvedBlockPositions.Length)
         {
-            return runtimeSolvedLocalPositions[index];
+            return solvedBlockPositions[index];
         }
 
         return block.localPosition;
     }
 
-    private void BuildRuntimeSolvedLocalPositions()
+    private void SetSolvedBlockPositions()
     {
-        runtimeSolvedLocalPositions = new Vector3[pushBlocks.Count];
+        // Caches initial and solved positions once the scene references are ready.
+        bool hadState = solvedBlockPositions != null &&
+            initialLocalPositions != null &&
+            completedPushes != null;
+        bool sameShape = hadState &&
+            solvedBlockPositions.Length == pushBlocks.Count &&
+            initialLocalPositions.Length == pushBlocks.Count &&
+            completedPushes.Length == pushBlocks.Count;
+        if (sameShape)
+        {
+            return;
+        }
+
+        bool[] previousCompletedPushes = completedPushes;
+        int previousCurrentIndex = currentIndex;
+        solvedBlockPositions = new Vector3[pushBlocks.Count];
         initialLocalPositions = new Vector3[pushBlocks.Count];
         completedPushes = new bool[pushBlocks.Count];
 
@@ -173,13 +268,44 @@ public partial class ChapterOnePuzzle
             }
 
             initialLocalPositions[i] = block.localPosition;
-            runtimeSolvedLocalPositions[i] = GetSolvedLocalPositionForBlock(block, i);
+            solvedBlockPositions[i] = GetSolvedLocalPositionForBlock(block, i);
+            if (previousCompletedPushes != null && i < previousCompletedPushes.Length)
+            {
+                completedPushes[i] = previousCompletedPushes[i];
+            }
         }
+
+        if (hadState)
+        {
+            currentIndex = Mathf.Clamp(previousCurrentIndex, 0, requiredOrderedPushCount);
+        }
+    }
+
+    private void ApplySavedPushState()
+    {
+        // Unfinished puzzle saves reload with every block back at its starting position.
+        if (pushBlocks.Count == 0 || initialLocalPositions == null || completedPushes == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < pushBlocks.Count; i++)
+        {
+            Transform block = pushBlocks[i];
+            if (block == null)
+            {
+                continue;
+            }
+
+            completedPushes[i] = false;
+            block.localPosition = initialLocalPositions[i];
+        }
+
+        currentIndex = 0;
     }
 
     private Vector3 GetSolvedLocalPositionForBlock(Transform block, int index)
     {
-        // If I filled in a solved position in the Inspector, use it. Otherwise the block's starting spot is the answer.
         if (pushSteps != null &&
             index >= 0 &&
             index < pushSteps.Length &&
@@ -194,6 +320,7 @@ public partial class ChapterOnePuzzle
 
     private void FailAndReset()
     {
+        // Any wrong push restarts the ordered sequence from the beginning.
         for (int i = 0; i < pushBlocks.Count; i++)
         {
             if (pushBlocks[i] != null && initialLocalPositions != null && i < initialLocalPositions.Length)
@@ -219,8 +346,37 @@ public partial class ChapterOnePuzzle
         SetIndicatorVisible(greenIndicator, false);
     }
 
+    private void IgnorePlayerPushBlockCollisions()
+    {
+        // Player movement is controlled by interaction distance, not physical pushing against colliders.
+        if (playerController == null)
+        {
+            return;
+        }
+
+        for (int blockIndex = 0; blockIndex < pushBlocks.Count; blockIndex++)
+        {
+            Transform block = pushBlocks[blockIndex];
+            if (block == null)
+            {
+                continue;
+            }
+
+            Collider[] blockColliders = block.GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < blockColliders.Length; i++)
+            {
+                Collider blockCollider = blockColliders[i];
+                if (blockCollider != null && !blockCollider.isTrigger)
+                {
+                    Physics.IgnoreCollision(playerController, blockCollider, true);
+                }
+            }
+        }
+    }
+
     private void RotateResultIndicators()
     {
+        // Red and green indicators only rotate while visible.
         RotateIndicator(redIndicator);
         RotateIndicator(greenIndicator);
     }
@@ -251,7 +407,7 @@ public partial class ChapterOnePuzzle
             return Vector3.zero;
         }
 
-        Transform basis = Camera.main != null ? Camera.main.transform : player;
+        Transform basis = player;
         Vector3 forward = basis.forward;
         Vector3 right = basis.right;
         forward.y = 0f;

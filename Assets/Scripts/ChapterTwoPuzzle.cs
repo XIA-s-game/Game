@@ -1,8 +1,5 @@
-// Main controller for chapter two: shared fields, setup, and frame-by-frame flow.
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public partial class ChapterTwoPuzzle : MonoBehaviour
 {
@@ -15,6 +12,7 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
     [SerializeField] private string nextSceneName = "my scene";
 
     [Header("Item Names")]
+    // Inventory names stay here so dialogue, save data, and backpack UI use the same strings.
     [SerializeField] private string mazePassItemName = "Maze Pass";
     [SerializeField] private string secondPageItemName = "Second Page";
     [SerializeField] private string redKeyItemName = "Red Key";
@@ -26,9 +24,8 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
     [SerializeField] private string silverLeafItemName = "Silver Leaf";
 
     [Header("Tuning")]
+    // Maze, board game, and lock motion tuning shared by the Chapter Two partial scripts.
     [SerializeField] private Vector3 openedMazeBlockPosition = new Vector3(355.87f, 16.58f, 663.52f);
-    [SerializeField] private Vector3 mazeColliderCenter = new Vector3(356.34f, 16.58f, 663.52f);
-    [SerializeField] private Vector3 mazeColliderExtents = new Vector3(70f, 28f, 70f);
     [SerializeField] private float interactDistance = 4f;
     [SerializeField] private float boardInteractDistance = 3.5f;
     [SerializeField] private float boardMoveSpeed = 4f;
@@ -40,11 +37,7 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
     [SerializeField] private float airWallTwoDropDistance = 100f;
     [SerializeField] private float airWallTwoDropSpeed = 12f;
     [SerializeField] private float lockPartTargetLocalY = 0.27f;
-    [SerializeField] private float keyDropDistance = 40f;
     [SerializeField] private float finalUnlockMoveSeconds = 1.2f;
-    [SerializeField] private float lookPadRadius = 258f;
-    [SerializeField] private float lookPadKnobRadius = 54f;
-    [SerializeField] private float lookPadSensitivity = 0.55f;
     [SerializeField] private KeyCode interactKey = KeyCode.E;
     [SerializeField] private KeyCode continueKey = KeyCode.C;
 
@@ -110,8 +103,6 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
     [SerializeField] private string travelPrompt = "Press E to travel";
     [SerializeField] private string talkPrompt = "Press E to talk";
     [SerializeField] private string interactPrompt = "Press E to interact";
-    [SerializeField] private string backpackTitle = "Backpack B";
-    [SerializeField] private string backpackEmptyText = "Empty";
     [SerializeField] private string findHoneyPrompt = "Find a honey jar.";
     [SerializeField] private string useHoneyStationPrompt = "Use the honey jar station.";
     [SerializeField] private string honeyFoundPrompt = "Honey jar found.";
@@ -135,6 +126,7 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
 
     private enum FlowState
     {
+        // High-level mode gate so board, quiz, and dialogue input do not overlap.
         Exploring,
         Dialogue,
         Quiz,
@@ -143,6 +135,7 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
 
     private enum BoardGamePhase
     {
+        // Dice game state is separate from the chapter flow because it has its own turn loop.
         NotStarted,
         WaitingToRoll,
         Rolling,
@@ -171,6 +164,7 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
     private static ChapterTwoPuzzle instance;
 
     [Header("Scene References")]
+    // Dragged scene references for Fae Homes Demo; the scripts avoid object-name searches.
     [SerializeField] private Transform player;
     [SerializeField] private Transform guard;
     [SerializeField] private Transform guardInteract;
@@ -189,15 +183,11 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
     [SerializeField] private Transform[] diceFaces = new Transform[DiceFaceCount];
 
     [Header("Item Objects")]
+    // Physical quest objects shown or hidden as the player completes side tasks.
     [SerializeField] private GameObject honeyObject;
     [SerializeField] private GameObject silverLeafObject;
     [SerializeField] private GameObject rockBearObject;
-    [SerializeField] private GameObject redKeyObject;
-    [SerializeField] private GameObject blueKeyObject;
-    [SerializeField] private GameObject greenKeyObject;
-    [SerializeField] private GameObject yellowKeyObject;
     [SerializeField] private GameObject finalDoorObject;
-    [SerializeField] private GameObject finalWindowObject;
     [SerializeField] private GameObject fourthPagePaperObject;
     [SerializeField] private GameObject thirdPagePortalObject;
     [SerializeField] private GameObject mazeBlock;
@@ -205,22 +195,19 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
     [SerializeField] private Transform blueLockPart;
     [SerializeField] private Transform greenLockPart;
     [SerializeField] private Transform yellowLockPart;
-    [SerializeField] private RuntimeAnimatorController guardStandController;
-    [SerializeField] private Avatar guardAvatar;
-
     private readonly Vector3[] diceFaceLocalNormals = new Vector3[DiceFaceCount];
     private Vector3 guardOriginalPosition;
     private Vector3 mazeBlockOriginalPosition;
     private bool guardOriginalPositionReady;
     private bool mazeBlockOriginalPositionReady;
     private bool welcomeStarted;
+    // Quest flags decide what resets on continue and what stays in the backpack.
     private bool firstGuardDialogueShown;
     private bool hasPass;
     private bool mazeOpened;
     private bool exitedMaze;
     private bool quizStarted;
     private bool quizCompleted;
-    private bool mazeCollidersReady;
     private bool airWallTwoDropped;
     private Coroutine airWallTwoRoutine;
     private BoardGamePhase boardGamePhase;
@@ -252,7 +239,6 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
     private bool waitingForFourthPagePickup;
     private bool fourthPagePicked;
     private bool thirdPagePortalUnlocked;
-    private bool inventoryOpen;
     private FlowState state;
     private string[] activeLines;
     private int lineIndex;
@@ -266,21 +252,16 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
     private bool showingQuizFeedback;
     private bool quizPassedAfterFeedback;
     private bool quizFailedAfterFeedback;
-    private Vector2 lookPadDirection;
-    private bool draggingLookPad;
-    private Texture2D lookPadTexture;
-    private Texture2D lookPadKnobTexture;
     private GUIStyle promptStyle;
     private GUIStyle dialogueStyle;
     private GUIStyle hintStyle;
     private GUIStyle titleStyle;
     private GUIStyle optionStyle;
-    private GUIStyle inventoryStyle;
 
     private readonly List<Question> questions = new List<Question>();
     private readonly List<Question> quizQuestions = new List<Question>();
     private readonly List<string> inventoryItems = new List<string>();
-
+    private Animator playerAnimator;
 
     private void Awake()
     {
@@ -292,8 +273,8 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
 
         instance = this;
         BuildQuestions();
-        FixReferenceArraySizes();
-        RefreshReferences();
+        ReadSceneReferences();
+        DropAirWallTwo();
     }
 
     private void OnDisable()
@@ -301,8 +282,6 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
         AquariusMax.Fae.demo.DemoCharacter.LockPlayerInput = false;
         AquariusMax.Fae.demo.DemoCharacter.LockMovementInput = false;
         AquariusMax.Fae.demo.DemoCharacter.ForceWalkAnimation = false;
-        AquariusMax.Fae.demo.DemoCharacter.UseLookPadInput = false;
-        AquariusMax.Fae.demo.DemoCharacter.LookPadInput = Vector2.zero;
     }
 
     private void Update()
@@ -312,23 +291,12 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
             AquariusMax.Fae.demo.DemoCharacter.LockPlayerInput = false;
             AquariusMax.Fae.demo.DemoCharacter.LockMovementInput = false;
             AquariusMax.Fae.demo.DemoCharacter.ForceWalkAnimation = false;
-            AquariusMax.Fae.demo.DemoCharacter.UseLookPadInput = false;
-            AquariusMax.Fae.demo.DemoCharacter.LookPadInput = Vector2.zero;
             return;
         }
 
-        EnsureGuardStandAnimation();
-        EnsureMazeColliders();
         StartWelcomeIfNeeded();
-        if (Input.GetKeyDown(KeyCode.B))
-        {
-            inventoryOpen = !inventoryOpen;
-        }
-
         AquariusMax.Fae.demo.DemoCharacter.LockPlayerInput = state == FlowState.Quiz;
         AquariusMax.Fae.demo.DemoCharacter.LockMovementInput = state == FlowState.BoardGame;
-        AquariusMax.Fae.demo.DemoCharacter.UseLookPadInput = false;
-        AquariusMax.Fae.demo.DemoCharacter.LookPadInput = Vector2.zero;
         Cursor.visible = state == FlowState.Quiz;
         Cursor.lockState = state == FlowState.Quiz ? CursorLockMode.None : CursorLockMode.Locked;
 
@@ -368,21 +336,18 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
         if (state == FlowState.Dialogue)
         {
             DrawDialogue();
-            return;
         }
-
-        if (state == FlowState.Quiz)
+        else if (state == FlowState.Quiz)
         {
             DrawQuiz();
-            return;
         }
-
-        if (state == FlowState.BoardGame)
+        else if (state == FlowState.BoardGame)
         {
             DrawBoardGame();
-            return;
         }
-
-        DrawInteractPrompts();
+        else
+        {
+            DrawInteractPrompts();
+        }
     }
 }

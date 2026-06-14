@@ -1,24 +1,23 @@
-// Runs the dice board mini-game and moves the player between board tiles.
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public partial class ChapterTwoPuzzle
 {
     private void StartBoardGame()
     {
-        RefreshBoardReferences();
+        // Starts the dice board side game from tile zero and waits for the first roll.
+        ReadBoardSlots();
         boardRound = 1;
         boardPosition = 0;
         lastDiceRoll = 0;
         boardGamePhase = BoardGamePhase.WaitingToRoll;
         state = FlowState.BoardGame;
-        ShowSystemPrompt(GetRollPrompt(), 3f);
+        ShowSystemPrompt(string.Format(boardRollPromptFormat, boardRound), 3f);
     }
 
     private void UpdateBoardGameInput()
     {
+        // Board input is only accepted while the dice is waiting to be rolled.
         if (boardGamePhase == BoardGamePhase.WaitingToRoll && Input.GetKeyDown(interactKey))
         {
             StopBoardRoutine();
@@ -28,7 +27,7 @@ public partial class ChapterTwoPuzzle
 
     private IEnumerator RollDiceAndMove()
     {
-        // Roll first, then trust the top face so the number matches what the player sees.
+        // One board turn: throw dice, move, apply special tile, then either win or wait again.
         boardGamePhase = BoardGamePhase.Rolling;
         int targetFace = Random.Range(1, 7);
         lastDiceRoll = 0;
@@ -66,12 +65,13 @@ public partial class ChapterTwoPuzzle
         EndBoardMove();
         boardRound++;
         boardGamePhase = BoardGamePhase.WaitingToRoll;
-        ShowSystemPrompt(GetRollPrompt(), 3f);
+        ShowSystemPrompt(string.Format(boardRollPromptFormat, boardRound), 3f);
         boardRoutine = null;
     }
 
     private IEnumerator ThrowDice(int result)
     {
+        // Dice is animated toward a chosen face so the visual result matches the board move.
         if (dice == null)
         {
             yield return new WaitForSeconds(0.4f);
@@ -168,6 +168,7 @@ public partial class ChapterTwoPuzzle
 
     private IEnumerator MovePlayerToTransform(Transform targetTransform)
     {
+        // Temporarily moves the player along the board without normal character input.
         if (player == null || targetTransform == null)
         {
             yield break;
@@ -179,7 +180,7 @@ public partial class ChapterTwoPuzzle
         float distance = Vector3.Distance(start, target);
         float duration = Mathf.Max(0.15f, distance / Mathf.Max(0.1f, boardMoveSpeed));
         float elapsed = 0f;
-        Animator animator = player.GetComponentInChildren<Animator>();
+        Animator animator = GetPlayerAnimator();
         AquariusMax.Fae.demo.DemoCharacter.ForceWalkAnimation = true;
         SetBoardWalkAnimation(animator, true);
 
@@ -202,11 +203,11 @@ public partial class ChapterTwoPuzzle
         player.position = target;
         AquariusMax.Fae.demo.DemoCharacter.ForceWalkAnimation = false;
         SetBoardWalkAnimation(animator, false);
-
     }
 
     private void BeginBoardMove()
     {
+        // Disables CharacterController during scripted tile movement to avoid collision jitter.
         if (player == null || boardMoveController != null)
         {
             return;
@@ -222,6 +223,7 @@ public partial class ChapterTwoPuzzle
 
     private void EndBoardMove()
     {
+        // Restores normal player movement after the board finishes a scripted step.
         if (boardMoveController != null)
         {
             boardMoveController.enabled = boardMoveControllerWasEnabled;
@@ -254,6 +256,22 @@ public partial class ChapterTwoPuzzle
         {
             animator.CrossFade(shortNameHash, 0.08f, 0);
         }
+    }
+
+    private Animator GetPlayerAnimator()
+    {
+        if (playerAnimator != null)
+        {
+            return playerAnimator;
+        }
+
+        if (player == null)
+        {
+            return null;
+        }
+
+        playerAnimator = player.GetComponentInChildren<Animator>(true);
+        return playerAnimator;
     }
 
     private void SetAnimatorBool(Animator animator, string parameterName, bool value)
@@ -299,6 +317,7 @@ public partial class ChapterTwoPuzzle
 
     private void CompleteBoardGame()
     {
+        // Winning the board game grants the maze pass and returns to free exploration.
         hasPass = true;
         boardGamePhase = BoardGamePhase.Won;
         state = FlowState.Exploring;
@@ -315,10 +334,5 @@ public partial class ChapterTwoPuzzle
         }
 
         EndBoardMove();
-    }
-
-    private string GetRollPrompt()
-    {
-        return string.Format(boardRollPromptFormat, boardRound);
     }
 }

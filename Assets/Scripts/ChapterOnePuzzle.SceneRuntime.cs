@@ -1,10 +1,283 @@
-// Keeps chapter one scene objects touchable and easy to detect at runtime.
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public partial class ChapterOnePuzzle
 {
+    private void RestorePlayerAfterDialogue()
+    {
+        AquariusMax.Fae.demo.DemoCharacter.ResetControlFlags();
+        if (demoCharacter != null)
+        {
+            demoCharacter.ClearMotionState();
+        }
+    }
+
+    private void SetUpChapterOneScene()
+    {
+        if (sceneReady)
+        {
+            return;
+        }
+
+        sceneReady = true;
+        SetUpPuzzleState();
+
+        if (!forestAttackDialogueFinished && !enemiesActivated)
+        {
+            SetHeroVisible(false);
+        }
+
+        if (!portalUnlocked)
+        {
+            if (portalTrigger != null && portalTrigger.gameObject.activeSelf)
+            {
+                portalTrigger.gameObject.SetActive(false);
+            }
+
+            if (portalDoor != null && portalDoor.activeSelf)
+            {
+                portalDoor.SetActive(false);
+            }
+        }
+
+        if (!rescueApplied)
+        {
+            SetAudioSourcesPlayingInHierarchy(cage, true);
+        }
+
+        SetIndicatorVisible(redIndicator, false);
+        SetIndicatorVisible(greenIndicator, false);
+        CollectDelayedEnemies();
+    }
+
+    private void SetUpPuzzleState()
+    {
+        LoadPushStepReferences();
+        SetSolvedBlockPositions();
+        IgnorePlayerPushBlockCollisions();
+
+        referencesReady =
+            player != null &&
+            recognizeHelp != null &&
+            strangeAltar != null &&
+            askHelp != null &&
+            fairy != null &&
+            HasPushPuzzleReady();
+    }
+
+    private void SetPlayerControlReferences(bool clearMotionState)
+    {
+        if (demoCharacter == null)
+        {
+            return;
+        }
+
+        demoCharacter.enabled = true;
+        demoCharacter.SetCollisionOptions(false, false);
+
+        Animator boundAnimator = demoCharacter.GetCurrentAnimator();
+        if (boundAnimator != null && boundAnimator.runtimeAnimatorController != null)
+        {
+            boundAnimator.applyRootMotion = false;
+            boundAnimator.enabled = true;
+        }
+
+        if (playerCamera != null)
+        {
+            playerCamera.gameObject.SetActive(true);
+            playerCamera.enabled = true;
+            demoCharacter.SetCamera(playerCamera);
+        }
+
+        if (playerAudioListener != null)
+        {
+            playerAudioListener.enabled = true;
+        }
+
+        if (clearMotionState)
+        {
+            demoCharacter.ClearMotionState();
+        }
+    }
+
+    private bool HasPushPuzzleReady()
+    {
+        int expectedPushCount = pushSteps != null ? pushSteps.Length : 0;
+        return player != null &&
+            expectedPushCount > 0 &&
+            pushBlocks.Count == expectedPushCount &&
+            solvedBlockPositions != null &&
+            solvedBlockPositions.Length == pushBlocks.Count &&
+            completedPushes != null;
+    }
+
+    private void ApplySavedSceneState()
+    {
+        ApplySavedPushState();
+
+        if (rescueApplied)
+        {
+            ApplyRescueSceneState();
+            SetIndicatorVisible(greenIndicator, currentIndex >= requiredOrderedPushCount);
+            SetIndicatorVisible(redIndicator, false);
+        }
+
+        if (forestAttackDialogueFinished && fairy != null)
+        {
+            fairy.gameObject.SetActive(false);
+        }
+
+        if (enemiesActivated)
+        {
+            if (!heroCombatFinished)
+            {
+                GameAudioManager.StartRoarLoop();
+            }
+
+            ApplyEnemySceneState();
+        }
+        else if (!forestAttackDialogueFinished)
+        {
+            SetHeroVisible(false);
+        }
+
+        if (heroCombatFinished && hero != null)
+        {
+            SetHeroVisible(true);
+        }
+
+        if (portalUnlocked)
+        {
+            if (portalTrigger != null && !portalTrigger.gameObject.activeSelf)
+            {
+                portalTrigger.gameObject.SetActive(true);
+            }
+
+            if (portalDoor != null && !portalDoor.activeSelf)
+            {
+                portalDoor.SetActive(true);
+            }
+        }
+    }
+
+    private void ApplyRescueSceneState()
+    {
+        if (cage != null && cage.childCount > 0)
+        {
+            cage.GetChild(0).localPosition = cageChildSolvedLocalPosition;
+            StopAudioSourcesInHierarchy(cage);
+        }
+
+        if (fairy != null)
+        {
+            fairy.position = fairySolvedWorldPosition;
+            fairy.rotation *= Quaternion.Euler(fairySolvedEulerOffset);
+        }
+    }
+
+    private void ApplyEnemySceneState()
+    {
+        CollectDelayedEnemies();
+        bool anyEnemyActive = false;
+
+        for (int i = 0; i < delayedEnemies.Count; i++)
+        {
+            GameObject enemy = delayedEnemies[i];
+            if (enemy == null)
+            {
+                continue;
+            }
+
+            bool shouldBeActive = true;
+            enemy.SetActive(shouldBeActive);
+            if (!shouldBeActive)
+            {
+                continue;
+            }
+
+            anyEnemyActive = true;
+            SetAudioSourcesPlayingInHierarchy(enemy.transform, true);
+        }
+
+        for (int i = 0; i < delayedEnemyRenderers.Count; i++)
+        {
+            if (delayedEnemyRenderers[i] != null)
+            {
+                delayedEnemyRenderers[i].enabled = delayedEnemyRenderers[i].gameObject.activeInHierarchy;
+            }
+        }
+
+        for (int i = 0; i < delayedEnemyColliders.Count; i++)
+        {
+            if (delayedEnemyColliders[i] != null)
+            {
+                delayedEnemyColliders[i].enabled = delayedEnemyColliders[i].gameObject.activeInHierarchy;
+            }
+        }
+
+        for (int i = 0; i < delayedEnemyWalkers.Count; i++)
+        {
+            if (delayedEnemyWalkers[i] != null)
+            {
+                delayedEnemyWalkers[i].enabled = delayedEnemyWalkers[i].gameObject.activeInHierarchy;
+            }
+        }
+
+        for (int i = 0; i < delayedEnemyAnimators.Count; i++)
+        {
+            if (delayedEnemyAnimators[i] != null)
+            {
+                delayedEnemyAnimators[i].enabled = delayedEnemyAnimators[i].gameObject.activeInHierarchy;
+            }
+        }
+
+        if (hero == null)
+        {
+            return;
+        }
+
+        SetHeroVisible(true);
+        heroCombatY = hero.position.y;
+
+        if (heroCombatFinished)
+        {
+            heroCombatActive = false;
+            heroAttacking = false;
+            if (heroAnimator != null)
+            {
+                heroAnimator.speed = 0f;
+            }
+
+            GameAudioManager.StopEnemyLoop();
+            return;
+        }
+
+        if (!anyEnemyActive)
+        {
+            GameAudioManager.StopEnemyLoop();
+            FinishHeroCombat();
+            return;
+        }
+
+        GameAudioManager.StartEnemyLoop();
+        heroCombatActive = true;
+        heroAttacking = false;
+        heroTargetEnemy = FindNextHeroTarget();
+        if (heroTargetEnemy != null)
+        {
+            PlayHeroAnimation(heroWalkController, heroWalkStateName);
+        }
+    }
+
+    private void CacheHeroAnimator()
+    {
+        if (heroAnimator != null || hero == null)
+        {
+            return;
+        }
+
+        heroAnimator = hero.GetComponentInChildren<Animator>(true);
+    }
+
     private bool IsPlayerNearTransform(Transform target, float distance)
     {
         return player != null &&
@@ -12,14 +285,40 @@ public partial class ChapterOnePuzzle
             GetHorizontalDistanceToObject(Flatten(player.position), target) <= distance;
     }
 
-    private bool IsPlayerOnTrigger(Transform target, float fallbackDistance)
+    private bool IsPlayerNearStoryTarget(Transform target)
     {
         if (player == null || target == null)
         {
             return false;
         }
 
-        if (TryGetDetectionBounds(target, out Bounds bounds))
+        float distance = Mathf.Max(storyAreaReachDistance, 6f);
+        float directDistance = Vector3.Distance(Flatten(player.position), Flatten(target.position));
+        if (directDistance <= distance)
+        {
+            return true;
+        }
+
+        if (TryGetTargetBounds(target, out Bounds bounds))
+        {
+            Vector3 position = player.position;
+            bool nearY = Mathf.Abs(position.y - bounds.center.y) <= Mathf.Max(4f, bounds.extents.y + 4f);
+            Vector3 closest = bounds.ClosestPoint(new Vector3(position.x, bounds.center.y, position.z));
+            float horizontalDistance = Vector3.Distance(Flatten(position), Flatten(closest));
+            return nearY && horizontalDistance <= distance;
+        }
+
+        return GetHorizontalDistanceToObject(Flatten(player.position), target) <= distance;
+    }
+
+    private bool IsPlayerOnTrigger(Transform target, float defaultDistance)
+    {
+        if (player == null || target == null)
+        {
+            return false;
+        }
+
+        if (TryGetTargetBounds(target, out Bounds bounds))
         {
             Vector3 position = player.position;
             bool insideX = position.x >= bounds.min.x - 0.15f && position.x <= bounds.max.x + 0.15f;
@@ -28,13 +327,23 @@ public partial class ChapterOnePuzzle
             return insideX && insideZ && nearY;
         }
 
-        return GetHorizontalDistanceToObject(Flatten(player.position), target) <= fallbackDistance;
+        return GetHorizontalDistanceToObject(Flatten(player.position), target) <= defaultDistance;
     }
 
-    private static bool TryGetDetectionBounds(Transform target, out Bounds bounds)
+    private static bool TryGetTargetBounds(Transform target, out Bounds bounds)
+    {
+        bounds = new Bounds(target.position, Vector3.zero);
+        return TryGetColliderBounds(target, ref bounds) || TryGetRendererBounds(target, ref bounds);
+    }
+
+    private static bool TryGetWorldBounds(Transform target, out Bounds bounds)
+    {
+        return TryGetTargetBounds(target, out bounds);
+    }
+
+    private static bool TryGetColliderBounds(Transform target, ref Bounds bounds)
     {
         Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
-        bounds = new Bounds(target.position, Vector3.zero);
         bool hasBounds = false;
 
         foreach (Collider collider in colliders)
@@ -55,127 +364,12 @@ public partial class ChapterOnePuzzle
             }
         }
 
-        if (hasBounds)
-        {
-            return true;
-        }
-
-        return TryGetWorldBounds(target, out bounds);
+        return hasBounds;
     }
 
-    private void EnsureSolidCollider(Transform target)
-    {
-        if (target == null || colliderReadyTargets.Contains(target))
-        {
-            return;
-        }
-
-        bool alreadyHadCollider = HasSolidCollider(target);
-        bool addedCollider = AddMeshColliders(target);
-        if (!alreadyHadCollider && !addedCollider)
-        {
-            addedCollider = AddRendererBoxColliders(target);
-        }
-
-        if (alreadyHadCollider || addedCollider)
-        {
-            colliderReadyTargets.Add(target);
-        }
-    }
-
-    private static bool HasSolidCollider(Transform target)
-    {
-        Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
-        foreach (Collider collider in colliders)
-        {
-            if (collider != null && !collider.isTrigger)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static bool AddMeshColliders(Transform target)
-    {
-        bool addedAny = false;
-        MeshFilter[] meshFilters = target.GetComponentsInChildren<MeshFilter>(true);
-        foreach (MeshFilter meshFilter in meshFilters)
-        {
-            if (meshFilter == null || meshFilter.sharedMesh == null || meshFilter.GetComponent<Collider>() != null)
-            {
-                continue;
-            }
-
-            MeshCollider collider = meshFilter.gameObject.AddComponent<MeshCollider>();
-            collider.sharedMesh = meshFilter.sharedMesh;
-            collider.convex = false;
-            addedAny = true;
-        }
-
-        return addedAny;
-    }
-
-    private static bool AddRendererBoxColliders(Transform target)
-    {
-        bool addedAny = false;
-        Renderer[] renderers = target.GetComponentsInChildren<Renderer>(true);
-        foreach (Renderer renderer in renderers)
-        {
-            if (renderer == null || renderer.GetComponent<Collider>() != null)
-            {
-                continue;
-            }
-
-            BoxCollider collider = renderer.gameObject.AddComponent<BoxCollider>();
-            collider.center = renderer.transform.InverseTransformPoint(renderer.bounds.center);
-            collider.size = DivideByLossyScale(renderer.bounds.size, renderer.transform.lossyScale);
-            addedAny = true;
-        }
-
-        return addedAny;
-    }
-
-    private static float GetClosestDistance(Vector3 point, Transform target)
-    {
-        Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
-        float closestSqrDistance = float.PositiveInfinity;
-        bool found = false;
-
-        foreach (Collider collider in colliders)
-        {
-            if (collider == null)
-            {
-                continue;
-            }
-
-            Vector3 closestPoint = collider.ClosestPoint(point);
-            float sqrDistance = (point - closestPoint).sqrMagnitude;
-            if (sqrDistance < closestSqrDistance)
-            {
-                closestSqrDistance = sqrDistance;
-                found = true;
-            }
-        }
-
-        if (found)
-        {
-            return Mathf.Sqrt(closestSqrDistance);
-        }
-
-        if (TryGetWorldBounds(target, out Bounds bounds))
-        {
-            return Vector3.Distance(point, bounds.ClosestPoint(point));
-        }
-
-        return Vector3.Distance(point, target.position);
-    }
-
-    private static bool TryGetWorldBounds(Transform target, out Bounds bounds)
+    private static bool TryGetRendererBounds(Transform target, ref Bounds bounds)
     {
         Renderer[] renderers = target.GetComponentsInChildren<Renderer>(true);
-        bounds = new Bounds(target.position, Vector3.zero);
         bool hasBounds = false;
 
         foreach (Renderer renderer in renderers)
@@ -199,16 +393,4 @@ public partial class ChapterOnePuzzle
         return hasBounds;
     }
 
-    private static Vector3 DivideByLossyScale(Vector3 size, Vector3 lossyScale)
-    {
-        return new Vector3(
-            DivideByScale(size.x, lossyScale.x),
-            DivideByScale(size.y, lossyScale.y),
-            DivideByScale(size.z, lossyScale.z));
-    }
-
-    private static float DivideByScale(float value, float scale)
-    {
-        return Mathf.Abs(scale) > 0.0001f ? value / Mathf.Abs(scale) : value;
-    }
 }
