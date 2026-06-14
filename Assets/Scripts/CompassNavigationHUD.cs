@@ -1,20 +1,19 @@
-// Shows a simple compass hint so the player knows where to head next.
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class CompassNavigationHUD : MonoBehaviour
 {
+    // Draws a simple heading bar using the player camera direction.
     [Header("References")]
     [SerializeField] private Transform player;
     [SerializeField] private Camera targetCamera;
+    [SerializeField] private bool showCompass = true;
 
     [Header("Layout")]
-    [SerializeField] private float topOffset = 16f;
-    [SerializeField] private float widthRatio = 0.72f;
-    [SerializeField] private float panelHeight = 76f;
-    [SerializeField] private float degreesVisible = 120f;
+    [SerializeField] private float topOffset = 10f;
+    [SerializeField] private float panelHeight = 120f;
+    [SerializeField] private float degreesVisible = 60f;
     [SerializeField] private int minorTickStep = 5;
-    [SerializeField] private int majorTickStep = 15;
+    [SerializeField] private int majorTickStep = 30;
     [SerializeField] private int labelStep = 45;
 
     [Header("Colors")]
@@ -22,56 +21,14 @@ public class CompassNavigationHUD : MonoBehaviour
     [SerializeField] private Color tickColor = new Color(1f, 1f, 1f, 0.82f);
     [SerializeField] private Color centerColor = new Color(1f, 0.86f, 0.25f, 1f);
 
-    private static CompassNavigationHUD instance;
-
     private readonly string[] directionLabels = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
-    private Texture2D panelTexture;
-    private Texture2D tickTexture;
-    private Texture2D centerTexture;
     private GUIStyle directionLabelStyle;
     private GUIStyle degreeLabelStyle;
     private GUIStyle centerLabelStyle;
 
-    private void Awake()
-    {
-        if (instance != null && instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-
-        instance = this;
-        DontDestroyOnLoad(gameObject);
-        RefreshReferences();
-        CreateTextures();
-    }
-
-    private void OnEnable()
-    {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-    }
-
-    private void OnDisable()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        RefreshReferences();
-    }
-
-    private void Update()
-    {
-        if (targetCamera == null || !targetCamera.gameObject.activeInHierarchy)
-        {
-            targetCamera = Camera.main;
-        }
-    }
-
     private void OnGUI()
     {
-        if (IsMenuScene(SceneManager.GetActiveScene().name))
+        if (!showCompass || Event.current.type != EventType.Repaint)
         {
             return;
         }
@@ -79,13 +36,14 @@ public class CompassNavigationHUD : MonoBehaviour
         float heading = GetHeading();
         Rect panel = GetPanelRect();
 
-        GUI.DrawTexture(panel, panelTexture);
+        DrawSolidRect(panel, panelColor);
         DrawTicks(panel, heading);
         DrawCenterMarker(panel, heading);
     }
 
     private float GetHeading()
     {
+        // Camera forward is preferred so the compass matches what the player is looking at.
         Transform basis = targetCamera != null ? targetCamera.transform : player;
         if (basis == null)
         {
@@ -105,22 +63,23 @@ public class CompassNavigationHUD : MonoBehaviour
 
     private Rect GetPanelRect()
     {
-        float width = Mathf.Clamp(Screen.width * widthRatio, 420f, Screen.width - 32f);
-        return new Rect((Screen.width - width) * 0.5f, topOffset, width, panelHeight);
+        float height = Mathf.Max(panelHeight, 120f);
+        return new Rect(150f, topOffset, Screen.width * 0.8f, height);
     }
 
     private void DrawTicks(Rect panel, float heading)
     {
-        float centerX = panel.x + panel.width * 0.5f;
-        float top = panel.y + 8f;
-        float tickBase = panel.y + panel.height - 18f;
-        float pixelsPerDegree = panel.width / degreesVisible;
-        int startDegree = Mathf.FloorToInt((heading - degreesVisible * 0.5f) / minorTickStep) * minorTickStep;
-        int endDegree = Mathf.CeilToInt((heading + degreesVisible * 0.5f) / minorTickStep) * minorTickStep;
+        // Tick marks are centered around the current heading rather than drawing the full 360 degrees.
+        float top = 8f;
+        float tickBase = panel.height - 46f;
+        float visibleDegrees = Mathf.Min(degreesVisible, 60f);
+        float pixelsPerDegree = panel.width / visibleDegrees;
+        int startDegree = Mathf.FloorToInt((heading - visibleDegrees * 0.5f) / minorTickStep) * minorTickStep;
+        int endDegree = Mathf.CeilToInt((heading + visibleDegrees * 0.5f) / minorTickStep) * minorTickStep;
 
         GUI.BeginGroup(panel);
-        GUIStyle labelStyle = GetLabelStyle(ref directionLabelStyle, 15, TextAnchor.UpperCenter, Color.white);
-        GUIStyle degreeStyle = GetLabelStyle(ref degreeLabelStyle, 12, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.72f));
+        GUIStyle labelStyle = GetLabelStyle(ref directionLabelStyle, 30, TextAnchor.UpperCenter, Color.white);
+        GUIStyle degreeStyle = GetLabelStyle(ref degreeLabelStyle, 25, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.72f));
 
         for (int degree = startDegree; degree <= endDegree; degree += minorTickStep)
         {
@@ -135,17 +94,15 @@ public class CompassNavigationHUD : MonoBehaviour
             bool majorTick = Mathf.RoundToInt(normalizedDegree) % majorTickStep == 0;
             bool labelTick = Mathf.RoundToInt(normalizedDegree) % labelStep == 0;
             float tickHeight = labelTick ? 28f : (majorTick ? 21f : 12f);
-            GUI.DrawTexture(new Rect(localX - 1f, tickBase - tickHeight, 2f, tickHeight), tickTexture);
+            DrawSolidRect(new Rect(localX - 1f, tickBase - tickHeight, 2f, tickHeight), tickColor);
 
             if (labelTick)
             {
-                string direction = GetDirectionLabel(normalizedDegree);
-                string label = direction + "\n" + Mathf.RoundToInt(normalizedDegree) + " deg";
-                GUI.Label(new Rect(localX - 34f, top, 68f, 42f), label, labelStyle);
+                GUI.Label(new Rect(localX - 90f, top, 180f, 108f), BuildTickLabel(normalizedDegree), labelStyle);
             }
             else if (majorTick)
             {
-                GUI.Label(new Rect(localX - 22f, tickBase - tickHeight - 16f, 44f, 16f), Mathf.RoundToInt(normalizedDegree) + " deg", degreeStyle);
+                GUI.Label(new Rect(localX - 75f, tickBase - tickHeight - 48f, 150f, 44f), BuildDegreeLabel(normalizedDegree), degreeStyle);
             }
         }
 
@@ -155,11 +112,10 @@ public class CompassNavigationHUD : MonoBehaviour
     private void DrawCenterMarker(Rect panel, float heading)
     {
         float centerX = panel.x + panel.width * 0.5f;
-        GUI.DrawTexture(new Rect(centerX - 2f, panel.y + 4f, 4f, panel.height - 8f), centerTexture);
+        DrawSolidRect(new Rect(centerX - 2f, panel.y + 4f, 4f, panel.height - 8f), centerColor);
 
-        GUIStyle style = GetLabelStyle(ref centerLabelStyle, 18, TextAnchor.MiddleCenter, centerColor);
-        string label = GetDirectionLabel(heading) + "  " + Mathf.RoundToInt(heading) + " deg";
-        GUI.Label(new Rect(centerX - 70f, panel.y + panel.height - 24f, 140f, 22f), label, style);
+        GUIStyle style = GetLabelStyle(ref centerLabelStyle, 20, TextAnchor.MiddleCenter, centerColor);
+        GUI.Label(new Rect(centerX - 160f, panel.y + panel.height - 62f, 320f, 56f), BuildCenterLabel(heading), style);
     }
 
     private string GetDirectionLabel(float degree)
@@ -181,31 +137,27 @@ public class CompassNavigationHUD : MonoBehaviour
         style.normal.textColor = color;
         return style;
     }
-
-    private void RefreshReferences()
+    private static void DrawSolidRect(Rect rect, Color color)
     {
-        targetCamera = Camera.main;
+        Color previousColor = GUI.color;
+        GUI.color = color;
+        GUI.DrawTexture(rect, Texture2D.whiteTexture);
+        GUI.color = previousColor;
     }
 
-    private void CreateTextures()
+    private string BuildTickLabel(float degree)
     {
-        panelTexture = CreateSolidTexture(panelColor);
-        tickTexture = CreateSolidTexture(tickColor);
-        centerTexture = CreateSolidTexture(centerColor);
+        string degreeLabel = BuildDegreeLabel(degree);
+        return GetDirectionLabel(degree) + "\n" + degreeLabel;
     }
 
-    private static Texture2D CreateSolidTexture(Color color)
+    private string BuildCenterLabel(float degree)
     {
-        Texture2D texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
-        texture.SetPixel(0, 0, color);
-        texture.Apply();
-        texture.hideFlags = HideFlags.HideAndDontSave;
-        return texture;
+        return GetDirectionLabel(degree) + "  " + BuildDegreeLabel(degree);
     }
 
-    private static bool IsMenuScene(string sceneName)
+    private static string BuildDegreeLabel(float degree)
     {
-        return string.Equals(sceneName, "MainMenu", System.StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(sceneName, "Mainmenu", System.StringComparison.OrdinalIgnoreCase);
+        return Mathf.RoundToInt(Mathf.Repeat(degree, 360f)) + " deg";
     }
 }

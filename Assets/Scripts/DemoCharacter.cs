@@ -15,11 +15,11 @@ namespace AquariusMax.Fae.demo
         public static bool UseLookPadInput;
         public static Vector2 LookPadInput;
         public static bool TutorialActive;
-        public static bool TutorialAllowLook;
-        public static bool TutorialAllowMove;
-        public static bool TutorialAllowJump;
-        public static bool TutorialAllowCrouch;
-        public static bool TutorialAllowRun;
+        public static bool TutorialAllowLook = true;
+        public static bool TutorialAllowMove = true;
+        public static bool TutorialAllowJump = true;
+        public static bool TutorialAllowCrouch = true;
+        public static bool TutorialAllowRun = true;
         public static bool TutorialRunObserved;
 
         [SerializeField]
@@ -95,7 +95,6 @@ namespace AquariusMax.Fae.demo
         Quaternion cameraTargetRot;
         HashSet<int> animatorParameters = new HashSet<int>();
 
-       // bool isGrounded = true;
         bool isWalking = true;
         Vector2 moveInput = Vector2.zero;
         Vector3 move = Vector3.zero;
@@ -114,13 +113,13 @@ namespace AquariusMax.Fae.demo
         {
             if (cam == null)
             {
-                cam = Camera.main;
+                Debug.LogWarning("DemoCharacter is missing its Camera reference. Drag the player camera into the DemoCharacter Cam field.", this);
             }
 
             charControl = GetComponent<CharacterController>();
             if (animator == null)
             {
-                animator = GetComponentInChildren<Animator>();
+                Debug.LogWarning("DemoCharacter is missing its Animator reference. Drag the player's Walking Animator into the DemoCharacter Animator field.", this);
             }
 
             if (fitControllerToVisibleCharacter)
@@ -134,7 +133,10 @@ namespace AquariusMax.Fae.demo
             CacheAnimatorParameters();
 
             characterTargetRot = transform.localRotation;
-            cameraTargetRot = cam.transform.localRotation;
+            if (cam != null)
+            {
+                cameraTargetRot = cam.transform.localRotation;
+            }
 
             Cursor.visible = false;
             Cursor.lockState = CursorLockMode.Locked;
@@ -198,7 +200,6 @@ namespace AquariusMax.Fae.demo
             float vertical = Input.GetAxis("Vertical");
 
             moveInput = new Vector2(horizontal, vertical);
-            // normalize input if it exceeds 1 in combined length:
             if (moveInput.sqrMagnitude > 1)
             {
                 moveInput.Normalize();
@@ -217,13 +218,23 @@ namespace AquariusMax.Fae.demo
 
         void CameraLook()
         {
-            if (LockPlayerInput || (TutorialActive && !TutorialAllowLook))
+            if (cam == null || LockPlayerInput || (TutorialActive && !TutorialAllowLook))
             {
                 return;
             }
 
-            float mouseX = Input.GetAxis("Mouse X") * mouseXSensitivity;
-            float mouseY = Input.GetAxis("Mouse Y") * mouseYSensitivity;
+            float mouseX;
+            float mouseY;
+            if (UseLookPadInput)
+            {
+                mouseX = LookPadInput.x * mouseXSensitivity;
+                mouseY = LookPadInput.y * mouseYSensitivity;
+            }
+            else
+            {
+                mouseX = Input.GetAxis("Mouse X") * mouseXSensitivity;
+                mouseY = Input.GetAxis("Mouse Y") * mouseYSensitivity;
+            }
 
             characterTargetRot *= Quaternion.Euler(0f, mouseX, 0f);
             cameraTargetRot *= Quaternion.Euler(-mouseY, 0f, 0f);
@@ -256,7 +267,6 @@ namespace AquariusMax.Fae.demo
                 jumpPressed = false;
                 isJumping = true;
                 SetTrigger(jumpTriggerParameter);
-                PlayAnimationState(jumpStateName, 0.05f);
             }
 
             if (!TutorialActive || TutorialAllowCrouch)
@@ -305,10 +315,8 @@ namespace AquariusMax.Fae.demo
                 speed = crouchSpeed;
             }
 
-            // always move along the camera forward as it is the direction that it being aimed at
             Vector3 desiredMove = transform.forward * moveInput.y + transform.right * moveInput.x;
 
-            // get a normal for the surface that is being touched to move along it
             RaycastHit hitInfo;
             Physics.SphereCast(transform.position, charControl.radius, Vector3.down, out hitInfo,
                                charControl.height / 2f, Physics.AllLayers, QueryTriggerInteraction.Ignore);
@@ -400,6 +408,16 @@ namespace AquariusMax.Fae.demo
 
         private bool IsGrounded()
         {
+            if (charControl == null)
+            {
+                charControl = GetComponent<CharacterController>();
+            }
+
+            if (charControl == null)
+            {
+                return false;
+            }
+
             Vector3 center = transform.TransformPoint(charControl.center);
             float radius = charControl.radius * Mathf.Max(Mathf.Abs(transform.lossyScale.x), Mathf.Abs(transform.lossyScale.z));
             float height = Mathf.Max(charControl.height * Mathf.Abs(transform.lossyScale.y), radius * 2f);
@@ -574,7 +592,6 @@ namespace AquariusMax.Fae.demo
             }
 
             Rigidbody body = hit.collider.attachedRigidbody;
-            //dont move the rigidbody if the character is on top of it
             if (collisionFlags == CollisionFlags.Below)
             {
                 return;
@@ -611,11 +628,11 @@ namespace AquariusMax.Fae.demo
             }
             else if (isMoving)
             {
-                PlayAnimationState(forcedWalk || isWalking ? walkStateName : runStateName, 0.08f);
+                currentAnimationStateHash = 0;
             }
             else
             {
-                PlayAnimationState(idleStateName, 0.08f);
+                currentAnimationStateHash = 0;
             }
         }
 
@@ -643,7 +660,7 @@ namespace AquariusMax.Fae.demo
         {
             animatorParameters.Clear();
 
-            if (animator == null)
+            if (animator == null || animator.runtimeAnimatorController == null)
             {
                 return;
             }
@@ -682,6 +699,73 @@ namespace AquariusMax.Fae.demo
             {
                 animator.SetTrigger(parameterName);
             }
+        }
+
+        public void SetAnimator(Animator targetAnimator)
+        {
+            animator = targetAnimator;
+            CacheAnimatorParameters();
+        }
+
+        public Animator GetCurrentAnimator()
+        {
+            return animator;
+        }
+
+        public void SetCamera(Camera targetCamera)
+        {
+            if (targetCamera == null)
+            {
+                return;
+            }
+
+            cam = targetCamera;
+            cameraTargetRot = cam.transform.localRotation;
+        }
+
+        public void SetCollisionOptions(bool ignoreRigidbodies, bool ignoreTriggers)
+        {
+            blockSolidObstacles = ignoreRigidbodies;
+        }
+
+        public void ClearMotionState()
+        {
+            if (charControl == null)
+            {
+                charControl = GetComponent<CharacterController>();
+            }
+
+            moveInput = Vector2.zero;
+            move = Vector3.zero;
+            jumpPressed = false;
+            isJumping = false;
+            currentAnimationStateHash = 0;
+
+            if (charControl != null)
+            {
+                UpdateAnimator();
+            }
+        }
+
+        public static void ResetControlFlags()
+        {
+            LockPlayerInput = false;
+            LockMovementInput = false;
+            ForceWalkAnimation = false;
+            UseLookPadInput = false;
+            LookPadInput = Vector2.zero;
+            TutorialActive = false;
+            TutorialAllowLook = true;
+            TutorialAllowMove = true;
+            TutorialAllowJump = true;
+            TutorialAllowCrouch = true;
+            TutorialAllowRun = true;
+            TutorialRunObserved = false;
+        }
+
+        public static void SetControlLocked(bool locked)
+        {
+            LockPlayerInput = locked;
         }
     }
 }

@@ -1,9 +1,9 @@
-// Places and prepares the player when the Fae Homes scene loads.
 using System.Collections;
 using UnityEngine;
 
 public class FaeHomesPlayerBootstrap : MonoBehaviour
 {
+    // Scene bootstrap attaches the visible hero, player camera, and spawn position for Fae Homes.
     [Header("Scene")]
     [SerializeField] private GameObject player;
     [SerializeField] private Transform spawnPoint;
@@ -18,21 +18,12 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
     [SerializeField] private Vector3 heroLocalPosition = new Vector3(0f, -0.128f, 0.349f);
     [SerializeField] private float heroScale = 0.42f;
 
-    [Header("Animation")]
-    [SerializeField] private string speedParameter = "Speed";
-    [SerializeField] private string movingParameter = "IsMoving";
-    [SerializeField] private string runningParameter = "IsRunning";
-    [SerializeField] private float walkAnimationSpeed = 0.5f;
-    [SerializeField] private float moveThreshold = 0.03f;
-
     [Header("Ground")]
     [SerializeField] private float groundRaycastHeight = 30f;
     [SerializeField] private float groundRaycastDistance = 100f;
     [SerializeField] private float groundOffset = 0.01f;
 
     private Animator heroAnimator;
-    private Vector3 lastPlayerPosition;
-    private bool lastPlayerPositionReady;
 
     private void Start()
     {
@@ -42,40 +33,47 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
         }
 
         SetupPlayer();
-        StartCoroutine(SetupPlayerNextFrame());
-    }
-
-    private void Update()
-    {
-        UpdateHeroAnimation();
-    }
-
-    private IEnumerator SetupPlayerNextFrame()
-    {
-        yield return null;
-
-        if (player != null)
-        {
-            MovePlayerToSpawn();
-        }
     }
 
     private void SetupPlayer()
     {
+        // One setup pass makes the shared player prefab behave correctly in this scene.
         player.SetActive(true);
         SetupCamera();
         SetupHero();
         SetupMovementScripts();
+        DisableSpawnMarkerCollision();
         MovePlayerToSpawn();
+    }
+
+    private void DisableSpawnMarkerCollision()
+    {
+        if (spawnPoint == null)
+        {
+            return;
+        }
+
+        Collider[] colliders = spawnPoint.GetComponents<Collider>();
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            if (colliders[i] != null)
+            {
+                colliders[i].enabled = false;
+            }
+        }
+
+        Renderer[] renderers = spawnPoint.GetComponents<Renderer>();
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (renderers[i] != null)
+            {
+                renderers[i].enabled = false;
+            }
+        }
     }
 
     private void SetupCamera()
     {
-        if (playerCamera == null)
-        {
-            playerCamera = player.GetComponentInChildren<Camera>(true);
-        }
-
         if (playerCamera == null)
         {
             return;
@@ -137,6 +135,7 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
 
     private void SetupHeroAnimator()
     {
+        // The visible hero animator is also passed to DemoCharacter for movement animation.
         heroAnimator = visibleHero.GetComponentInChildren<Animator>(true);
         if (heroAnimator == null)
         {
@@ -150,8 +149,12 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
 
         heroAnimator.applyRootMotion = false;
         heroAnimator.enabled = true;
-        lastPlayerPosition = player.transform.position;
-        lastPlayerPositionReady = true;
+
+        AquariusMax.Fae.demo.DemoCharacter demoCharacter = player.GetComponentInChildren<AquariusMax.Fae.demo.DemoCharacter>(true);
+        if (demoCharacter != null)
+        {
+            demoCharacter.SetAnimator(heroAnimator);
+        }
     }
 
     private void SetupMovementScripts()
@@ -160,82 +163,11 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
         if (demoCharacter != null)
         {
             demoCharacter.enabled = true;
+            demoCharacter.SetCollisionOptions(false, false);
+            demoCharacter.ClearMotionState();
+            AquariusMax.Fae.demo.DemoCharacter.ResetControlFlags();
         }
 
-        PlayerCharacterController customController = player.GetComponentInChildren<PlayerCharacterController>(true);
-        if (customController != null)
-        {
-            customController.enabled = false;
-        }
-    }
-
-    private void UpdateHeroAnimation()
-    {
-        if (player == null)
-        {
-            return;
-        }
-
-        if (heroAnimator == null && visibleHero != null)
-        {
-            heroAnimator = visibleHero.GetComponentInChildren<Animator>(true);
-        }
-
-        if (heroAnimator == null)
-        {
-            return;
-        }
-
-        Vector3 current = player.transform.position;
-        if (!lastPlayerPositionReady)
-        {
-            lastPlayerPosition = current;
-            lastPlayerPositionReady = true;
-            return;
-        }
-
-        Vector3 delta = current - lastPlayerPosition;
-        delta.y = 0f;
-        bool moving = delta.magnitude > moveThreshold * Mathf.Max(Time.deltaTime, 0.001f);
-        lastPlayerPosition = current;
-
-        SetAnimatorFloat(speedParameter, moving ? walkAnimationSpeed : 0f);
-        SetAnimatorBool(movingParameter, moving);
-        SetAnimatorBool(runningParameter, false);
-    }
-
-    private void SetAnimatorFloat(string parameterName, float value)
-    {
-        if (HasAnimatorParameter(parameterName, AnimatorControllerParameterType.Float))
-        {
-            heroAnimator.SetFloat(parameterName, value, 0.08f, Time.deltaTime);
-        }
-    }
-
-    private void SetAnimatorBool(string parameterName, bool value)
-    {
-        if (HasAnimatorParameter(parameterName, AnimatorControllerParameterType.Bool))
-        {
-            heroAnimator.SetBool(parameterName, value);
-        }
-    }
-
-    private bool HasAnimatorParameter(string parameterName, AnimatorControllerParameterType type)
-    {
-        if (heroAnimator == null || string.IsNullOrEmpty(parameterName))
-        {
-            return false;
-        }
-
-        foreach (AnimatorControllerParameter parameter in heroAnimator.parameters)
-        {
-            if (parameter.name == parameterName && parameter.type == type)
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private void MovePlayerToSpawn()
@@ -264,6 +196,7 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
     private Vector3 SnapToGround(Vector3 position, CharacterController controller)
     {
         float footOffset = controller != null ? controller.center.y - controller.height * 0.5f : 0f;
+
         Vector3 rayStart = position + Vector3.up * groundRaycastHeight;
         RaycastHit[] hits = Physics.RaycastAll(rayStart, Vector3.down, groundRaycastDistance, ~0, QueryTriggerInteraction.Ignore);
         System.Array.Sort(hits, (left, right) => left.distance.CompareTo(right.distance));
@@ -277,19 +210,6 @@ public class FaeHomesPlayerBootstrap : MonoBehaviour
 
             position.y = hit.point.y + groundOffset - footOffset;
             return position;
-        }
-
-        Terrain terrain = Terrain.activeTerrain;
-        if (terrain != null && terrain.terrainData != null)
-        {
-            Vector3 terrainPosition = terrain.transform.position;
-            Vector3 terrainSize = terrain.terrainData.size;
-            bool insideX = position.x >= terrainPosition.x && position.x <= terrainPosition.x + terrainSize.x;
-            bool insideZ = position.z >= terrainPosition.z && position.z <= terrainPosition.z + terrainSize.z;
-            if (insideX && insideZ)
-            {
-                position.y = terrain.SampleHeight(position) + terrainPosition.y + groundOffset - footOffset;
-            }
         }
 
         return position;

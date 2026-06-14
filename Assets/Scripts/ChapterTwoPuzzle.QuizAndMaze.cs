@@ -1,11 +1,29 @@
-// Runs the maze welcome, guard quiz, wrong-answer reset, and second page reward.
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public partial class ChapterTwoPuzzle
 {
+    private void BuildQuestions()
+    {
+        // Question pool is grouped by virtue so the quiz can draw a balanced set.
+        questions.Clear();
+        questions.Add(new Question("Courage", "A dark path is shorter, but a bright path is safer. Which do you choose?", new[] { "Dark path", "Bright path", "Wait here" }, 0, "Courage means facing the unknown when the goal matters."));
+        questions.Add(new Question("Courage", "You hear someone crying in a dangerous part of the forest. What do you do?", new[] { "Go help", "Ignore it", "Hide" }, 0, "Courage is helping even when it is difficult."));
+        questions.Add(new Question("Courage", "A deep cave may hold the clue you need. What is the best choice?", new[] { "Jump in", "Prepare first, then enter", "Leave forever" }, 1, "Courage is not recklessness. Preparation matters."));
+        questions.Add(new Question("Kindness", "A hungry creature looks at your magic fruit. What do you do?", new[] { "Share it", "Keep it", "Hide it" }, 0, "Kindness values life over pride."));
+        questions.Add(new Question("Kindness", "A small fairy stole from you. What should you do first?", new[] { "Punish it", "Ask why", "Run away" }, 1, "Kindness tries to understand before judging."));
+        questions.Add(new Question("Kindness", "You find a key that may belong to someone else. What do you do?", new[] { "Use it", "Look for the owner", "Throw it away" }, 1, "A useful item can still belong to another person."));
+        questions.Add(new Question("Wisdom", "Three doors stand before you. What helps most?", new[] { "Guess", "Ask a careful question", "Walk away" }, 1, "Wisdom uses logic instead of panic."));
+        questions.Add(new Question("Wisdom", "You have few tools to cross a river. What do you do?", new[] { "Give up", "Use the tools carefully", "Break them" }, 1, "Wisdom makes the best use of limited resources."));
+        questions.Add(new Question("Wisdom", "A magic lamp answers only a few questions. What is best?", new[] { "Ask directly", "Use elimination", "Ask silly questions" }, 1, "Good questions save time and effort."));
+        questions.Add(new Question("Resolve", "A weak bridge leads to treasure. What do you do?", new[] { "Rush across", "Test it first", "Give up" }, 1, "Resolve means acting after judging the risk."));
+        questions.Add(new Question("Resolve", "Another apprentice also wants the page. What is fair?", new[] { "Share or take turns", "Steal it", "Quit" }, 0, "Resolve can be firm without being cruel."));
+        questions.Add(new Question("Resolve", "A spell needs a small sacrifice. What is wise?", new[] { "Accept if safe", "Refuse every cost", "Use someone else" }, 0, "Resolve includes responsibility."));
+        questions.Add(new Question("Patience", "You fail to learn a spell after many tries. What now?", new[] { "Try a new method", "Quit", "Argue" }, 0, "Patience also means adjusting your method."));
+        questions.Add(new Question("Patience", "A seed has not grown for a month. What do you do?", new[] { "Give up", "Check the conditions", "Throw away the soil" }, 1, "Patience looks for the reason before quitting."));
+        questions.Add(new Question("Patience", "You are lost and keep returning to the same place. What helps?", new[] { "Cry", "Mark the path", "Run blindly" }, 1, "Patience learns from failure."));
+    }
+
     private void StartWelcomeIfNeeded()
     {
         if (welcomeStarted || player == null)
@@ -20,6 +38,7 @@ public partial class ChapterTwoPuzzle
 
     private void StartQuizIntro()
     {
+        // Maze exit leads into the guard quiz before the second page is awarded.
         if (quizStarted)
         {
             state = FlowState.Quiz;
@@ -33,24 +52,30 @@ public partial class ChapterTwoPuzzle
     private void StartQuiz()
     {
         BuildQuizQuestions();
-        currentQuestionIndex = 0;
-        correctAnswerCount = 0;
-        wrongAnswerCount = 0;
-        quizFeedback = null;
-        quizPassedAfterFeedback = false;
-        quizFailedAfterFeedback = false;
-        showingQuizFeedback = false;
+        ResetQuizProgress();
         state = FlowState.Quiz;
     }
 
     private void BuildQuizQuestions()
     {
+        // The active quiz uses two questions from each virtue category.
         quizQuestions.Clear();
         AddQuestionsForVirtue("Courage", 2);
         AddQuestionsForVirtue("Kindness", 2);
         AddQuestionsForVirtue("Wisdom", 2);
         AddQuestionsForVirtue("Resolve", 2);
         AddQuestionsForVirtue("Patience", 2);
+    }
+
+    private void ResetQuizProgress()
+    {
+        currentQuestionIndex = 0;
+        correctAnswerCount = 0;
+        wrongAnswerCount = 0;
+        quizFeedback = string.Empty;
+        showingQuizFeedback = false;
+        quizPassedAfterFeedback = false;
+        quizFailedAfterFeedback = false;
     }
 
     private void AddQuestionsForVirtue(string virtue, int count)
@@ -74,6 +99,7 @@ public partial class ChapterTwoPuzzle
 
     private void UpdateQuizInput()
     {
+        // Answers use A/B/C/D keys and show feedback before moving to the next question.
         if (showingQuizFeedback)
         {
             if (Input.GetKeyDown(continueKey))
@@ -150,24 +176,17 @@ public partial class ChapterTwoPuzzle
 
     private void ResetMazeAfterWrongAnswer()
     {
-        // Two wrong answers means the player has to walk the maze again.
+        // Two wrong answers reset the maze attempt but keep already saved inventory items.
         state = FlowState.Exploring;
         quizStarted = false;
         exitedMaze = false;
         mazeOpened = true;
-        currentQuestionIndex = 0;
-        correctAnswerCount = 0;
-        wrongAnswerCount = 0;
-        showingQuizFeedback = false;
-        quizPassedAfterFeedback = false;
-        quizFailedAfterFeedback = false;
-        quizFeedback = null;
+        ResetQuizProgress();
 
         if (mazeBlock != null)
         {
             mazeBlock.SetActive(true);
             mazeBlock.transform.position = openedMazeBlockPosition;
-            SetCollidersEnabled(mazeBlock, true);
         }
 
         if (guard != null && guardOriginalPositionReady)
@@ -181,9 +200,10 @@ public partial class ChapterTwoPuzzle
 
     private void CompleteSecondPageReward()
     {
-        // The guard challenge is done; open the next route and drop the page into the backpack.
+        // Quiz success gives the second page and opens the next physical path.
         quizCompleted = true;
         state = FlowState.Exploring;
+        ResetQuizProgress();
         AddInventoryItem(secondPageItemName);
         ShowSystemPrompt(quizPassedPrompt, 3f);
         DropAirWallTwo();
@@ -191,12 +211,8 @@ public partial class ChapterTwoPuzzle
 
     private void DropAirWallTwo()
     {
-        if (airWallTwoDropped)
-        {
-            return;
-        }
-
-        if (airWallTwo == null)
+        // Drops the wall once after the second page reward.
+        if (airWallTwoDropped || airWallTwo == null)
         {
             return;
         }
@@ -231,6 +247,7 @@ public partial class ChapterTwoPuzzle
 
     private void MovePlayerToMazeStart()
     {
+        // Failed quiz returns the player to the guard side of the maze.
         if (player == null || guardInteract == null)
         {
             return;
@@ -255,22 +272,23 @@ public partial class ChapterTwoPuzzle
 
     private void OpenMaze()
     {
-        if (!mazeOpened)
+        if (mazeOpened)
         {
-            mazeOpened = true;
-            if (guard != null)
-            {
-                guard.position += Vector3.right * guardMoveRightDistance;
-            }
+            return;
+        }
 
-            RemoveInventoryItem(mazePassItemName);
+        mazeOpened = true;
+        if (guard != null)
+        {
+            guard.position += Vector3.right * guardMoveRightDistance;
+        }
 
-            if (mazeBlock != null)
-            {
-                mazeBlock.SetActive(true);
-                mazeBlock.transform.position = openedMazeBlockPosition;
-                SetCollidersEnabled(mazeBlock, true);
-            }
+        RemoveInventoryItem(mazePassItemName);
+
+        if (mazeBlock != null)
+        {
+            mazeBlock.SetActive(true);
+            mazeBlock.transform.position = openedMazeBlockPosition;
         }
     }
 
@@ -282,23 +300,4 @@ public partial class ChapterTwoPuzzle
         }
     }
 
-    private void BuildQuestions()
-    {
-        questions.Clear();
-        questions.Add(new Question("Courage", "A dark path is shorter, but a bright path is safer. Which do you choose?", new[] { "Dark path", "Bright path", "Wait here" }, 0, "Courage means facing the unknown when the goal matters."));
-        questions.Add(new Question("Courage", "You hear someone crying in a dangerous part of the forest. What do you do?", new[] { "Go help", "Ignore it", "Hide" }, 0, "Courage is helping even when it is difficult."));
-        questions.Add(new Question("Courage", "A deep cave may hold the clue you need. What is the best choice?", new[] { "Jump in", "Prepare first, then enter", "Leave forever" }, 1, "Courage is not recklessness. Preparation matters."));
-        questions.Add(new Question("Kindness", "A hungry creature looks at your magic fruit. What do you do?", new[] { "Share it", "Keep it", "Hide it" }, 0, "Kindness values life over pride."));
-        questions.Add(new Question("Kindness", "A small fairy stole from you. What should you do first?", new[] { "Punish it", "Ask why", "Run away" }, 1, "Kindness tries to understand before judging."));
-        questions.Add(new Question("Kindness", "You find a key that may belong to someone else. What do you do?", new[] { "Use it", "Look for the owner", "Throw it away" }, 1, "A useful item can still belong to another person."));
-        questions.Add(new Question("Wisdom", "Three doors stand before you. What helps most?", new[] { "Guess", "Ask a careful question", "Walk away" }, 1, "Wisdom uses logic instead of panic."));
-        questions.Add(new Question("Wisdom", "You have few tools to cross a river. What do you do?", new[] { "Give up", "Use the tools carefully", "Break them" }, 1, "Wisdom makes the best use of limited resources."));
-        questions.Add(new Question("Wisdom", "A magic lamp answers only a few questions. What is best?", new[] { "Ask directly", "Use elimination", "Ask silly questions" }, 1, "Good questions save time and effort."));
-        questions.Add(new Question("Resolve", "A weak bridge leads to treasure. What do you do?", new[] { "Rush across", "Test it first", "Give up" }, 1, "Resolve means acting after judging the risk."));
-        questions.Add(new Question("Resolve", "Another apprentice also wants the page. What is fair?", new[] { "Share or take turns", "Steal it", "Quit" }, 0, "Resolve can be firm without being cruel."));
-        questions.Add(new Question("Resolve", "A spell needs a small sacrifice. What is wise?", new[] { "Accept if safe", "Refuse every cost", "Use someone else" }, 0, "Resolve includes responsibility."));
-        questions.Add(new Question("Patience", "You fail to learn a spell after many tries. What now?", new[] { "Try a new method", "Quit", "Argue" }, 0, "Patience also means adjusting your method."));
-        questions.Add(new Question("Patience", "A seed has not grown for a month. What do you do?", new[] { "Give up", "Check the conditions", "Throw away the soil" }, 1, "Patience looks for the reason before quitting."));
-        questions.Add(new Question("Patience", "You are lost and keep returning to the same place. What helps?", new[] { "Cry", "Mark the path", "Run blindly" }, 1, "Patience learns from failure."));
-    }
 }

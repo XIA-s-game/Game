@@ -1,31 +1,21 @@
-// Runs the fairy memory collection quest and its sliding picture puzzle.
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
 
 public class FairyMemorySideQuest : MonoBehaviour
 {
-    private static readonly string[] DefaultMemoryNames =
-    {
-        "Wooden Horse",
-        "Fox Doll",
-        "Tea Cup",
-        "Colored Pencil",
-        "Dinosaur Model"
-    };
-
-    private static readonly string[] DefaultMemoryLines =
-    {
-        "This wooden horse is an old memory.",
-        "This fox doll was a favorite companion.",
-        "This tea cup belonged to the family.",
-        "These pencils came from far away.",
-        "This dinosaur model was made together."
-    };
-
     [Header("Scene References")]
     [SerializeField] private Transform player;
+    [SerializeField] private Transform treeHouse;
     [SerializeField] private Transform[] memories;
+
+    [Header("Tree House Choice")]
+    [SerializeField] private float enterDistance = 5.5f;
+    [SerializeField] private float verticalToleranceBelow = 1.2f;
+    [SerializeField] private float verticalToleranceAbove = 4.5f;
+    [SerializeField] private string choiceTitle = "System Choice";
+    [SerializeField] private string choiceA = "A: Explore fairy memory fragments";
+    [SerializeField] private string choiceB = "B: Skip and keep exploring";
+    [SerializeField] private string choiceHint = "Press A / B to choose";
 
     [Header("Memory Text")]
     [SerializeField] private string[] memoryNames =
@@ -55,18 +45,21 @@ public class FairyMemorySideQuest : MonoBehaviour
     [SerializeField] private string unlockText = "Memory puzzle unlocked. Use WASD to restore the picture.";
     [SerializeField] private string completedText = "Memory restored:";
     [SerializeField] private float messageSeconds = 3f;
-    [SerializeField] private string puzzleImageRelativePath = "new/pic.jpg";
-    [SerializeField] private string memoryImageRelativeFolder = "new/memory";
-    [SerializeField] private int memoryImageCount = 6;
+    [SerializeField] private Texture2D puzzleImage;
+    [SerializeField] private Texture2D[] memoryImages;
     [SerializeField] private float memoryShowcaseSeconds = 10f;
 
     private const int GridSize = 4;
     private const int TileCount = GridSize * GridSize;
 
     private readonly List<string> queuedMessages = new List<string>();
+    private readonly Dictionary<Transform, Collider[]> memoryColliderCache = new Dictionary<Transform, Collider[]>();
+    private readonly Dictionary<Transform, Renderer[]> memoryRendererCache = new Dictionary<Transform, Renderer[]>();
     private bool[] collected;
     private bool active;
     private bool completed;
+    private bool choiceVisible;
+    private bool choiceResolved;
     private bool puzzleActive;
     private bool memoryShowcaseActive;
     private bool puzzleStartPending;
@@ -80,7 +73,15 @@ public class FairyMemorySideQuest : MonoBehaviour
     private Texture2D[] memoryShowcaseTextures;
     private int[] board;
     private int emptyIndex;
-    private readonly List<Behaviour> disabledPlayerControllers = new List<Behaviour>();
+    private GUIStyle choiceTitleStyle;
+    private GUIStyle choiceOptionStyle;
+    private GUIStyle choiceHintStyle;
+    private GUIStyle questTitleStyle;
+    private GUIStyle questTaskStyle;
+    private GUIStyle puzzleHintStyle;
+    private GUIStyle referenceLabelStyle;
+    private GUIStyle messageStyle;
+    private GUIStyle centeredLabelStyle;
 
     public bool IsCompleted
     {
@@ -89,9 +90,7 @@ public class FairyMemorySideQuest : MonoBehaviour
 
     private void Awake()
     {
-        EnsureMemoryTextDefaults();
-        ResolveSceneReferences();
-        PrepareArrays();
+        CheckQuestSetup();
     }
 
     public void Activate()
@@ -101,25 +100,34 @@ public class FairyMemorySideQuest : MonoBehaviour
             return;
         }
 
-        SetPlayerMovementPaused(false);
         active = true;
         completed = false;
-        puzzleActive = false;
-        memoryShowcaseActive = false;
-        puzzleStartPending = false;
-        memoryFragmentsConsumed = false;
-        collectedCount = 0;
-        nearbyMemoryIndex = -1;
-        currentMessage = null;
-        queuedMessages.Clear();
-        EnsureMemoryTextDefaults();
-        ResolveSceneReferences();
-        PrepareArrays();
-        collected = new bool[memories.Length];
+        SetPlayerMovementPaused(false);
+        CheckQuestSetup();
+
+        if (collected == null || collected.Length != memories.Length)
+        {
+            collected = new bool[memories.Length];
+        }
+
+        if (collectedCount >= memories.Length && !memoryShowcaseActive)
+        {
+            puzzleActive = true;
+            puzzleStartPending = false;
+            nearbyMemoryIndex = -1;
+            SetPlayerMovementPaused(true);
+            LoadPuzzleTexture();
+
+            if (board == null || board.Length != TileCount)
+            {
+                CreateSolvableBoard();
+            }
+        }
     }
 
     private void Update()
     {
+        UpdateTreeHouseChoice();
         UpdateMessageQueue();
 
         if (!active || completed)
@@ -127,10 +135,10 @@ public class FairyMemorySideQuest : MonoBehaviour
             return;
         }
 
-        if (player == null || memories == null || memories.Length == 0 || HasMissingMemories())
+        if (Input.GetKeyDown(KeyCode.B))
         {
-            ResolveSceneReferences();
-            PrepareArrays();
+            ReturnToTreeHouseEntrance();
+            return;
         }
 
         if (memoryShowcaseActive)
@@ -156,6 +164,53 @@ public class FairyMemorySideQuest : MonoBehaviour
         }
     }
 
+    private void UpdateTreeHouseChoice()
+    {
+        if (completed)
+        {
+            choiceResolved = true;
+            choiceVisible = false;
+            return;
+        }
+
+        if (choiceResolved || active || player == null || treeHouse == null)
+        {
+            return;
+        }
+
+        if (!choiceVisible && IsPlayerInsideTreeHouse())
+        {
+            choiceVisible = true;
+        }
+
+        if (!choiceVisible)
+        {
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.Alpha1))
+        {
+            ChooseSideQuest();
+        }
+        else if (Input.GetKeyDown(KeyCode.B) || Input.GetKeyDown(KeyCode.Alpha2))
+        {
+            SkipChoice();
+        }
+    }
+
+    private void ChooseSideQuest()
+    {
+        Activate();
+        choiceResolved = true;
+        choiceVisible = false;
+    }
+
+    private void SkipChoice()
+    {
+        choiceResolved = true;
+        choiceVisible = false;
+    }
+
     private void CollectMemory(int index)
     {
         if (index < 0 || index >= collected.Length || collected[index])
@@ -167,7 +222,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         collectedCount++;
         GlobalBackpackUI.SetItemCount(inventoryName, collectedCount);
         GameAudioManager.PlayFetch();
-        QueueMessage(memoryLines[index]);
+        QueueMessage(GetMemoryLine(index));
         QueueMessage(fragmentRewardText);
 
         if (collectedCount >= memories.Length && !puzzleStartPending && !puzzleActive)
@@ -208,10 +263,27 @@ public class FairyMemorySideQuest : MonoBehaviour
 
     private void FinishSideQuest()
     {
+        SetPlayerMovementPaused(false);
         memoryShowcaseActive = false;
+        puzzleActive = false;
+        puzzleStartPending = false;
         completed = true;
         active = false;
         nearbyMemoryIndex = -1;
+    }
+
+    private void ReturnToTreeHouseEntrance()
+    {
+        SetPlayerMovementPaused(false);
+        active = false;
+        choiceVisible = false;
+        choiceResolved = false;
+        puzzleActive = false;
+        memoryShowcaseActive = false;
+        puzzleStartPending = false;
+        nearbyMemoryIndex = -1;
+        currentMessage = null;
+        queuedMessages.Clear();
     }
 
     private void UpdatePuzzleInput()
@@ -272,7 +344,6 @@ public class FairyMemorySideQuest : MonoBehaviour
 
     private void CreateSolvableBoard()
     {
-        // Shuffle by making real legal moves from the solved board, so the puzzle is always possible.
         board = new int[TileCount];
         for (int i = 0; i < TileCount; i++)
         {
@@ -355,11 +426,11 @@ public class FairyMemorySideQuest : MonoBehaviour
         return bestIndex;
     }
 
-    private static float GetDistanceToMemory(Vector3 position, Transform memory)
+    private float GetDistanceToMemory(Vector3 position, Transform memory)
     {
         float bestDistance = Vector3.Distance(position, memory.position);
 
-        Collider[] colliders = memory.GetComponentsInChildren<Collider>(true);
+        Collider[] colliders = GetMemoryColliders(memory);
         for (int i = 0; i < colliders.Length; i++)
         {
             Collider itemCollider = colliders[i];
@@ -368,10 +439,15 @@ public class FairyMemorySideQuest : MonoBehaviour
                 continue;
             }
 
+            if (!CanUseClosestPoint(itemCollider))
+            {
+                continue;
+            }
+
             bestDistance = Mathf.Min(bestDistance, Vector3.Distance(position, itemCollider.ClosestPoint(position)));
         }
 
-        Renderer[] renderers = memory.GetComponentsInChildren<Renderer>(true);
+        Renderer[] renderers = GetMemoryRenderers(memory);
         for (int i = 0; i < renderers.Length; i++)
         {
             Renderer itemRenderer = renderers[i];
@@ -386,12 +462,44 @@ public class FairyMemorySideQuest : MonoBehaviour
         return bestDistance;
     }
 
-    private void PrepareArrays()
+    private static bool CanUseClosestPoint(Collider itemCollider)
+    {
+        if (itemCollider is BoxCollider || itemCollider is SphereCollider || itemCollider is CapsuleCollider)
+        {
+            return true;
+        }
+
+        MeshCollider meshCollider = itemCollider as MeshCollider;
+        return meshCollider != null && meshCollider.convex;
+    }
+
+    private Collider[] GetMemoryColliders(Transform memory)
+    {
+        if (!memoryColliderCache.TryGetValue(memory, out Collider[] colliders))
+        {
+            colliders = memory.GetComponentsInChildren<Collider>(true);
+            memoryColliderCache[memory] = colliders;
+        }
+
+        return colliders;
+    }
+
+    private Renderer[] GetMemoryRenderers(Transform memory)
+    {
+        if (!memoryRendererCache.TryGetValue(memory, out Renderer[] renderers))
+        {
+            renderers = memory.GetComponentsInChildren<Renderer>(true);
+            memoryRendererCache[memory] = renderers;
+        }
+
+        return renderers;
+    }
+
+    private void SetMemorySlots()
     {
         int count = memories != null ? memories.Length : 0;
         if (count == 0)
         {
-            EnsureMemoryTextDefaults();
             if (collected == null || collected.Length != 0)
             {
                 collected = new bool[0];
@@ -400,161 +508,21 @@ public class FairyMemorySideQuest : MonoBehaviour
             return;
         }
 
-        if (memoryNames == null || memoryNames.Length != count)
-        {
-            System.Array.Resize(ref memoryNames, count);
-        }
-
-        if (memoryLines == null || memoryLines.Length != count)
-        {
-            System.Array.Resize(ref memoryLines, count);
-        }
-
         if (collected == null || collected.Length != count)
         {
             collected = new bool[count];
         }
     }
 
-    private void EnsureMemoryTextDefaults()
+    private bool IsPlayerInsideTreeHouse()
     {
-        if (memoryNames == null || memoryNames.Length == 0)
-        {
-            memoryNames = (string[])DefaultMemoryNames.Clone();
-        }
+        Vector3 toPlayer = player.position - treeHouse.position;
+        Vector2 horizontal = new Vector2(toPlayer.x, toPlayer.z);
+        bool closeEnough = horizontal.magnitude <= enterDistance;
+        bool verticalOk = player.position.y >= treeHouse.position.y - verticalToleranceBelow &&
+            player.position.y <= treeHouse.position.y + verticalToleranceAbove;
 
-        if (memoryLines == null || memoryLines.Length == 0)
-        {
-            memoryLines = (string[])DefaultMemoryLines.Clone();
-        }
-
-        FillMissingText(memoryNames, DefaultMemoryNames);
-        FillMissingText(memoryLines, DefaultMemoryLines);
-    }
-
-    private static void FillMissingText(string[] target, string[] defaults)
-    {
-        if (target == null || defaults == null)
-        {
-            return;
-        }
-
-        int count = Mathf.Min(target.Length, defaults.Length);
-        for (int i = 0; i < count; i++)
-        {
-            if (string.IsNullOrEmpty(target[i]))
-            {
-                target[i] = defaults[i];
-            }
-        }
-    }
-
-    private void ResolveSceneReferences()
-    {
-        if (player == null)
-        {
-            player = FindPlayerTransform();
-        }
-
-        if (memories == null || memories.Length == 0 || HasMissingMemories())
-        {
-            Transform[] foundMemories = FindMemoryTransforms();
-            if (foundMemories.Length > 0)
-            {
-                memories = foundMemories;
-            }
-        }
-    }
-
-    private bool HasMissingMemories()
-    {
-        if (memories == null)
-        {
-            return true;
-        }
-
-        for (int i = 0; i < memories.Length; i++)
-        {
-            if (memories[i] == null)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private Transform[] FindMemoryTransforms()
-    {
-        string[] names = memoryNames != null && memoryNames.Length > 0 ? memoryNames : DefaultMemoryNames;
-        List<Transform> found = new List<Transform>();
-        for (int i = 0; i < names.Length; i++)
-        {
-            Transform memory = FindSceneTransformByName(names[i]);
-            if (memory != null)
-            {
-                found.Add(memory);
-            }
-        }
-
-        return found.ToArray();
-    }
-
-    private static Transform FindPlayerTransform()
-    {
-        GameObject playerObject = GameObject.Find("AQM_FPS_Character");
-        if (playerObject != null)
-        {
-            return playerObject.transform;
-        }
-
-        try
-        {
-            playerObject = GameObject.FindWithTag("Player");
-            if (playerObject != null)
-            {
-                return playerObject.transform;
-            }
-        }
-        catch (UnityException)
-        {
-        }
-
-        Camera mainCamera = Camera.main;
-        if (mainCamera != null)
-        {
-            return mainCamera.transform.root;
-        }
-
-        return null;
-    }
-
-    private static Transform FindSceneTransformByName(string objectName)
-    {
-        if (string.IsNullOrEmpty(objectName))
-        {
-            return null;
-        }
-
-        GameObject objectByName = GameObject.Find(objectName);
-        if (objectByName != null)
-        {
-            return objectByName.transform;
-        }
-
-        Transform[] transforms = Resources.FindObjectsOfTypeAll<Transform>();
-        for (int i = 0; i < transforms.Length; i++)
-        {
-            Transform candidate = transforms[i];
-            if (candidate == null || candidate.name != objectName || !candidate.gameObject.scene.IsValid())
-            {
-                continue;
-            }
-
-            return candidate;
-        }
-
-        return null;
+        return closeEnough && verticalOk;
     }
 
     private void QueueMessage(string text)
@@ -591,57 +559,51 @@ public class FairyMemorySideQuest : MonoBehaviour
 
     private void LoadPuzzleTexture()
     {
-        if (puzzleTexture != null)
+        if (puzzleTexture != null || puzzleImage == null)
         {
             return;
         }
 
-        string absolutePath = Path.Combine(Application.dataPath, puzzleImageRelativePath);
-        if (!File.Exists(absolutePath))
-        {
-            return;
-        }
-
-        byte[] bytes = File.ReadAllBytes(absolutePath);
-        Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-        if (texture.LoadImage(bytes))
-        {
-            texture.wrapMode = TextureWrapMode.Clamp;
-            texture.filterMode = FilterMode.Bilinear;
-            puzzleTexture = texture;
-        }
+        puzzleTexture = puzzleImage;
+        puzzleTexture.wrapMode = TextureWrapMode.Clamp;
+        puzzleTexture.filterMode = FilterMode.Bilinear;
     }
 
     private void LoadMemoryShowcaseTextures()
     {
-        if (memoryShowcaseTextures != null && memoryShowcaseTextures.Length == memoryImageCount)
+        if (memoryShowcaseTextures != null || memoryImages == null)
         {
             return;
         }
 
-        memoryShowcaseTextures = new Texture2D[memoryImageCount];
-        for (int i = 0; i < memoryImageCount; i++)
+        memoryShowcaseTextures = new Texture2D[memoryImages.Length];
+        for (int i = 0; i < memoryImages.Length; i++)
         {
-            string fileName = (i + 1).ToString() + ".png";
-            string absolutePath = Path.Combine(Application.dataPath, memoryImageRelativeFolder, fileName);
-            if (!File.Exists(absolutePath))
+            Texture2D texture = memoryImages[i];
+            if (texture == null)
             {
                 continue;
             }
 
-            byte[] bytes = File.ReadAllBytes(absolutePath);
-            Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-            if (texture.LoadImage(bytes))
-            {
-                texture.wrapMode = TextureWrapMode.Clamp;
-                texture.filterMode = FilterMode.Bilinear;
-                memoryShowcaseTextures[i] = texture;
-            }
+            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.filterMode = FilterMode.Bilinear;
+            memoryShowcaseTextures[i] = texture;
         }
     }
 
     private void OnGUI()
     {
+        if (Event.current.type != EventType.Repaint)
+        {
+            return;
+        }
+
+        if (choiceVisible && !choiceResolved)
+        {
+            DrawTreeHouseChoicePanel();
+            return;
+        }
+
         if (!active)
         {
             if (!string.IsNullOrEmpty(currentMessage) && Time.time < messageEndsAt)
@@ -656,7 +618,7 @@ public class FairyMemorySideQuest : MonoBehaviour
 
         if (!completed && !puzzleActive && !memoryShowcaseActive && nearbyMemoryIndex >= 0)
         {
-            DrawCenteredLabel(GetMemoryPrompt(nearbyMemoryIndex), Screen.height * 0.68f, 28);
+            DrawCenteredLabel(GetMemoryPrompt(nearbyMemoryIndex), 28);
         }
 
         if (!string.IsNullOrEmpty(currentMessage) && Time.time < messageEndsAt)
@@ -667,12 +629,30 @@ public class FairyMemorySideQuest : MonoBehaviour
         if (puzzleActive)
         {
             DrawPuzzle();
+            DrawCenteredLabel("Press B to exit", 22);
         }
 
         if (memoryShowcaseActive)
         {
             DrawMemoryShowcase();
         }
+    }
+
+    private void DrawTreeHouseChoicePanel()
+    {
+        float width = Mathf.Min(980f, Screen.width - 80f);
+        Rect rect = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.5f - 220f, width, 440f);
+        GameUiStyle.DrawDialoguePanel(rect);
+
+        GUIStyle titleStyle = GameUiStyle.LabelStyle(ref choiceTitleStyle, 30, TextAnchor.MiddleCenter, FontStyle.Bold);
+        GUIStyle optionStyle = GameUiStyle.LabelStyle(ref choiceOptionStyle, 28, TextAnchor.MiddleLeft, FontStyle.Normal, true);
+        GUIStyle hintStyle = GameUiStyle.LabelStyle(ref choiceHintStyle, 22, TextAnchor.MiddleRight);
+        hintStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f);
+
+        GUI.Label(new Rect(rect.x + 42f, rect.y + 110f, rect.width - 72f, 68f), choiceTitle, titleStyle);
+        GUI.Label(new Rect(rect.x + 140f, rect.y + 160f, rect.width - 104f, 92f), choiceA, optionStyle);
+        GUI.Label(new Rect(rect.x + 140f, rect.y + 250f, rect.width - 104f, 92f), choiceB, optionStyle);
+        GUI.Label(new Rect(rect.x + 0f, rect.y + rect.height - 108f, rect.width - 150f, 48f), choiceHint, hintStyle);
     }
 
     private string GetMemoryPrompt(int index)
@@ -685,62 +665,40 @@ public class FairyMemorySideQuest : MonoBehaviour
         return interactPrompt + ": " + memoryNames[index];
     }
 
+    private string GetMemoryLine(int index)
+    {
+        if (memoryLines == null || index < 0 || index >= memoryLines.Length)
+        {
+            Debug.LogError("FairyMemorySideQuest is missing Memory Lines entry " + index + ". Fill it in the Inspector.", this);
+            return string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(memoryLines[index]))
+        {
+            Debug.LogError("FairyMemorySideQuest has an empty Memory Lines entry " + index + ". Fill it in the Inspector.", this);
+            return string.Empty;
+        }
+
+        return memoryLines[index];
+    }
+
     private void DrawQuestPanel()
     {
-        float width = 430f;
-        float height = 150f;
+        float width = 630f;
+        float height = 260f;
         Rect rect = GameUiStyle.SideQuestRect(width, height);
-        GameUiStyle.DrawPanel(rect);
+        GameUiStyle.DrawDialoguePanel(rect);
 
-        GUIStyle titleStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = 18,
-            wordWrap = true,
-            alignment = TextAnchor.UpperLeft
-        };
-        titleStyle.normal.textColor = Color.white;
-
-        GUIStyle taskStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = 16,
-            wordWrap = true,
-            alignment = TextAnchor.UpperLeft
-        };
+        GUIStyle titleStyle = GameUiStyle.LabelStyle(ref questTitleStyle, 22, TextAnchor.UpperLeft, FontStyle.Normal, true);
+        GUIStyle taskStyle = GameUiStyle.LabelStyle(ref questTaskStyle, 22, TextAnchor.UpperLeft, FontStyle.Normal, true);
         taskStyle.normal.textColor = new Color(0.92f, 0.92f, 0.92f);
 
         int visibleFragmentCount = memoryFragmentsConsumed ? 0 : collectedCount;
         int memoryCount = memories != null ? memories.Length : 0;
         string completionMark = collectedCount >= memoryCount ? " done" : string.Empty;
-        GUI.Label(new Rect(rect.x + 14f, rect.y + 12f, rect.width - 28f, 44f), questTitle, titleStyle);
-        GUI.Label(new Rect(rect.x + 14f, rect.y + 62f, rect.width - 28f, 28f), restoreTaskText + completionMark, taskStyle);
-        GUI.Label(new Rect(rect.x + 14f, rect.y + 96f, rect.width - 28f, 28f), "Memory fragments: " + visibleFragmentCount + "/" + memoryCount, taskStyle);
-    }
-
-    private void DrawBackpackPanel()
-    {
-        Rect panelRect = GameUiStyle.BackpackRect(180f, 94f);
-        GameUiStyle.DrawPanel(panelRect);
-
-        GUIStyle labelStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = 16,
-            alignment = TextAnchor.MiddleLeft
-        };
-        labelStyle.normal.textColor = Color.white;
-
-        GUI.Label(new Rect(panelRect.x + 12f, panelRect.y + 8f, 120f, 22f), "Backpack", labelStyle);
-
-        int availableFragmentCount = memoryFragmentsConsumed ? 0 : collectedCount;
-        if (availableFragmentCount <= 0)
-        {
-            GUI.Label(new Rect(panelRect.x + 12f, panelRect.y + 42f, panelRect.width - 24f, 24f), "Empty", labelStyle);
-            return;
-        }
-
-        Rect slotRect = new Rect(panelRect.x + 12f, panelRect.y + 34f, 130f, 48f);
-        GUI.Box(slotRect, GUIContent.none);
-        GUI.Label(new Rect(slotRect.x + 8f, slotRect.y + 6f, slotRect.width - 16f, 20f), inventoryName, labelStyle);
-        GUI.Label(new Rect(slotRect.x + 8f, slotRect.y + 26f, slotRect.width - 16f, 20f), "x" + availableFragmentCount, labelStyle);
+        GUI.Label(new Rect(rect.x + 120f, rect.y + 90f, rect.width - 44f, 76f), questTitle, titleStyle);
+        GUI.Label(new Rect(rect.x + 120f, rect.y + 130f, rect.width - 44f, 58f), restoreTaskText + completionMark, taskStyle);
+        GUI.Label(new Rect(rect.x + 120f, rect.y + 170f, rect.width - 44f, 58f), "Memory fragments: " + visibleFragmentCount + "/" + memoryCount, taskStyle);
     }
 
     private void DrawPuzzle()
@@ -760,14 +718,8 @@ public class FairyMemorySideQuest : MonoBehaviour
         Rect panel = new Rect((Screen.width - panelWidth) * 0.5f, (Screen.height - panelHeight) * 0.5f, panelWidth, panelHeight);
         GUI.Box(panel, GUIContent.none);
 
-        GUIStyle hintStyle = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = 20,
-            wordWrap = true
-        };
-        hintStyle.normal.textColor = Color.white;
-        GUI.Label(new Rect(panel.x + 16f, panel.y + 10f, panel.width - 32f, 32f), "Use WASD to move tiles", hintStyle);
+        GUIStyle hintStyle = GameUiStyle.LabelStyle(ref puzzleHintStyle, 20, TextAnchor.MiddleCenter, FontStyle.Normal, true);
+        GUI.Label(new Rect(panel.x + 16f, panel.y + 10f, panel.width - 32f, 40f), "Use WASD to move tiles", hintStyle);
 
         Rect grid = new Rect(panel.x + 20f, panel.y + 50f, size, size);
         DrawReferenceImage(panel, grid, referenceSize, sideBySide);
@@ -810,12 +762,7 @@ public class FairyMemorySideQuest : MonoBehaviour
             ? new Rect(grid.xMax + 24f, grid.y + 42f, referenceSize, referenceSize)
             : new Rect(panel.x + (panel.width - referenceSize) * 0.5f, grid.yMax + 16f, referenceSize, referenceSize);
 
-        GUIStyle labelStyle = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = 18
-        };
-        labelStyle.normal.textColor = Color.white;
+        GUIStyle labelStyle = GameUiStyle.LabelStyle(ref referenceLabelStyle, 18, TextAnchor.MiddleCenter);
 
         GUI.Label(new Rect(referenceRect.x, referenceRect.y - 28f, referenceRect.width, 24f), "Reference", labelStyle);
         GUI.Box(referenceRect, GUIContent.none);
@@ -861,43 +808,11 @@ public class FairyMemorySideQuest : MonoBehaviour
     {
         if (paused)
         {
-            if (player == null)
-            {
-                return;
-            }
-
-            MonoBehaviour[] behaviours = player.GetComponentsInChildren<MonoBehaviour>(true);
-            for (int i = 0; i < behaviours.Length; i++)
-            {
-                MonoBehaviour behaviour = behaviours[i];
-                if (behaviour == null || !behaviour.enabled || !IsPlayerController(behaviour))
-                {
-                    continue;
-                }
-
-                behaviour.enabled = false;
-                disabledPlayerControllers.Add(behaviour);
-            }
-
+            AquariusMax.Fae.demo.DemoCharacter.SetControlLocked(true);
             return;
         }
 
-        for (int i = 0; i < disabledPlayerControllers.Count; i++)
-        {
-            Behaviour behaviour = disabledPlayerControllers[i];
-            if (behaviour != null)
-            {
-                behaviour.enabled = true;
-            }
-        }
-
-        disabledPlayerControllers.Clear();
-    }
-
-    private static bool IsPlayerController(MonoBehaviour behaviour)
-    {
-        string typeName = behaviour.GetType().Name;
-        return typeName == "PlayerCharacterController" || typeName == "DemoCharacter";
+        AquariusMax.Fae.demo.DemoCharacter.ResetControlFlags();
     }
 
     private void OnDisable()
@@ -910,32 +825,62 @@ public class FairyMemorySideQuest : MonoBehaviour
         SetPlayerMovementPaused(false);
     }
 
-    private static void DrawMessageBox(string text)
+    private void DrawMessageBox(string text)
     {
-        Rect rect = GameUiStyle.SystemPromptRect(760f, 92f);
-        GameUiStyle.DrawPanel(rect);
+        Rect rect = GameUiStyle.SystemPromptRect(920f, 156f);
+        GameUiStyle.DrawDialoguePanel(rect);
 
-        GUIStyle style = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = 24,
-            wordWrap = true
-        };
-        style.normal.textColor = Color.white;
+        GUIStyle style = GameUiStyle.LabelStyle(ref messageStyle, 24, TextAnchor.MiddleCenter, FontStyle.Normal, true);
         GUI.Label(new Rect(rect.x + 18f, rect.y + 12f, rect.width - 36f, rect.height - 24f), text, style);
     }
 
-    private static void DrawCenteredLabel(string text, float y, int fontSize)
+    private void DrawCenteredLabel(string text, int fontSize)
     {
-        GUIStyle style = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = fontSize,
-            wordWrap = true
-        };
-        style.normal.textColor = Color.white;
-        Rect rect = GameUiStyle.InteractionPromptRect(520f, 60f);
-        GameUiStyle.DrawPanel(rect);
+        GUIStyle style = GameUiStyle.LabelStyle(ref centeredLabelStyle, fontSize, TextAnchor.MiddleCenter, FontStyle.Normal, true);
+        Rect rect = GameUiStyle.InteractionPromptRect(680f, 118f);
+        GameUiStyle.DrawDialoguePanel(rect);
         GUI.Label(rect, text, style);
+    }
+
+    private void CheckQuestSetup()
+    {
+        SetMemorySlots();
+        ValidateMemoryText();
+    }
+
+    private void ValidateMemoryText()
+    {
+        int count = memories != null ? memories.Length : 0;
+        if (count == 0)
+        {
+            return;
+        }
+
+        if (memoryNames == null || memoryNames.Length != count || memoryLines == null || memoryLines.Length != count)
+        {
+            Debug.LogError("FairyMemorySideQuest memory text arrays must match Memories length. Fill Memory Names and Memory Lines in the Inspector.", this);
+            return;
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            if (string.IsNullOrWhiteSpace(memoryNames[i]) || string.IsNullOrWhiteSpace(memoryLines[i]))
+            {
+                Debug.LogError("FairyMemorySideQuest has empty memory text at index " + i + ". Fill it in the Inspector.", this);
+                return;
+            }
+        }
+    }
+
+    private void ResetQuestProgress()
+    {
+        puzzleActive = false;
+        memoryShowcaseActive = false;
+        puzzleStartPending = false;
+        memoryFragmentsConsumed = false;
+        collectedCount = 0;
+        nearbyMemoryIndex = -1;
+        currentMessage = null;
+        queuedMessages.Clear();
     }
 }

@@ -1,9 +1,4 @@
-// Small shared audio helper for UI clicks, wins, fails, pickups, and enemy loops.
-using System.Collections;
-using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
-using UnityEngine.Networking;
 
 public class GameAudioManager : MonoBehaviour
 {
@@ -11,157 +6,177 @@ public class GameAudioManager : MonoBehaviour
 
     private static GameAudioManager instance;
 
-    private readonly Dictionary<string, AudioClip> clips = new Dictionary<string, AudioClip>();
-    private readonly Dictionary<string, float> lastPlayTimes = new Dictionary<string, float>();
-    private readonly HashSet<string> loadingClips = new HashSet<string>();
+    [Header("Sources")]
+    [SerializeField] private AudioSource oneShotSource;
+    [SerializeField] private AudioSource enemyLoopSource;
+    [SerializeField] private AudioSource roarLoopSource;
 
-    private AudioSource oneShotSource;
-    private AudioSource enemyLoopSource;
+    [Header("One Shot Clips")]
+    [SerializeField] private AudioClip fetchClip;
+    [SerializeField] private AudioClip failClip;
+    [SerializeField] private AudioClip successClip;
+    [SerializeField] private AudioClip knobClip;
+
+    [Header("Loop Clips")]
+    [SerializeField] private AudioClip enemyClip;
+    [SerializeField] private AudioClip roarClip;
+
+    private float lastFetchTime = -1000f;
+    private float lastFailTime = -1000f;
+    private float lastSuccessTime = -1000f;
+    private float lastKnobTime = -1000f;
     private bool enemyLoopRequested;
+    private bool roarLoopRequested;
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    private static void Bootstrap()
+    private void Awake()
     {
-        EnsureInstance();
+        if (instance != null && instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        instance = this;
+        ConfigureLoopSource(enemyLoopSource);
+        ConfigureLoopSource(roarLoopSource);
     }
 
     public static void PlayFetch()
     {
-        PlayOneShot("fetch", "Audio/fetch.mp3", 0.9f);
+        if (instance != null)
+        {
+            instance.PlayOneShot(instance.fetchClip, 0.9f, ref instance.lastFetchTime);
+        }
     }
 
     public static void PlayFail()
     {
-        PlayOneShot("fail", "Audio/fail.mp3", 1f);
+        if (instance != null)
+        {
+            instance.PlayOneShot(instance.failClip, 1f, ref instance.lastFailTime);
+        }
     }
 
     public static void PlaySuccess()
     {
-        PlayOneShot("success", "Audio/success.mp3", 1f);
+        if (instance != null)
+        {
+            instance.PlayOneShot(instance.successClip, 1f, ref instance.lastSuccessTime);
+        }
     }
 
     public static void PlayKnob()
     {
-        PlayOneShot("knob", "Audio/knob.mp3", 0.85f);
+        if (instance != null)
+        {
+            instance.PlayOneShot(instance.knobClip, 0.85f, ref instance.lastKnobTime);
+        }
     }
 
     public static void StartEnemyLoop()
     {
-        GameAudioManager manager = EnsureInstance();
-        manager.enemyLoopRequested = true;
-        manager.StartCoroutine(manager.PlayLoopWhenLoaded("enemy", "Audio/enemy.mp3", 0.8f));
+        if (instance == null)
+        {
+            return;
+        }
+
+        instance.enemyLoopRequested = true;
+        MainMenuController.PauseBackgroundMusicForSceneAudio();
+        instance.PlayLoop(instance.enemyLoopSource, instance.enemyClip, 1f, instance.enemyLoopRequested);
+    }
+
+    public static void StartRoarLoop()
+    {
+        if (instance == null)
+        {
+            return;
+        }
+
+        instance.roarLoopRequested = true;
+        instance.PlayLoop(instance.roarLoopSource, instance.roarClip, 1f, instance.roarLoopRequested);
     }
 
     public static void StopEnemyLoop()
     {
-        GameAudioManager manager = EnsureInstance();
-        manager.enemyLoopRequested = false;
-        if (manager.enemyLoopSource != null)
+        if (instance == null)
         {
-            manager.enemyLoopSource.Stop();
+            return;
+        }
+
+        instance.enemyLoopRequested = false;
+        if (instance.enemyLoopSource != null)
+        {
+            instance.enemyLoopSource.Stop();
+        }
+
+        MainMenuController.ResumeBackgroundMusicAfterSceneAudio();
+    }
+
+    public static void StopRoarLoop()
+    {
+        if (instance == null)
+        {
+            return;
+        }
+
+        instance.roarLoopRequested = false;
+        if (instance.roarLoopSource != null)
+        {
+            instance.roarLoopSource.Stop();
         }
     }
 
-    private static void PlayOneShot(string key, string relativePath, float volume)
+    private void PlayOneShot(AudioClip clip, float volume, ref float lastPlayTime)
     {
-        GameAudioManager manager = EnsureInstance();
-        manager.StartCoroutine(manager.PlayOneShotWhenLoaded(key, relativePath, volume));
-    }
-
-    private static GameAudioManager EnsureInstance()
-    {
-        if (instance != null)
+        if (clip == null || oneShotSource == null)
         {
-            return instance;
+            return;
         }
 
-        GameObject host = new GameObject("GameAudioManager");
-        DontDestroyOnLoad(host);
-        instance = host.AddComponent<GameAudioManager>();
-        instance.oneShotSource = host.AddComponent<AudioSource>();
-        instance.oneShotSource.playOnAwake = false;
-        instance.oneShotSource.spatialBlend = 0f;
-        instance.enemyLoopSource = host.AddComponent<AudioSource>();
-        instance.enemyLoopSource.playOnAwake = false;
-        instance.enemyLoopSource.loop = true;
-        instance.enemyLoopSource.spatialBlend = 0f;
-        return instance;
-    }
-
-    private IEnumerator PlayOneShotWhenLoaded(string key, string relativePath, float volume)
-    {
-        yield return LoadClip(key, relativePath);
-
-        if (!clips.TryGetValue(key, out AudioClip clip) || clip == null || oneShotSource == null)
+        if (Time.unscaledTime - lastPlayTime < OneShotCooldown)
         {
-            yield break;
+            return;
         }
 
-        if (lastPlayTimes.TryGetValue(key, out float lastTime) && Time.unscaledTime - lastTime < OneShotCooldown)
-        {
-            yield break;
-        }
-
-        lastPlayTimes[key] = Time.unscaledTime;
+        lastPlayTime = Time.unscaledTime;
         oneShotSource.PlayOneShot(clip, volume);
     }
 
-    private IEnumerator PlayLoopWhenLoaded(string key, string relativePath, float volume)
+    private void PlayLoop(AudioSource source, AudioClip clip, float volume, bool requested)
     {
-        yield return LoadClip(key, relativePath);
-
-        if (!enemyLoopRequested ||
-            !clips.TryGetValue(key, out AudioClip clip) ||
-            clip == null ||
-            enemyLoopSource == null)
+        if (!requested || source == null || clip == null)
         {
-            yield break;
+            return;
         }
 
-        enemyLoopSource.clip = clip;
-        enemyLoopSource.volume = volume;
-        enemyLoopSource.loop = true;
-        if (!enemyLoopSource.isPlaying)
+        source.clip = clip;
+        source.volume = volume;
+        source.loop = true;
+        source.spatialBlend = 0f;
+
+        if (!source.isPlaying)
         {
-            enemyLoopSource.Play();
+            source.Play();
         }
     }
 
-    private IEnumerator LoadClip(string key, string relativePath)
+    private static void ConfigureLoopSource(AudioSource source)
     {
-        if (clips.ContainsKey(key))
+        if (source == null)
         {
-            yield break;
+            return;
         }
 
-        while (loadingClips.Contains(key))
-        {
-            yield return null;
-        }
+        source.playOnAwake = false;
+        source.loop = true;
+        source.spatialBlend = 0f;
+    }
 
-        if (clips.ContainsKey(key))
+    private void OnDestroy()
+    {
+        if (instance == this)
         {
-            yield break;
+            instance = null;
         }
-
-        loadingClips.Add(key);
-        string path = Path.Combine(Application.dataPath, relativePath);
-        if (File.Exists(path))
-        {
-            using (UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(new System.Uri(path).AbsoluteUri, AudioType.MPEG))
-            {
-                yield return request.SendWebRequest();
-                if (request.result == UnityWebRequest.Result.Success)
-                {
-                    AudioClip clip = DownloadHandlerAudioClip.GetContent(request);
-                    if (clip != null)
-                    {
-                        clips[key] = clip;
-                    }
-                }
-            }
-        }
-
-        loadingClips.Remove(key);
     }
 }
