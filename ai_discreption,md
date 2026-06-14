@@ -1,0 +1,69 @@
+# AI Assistance Description
+
+This project was designed, built, tested, and integrated by me. AI tools were used as coding assistance during development, mainly to help organize repeated UI logic, improve script structure, and debug specific technical problems. The AI did not create the full game automatically, and the final gameplay design, scene setup, asset placement, Inspector configuration, testing, and presentation decisions were completed by me.
+
+## Areas Where AI Assistance Was Used
+
+### Shared Menu and UI System
+
+AI assistance was used in scripts related to shared menu and UI layout, including:
+
+- `MainMenuController.cs`
+- `GlobalGameMenuUI.cs`
+- `GameUiStyle.cs`
+- `GlobalHudUI.cs`
+
+These scripts manage shared interface elements such as the main menu, in-game ESC menu, controls/settings panels, common panel drawing, HUD prompts, and consistent UI styling across different scenes.
+
+AI helped with reducing repeated UI code and keeping the menu layout consistent between scenes. I adjusted the final layout, panel positions, font sizes, button behavior, and scene-specific UI setup based on testing in Unity.
+
+### Save and Continue System
+
+AI assistance was used in:
+
+- `GameSaveManager.cs`
+
+This script manages saving and loading player progress, including continuing from saved positions and tracking scene-related progress. AI helped organize the save data structure and connect the save system with different game scenes.
+
+The save rules, such as which progress should reset and which collected items should remain in the bag, were designed and tested by me.
+
+### Minimap and Navigation UI
+
+AI assistance was used in:
+
+- `GlobalMinimapUI.cs`
+- `CompassNavigationHUD.cs`
+
+These scripts support the minimap, player marker, map display, and compass/navigation UI. AI helped structure the shared minimap behavior so it could work across multiple scenes.
+
+The map objects, scene placement, UI appearance, and final Inspector references were configured manually in Unity.
+
+### Ending Video / Scene Controller
+
+AI assistance was used in:
+
+- `MerylSceneController.cs`
+
+This script manages scene-specific flow such as ending video playback. AI helped with code organization and handling scene transitions, while the actual video asset, timing, and scene setup were handled by me.
+
+## My Own Contributions
+
+The main creative and development work was completed by me, including:
+
+- Game concept and story design
+- Main quest and side quest flow
+- Puzzle design and interaction rules
+- Scene building and object placement
+- Character, NPC, and environment setup
+- UI layout decisions and visual adjustments
+- Inspector reference setup
+- Testing, debugging, and gameplay balancing
+- Final presentation preparation
+
+## External Assets
+
+The project uses external assets such as models, animations, audio, video, textures, and environment assets. These were imported and arranged in Unity as part of the game development process.
+
+## Summary
+
+AI was used as an assistant to support coding, debugging, and code organization. It helped improve consistency in shared systems such as menus, UI, saving, minimap, and scene control. However, the game design, scene construction, interaction logic, asset integration, testing, and final decisions were completed by me.
