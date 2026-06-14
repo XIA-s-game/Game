@@ -2,6 +2,8 @@
 
 This project was designed, built, tested, and integrated by me. AI tools were used as coding assistance during development, mainly to help organize repeated UI logic, improve script structure, and debug specific technical problems. The AI did not create the full game automatically, and the final gameplay design, scene setup, asset placement, Inspector configuration, testing, and presentation decisions were completed by me.
 
+---
+
 ## Areas Where AI Assistance Was Used
 
 ### Shared Menu and UI System
@@ -17,6 +19,8 @@ These scripts manage shared interface elements such as the main menu, in-game ES
 
 AI helped with reducing repeated UI code and keeping the menu layout consistent between scenes. I adjusted the final layout, panel positions, font sizes, button behavior, and scene-specific UI setup based on testing in Unity.
 
+---
+
 ### Save and Continue System
 
 AI assistance was used in:
@@ -26,6 +30,8 @@ AI assistance was used in:
 This script manages saving and loading player progress, including continuing from saved positions and tracking scene-related progress. AI helped organize the save data structure and connect the save system with different game scenes.
 
 The save rules, such as which progress should reset and which collected items should remain in the bag, were designed and tested by me.
+
+---
 
 ### Minimap and Navigation UI
 
@@ -38,6 +44,8 @@ These scripts support the minimap, player marker, map display, and compass/navig
 
 The map objects, scene placement, UI appearance, and final Inspector references were configured manually in Unity.
 
+---
+
 ### Ending Video / Scene Controller
 
 AI assistance was used in:
@@ -45,6 +53,8 @@ AI assistance was used in:
 - `MerylSceneController.cs`
 
 This script manages scene-specific flow such as ending video playback. AI helped with code organization and handling scene transitions, while the actual video asset, timing, and scene setup were handled by me.
+
+---
 
 ## My Own Contributions
 
@@ -60,9 +70,13 @@ The main creative and development work was completed by me, including:
 - Testing, debugging, and gameplay balancing
 - Final presentation preparation
 
+---
+
 ## External Assets
 
 The project uses external assets such as models, animations, audio, video, textures, and environment assets. These were imported and arranged in Unity as part of the game development process.
+
+---
 
 ## Summary
 
