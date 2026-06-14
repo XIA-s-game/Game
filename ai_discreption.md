@@ -54,27 +54,6 @@ AI assistance was used in:
 
 This script manages scene-specific flow such as ending video playback. AI helped with code organization and handling scene transitions, while the actual video asset, timing, and scene setup were handled by me.
 
----
-
-## My Own Contributions
-
-The main creative and development work was completed by me, including:
-
-- Game concept and story design
-- Main quest and side quest flow
-- Puzzle design and interaction rules
-- Scene building and object placement
-- Character, NPC, and environment setup
-- UI layout decisions and visual adjustments
-- Inspector reference setup
-- Testing, debugging, and gameplay balancing
-- Final presentation preparation
-
----
-
-## External Assets
-
-The project uses external assets such as models, animations, audio, video, textures, and environment assets. These were imported and arranged in Unity as part of the game development process.
 
 ---
 
