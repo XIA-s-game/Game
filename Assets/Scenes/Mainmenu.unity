@@ -250,7 +250,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: 7af42c664bd92294e88b60bc6b62063a, type: 3}
+  m_Texture: {fileID: 2800000, guid: f5466d0cdd1481946b47fad45cb42f33, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -2671,7 +2671,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 7af42c664bd92294e88b60bc6b62063a, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -4529,8 +4529,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 7af42c664bd92294e88b60bc6b62063a, type: 3}
-  m_Type: 0
+  m_Sprite: {fileID: 0}
+  m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -6804,14 +6804,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   menuSceneName: Mainmenu
-  gameSceneName: Assets/Scenes/Enchanted Forest A.unity
+  gameSceneName: Enchanted Forest A
   backgroundAudioPath: Audio/background.mp3
-  openingVideoPath: Audio/openingvideo.mp4
+  openingVideoPath: new/openning.mp4
+  backgroundAudioClip: {fileID: 8300000, guid: 337634e95bd0d1c488b69ba6f42f16b0, type: 3}
+  backgroundAudioSource: {fileID: 0}
+  openingVideoPlayer: {fileID: 0}
+  openingVideoAudioSource: {fileID: 0}
   backgroundVolume: 0.6
   videoVolume: 1
-  coverImagePath: new/cover.png
-  controlsImagePath: new/controls.png
-  coverOnlyDuration: 5
+  coverImagePath: new/menu.png
+  mainMenuImagePath: new/select.png
+  panelImagePath: new/panel.png
+  coverOnlyDuration: 3
   mainMenuPanel: {fileID: 1890060289}
   continuePanel: {fileID: 1051718358}
   introPanel: {fileID: 1501503568}
@@ -6833,89 +6838,17 @@ MonoBehaviour:
   creditsBackButton: {fileID: 1539336848}
   volumeSlider: {fileID: 647937687}
   muteToggle: {fileID: 737376964}
-  introText: "Long ago, there was a forgotten forest called Elwyn.\n\nThe leaves
-    here glow. The streams sing. Mushrooms start conversations \u2014 though mostly
-    nonsense. Elwyn is not a dangerous place. It's more like a playful magic school:
-    classrooms in tree hollows, textbooks on branches, and your teacher might be
-    a talking flower by the roadside.\n\nNo one knows how old the forest is. Some
-    say it was planted by the oldest mage with their last tear. Others say it is
-    magic itself \u2014 as long as you believe in kindness, it will appear.\n\nBut
-    one thing is certain: many little fairies and talking animals live here, along
-    with a legendary witch \u2014 Granny Meriel.\nShe is the guardian of the forest.
-    Powerful in magic, but with the heart of an old child. She loves to laugh and
-    play, and enjoys writing her spellbook in the Moonlit Glade. She poured everything
-    she knew \u2014 courage, kindness, listening, mending \u2014 into a thick, heavy
-    book.\n\nBut she left the book to no one. She said, \"Learning it all at once
-    \u2014 where's the fun in that?\"\n\nSo one windy evening, she tore the book
-    into five pages.\n\nAfter that, people would occasionally come looking for the
-    pages. Some found two. Some found three. Some found nothing. But no one who ever
-    gathered all five pages ever saw Granny Meriel again.\n\nYou are the next one
-    to push open that door."
-  controlsText: 'WASD: Move
-
-    Mouse: Look
-
-    Space: Jump
-
-    E: Interact
-
-    Esc:
-    Back or close'
-  creditsText: '[Unity Asset Pack]
-
-    Aquarius Fantasy - Fae Pack (Unity Asset
-    Store)
-
-    License: Single Entity License
-
-
-    [Character Animations & Models]
-
-    Mixamo
-    (Adobe)
-
-    License: Royalty Free
-
-
-    [3D Models - CGTrader]
-
-    Magic door,
-    Bird nest & eggs, Golden key, Old tree face, Feathers, Witch''s workbench, Maze
-
-    ,
-    Ladder, Honey, Kitchen, Bear, Tree hollow honey, Lock, Stairs, Magic box, Magic
-    book
-
-    License: Royalty Free
-
-
-    [3D Models - Sketchfab]
-
-    Trapped elf,
-    Fox, Colored pens, Dinosaur model, Dark King''s door, Altar puzzle effects (correct/wrong)
-
-    Toolbox,
-    Merchant''s stall, Cards, Paper, Bread, Piano, Chef, Book page chest, Magic circle
-
-    License:
-    CC Attribution / CC BY-NC
-
-
-    [Sound Effects]
-
-    Game Sound Factory - most
-    sound effects
-
-    Freesound - Monster Roar (CC BY 4.0), Plors - crying (CC0)
-
-    License:
-    Non-Commercial / CC BY / CC0'
   menuCanvas: {fileID: 1913593438}
   coverBackgroundImage: {fileID: 17545415}
   coverAspectFitter: {fileID: 17545414}
+  controlsPanelImage: {fileID: 0}
   openingVideoOverlayObject: {fileID: 1325788843}
   openingVideoImage: {fileID: 1226160083}
   openingVideoAspectFitter: {fileID: 1226160080}
+  coverTexture: {fileID: 0}
+  mainMenuTexture: {fileID: 0}
+  panelTexture: {fileID: 0}
+  openingVideoClip: {fileID: 0}
 --- !u!1 &2042135033
 GameObject:
   m_ObjectHideFlags: 0
