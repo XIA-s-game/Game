@@ -26,7 +26,7 @@ The complete list of assets and their sources is documented in the `Credits.md` 
 
 ## About AI Coding Assistance
 
-Some of the more complex logic — such as the card matching game and the piano note sequence — was implemented with reference to AI‑generated code, which I then adapted and integrated into the project.
+Global control, mini map and compass were implemented with reference to AI‑generated code, which I then adapted and integrated into the project.
 
 The detailed information is in the `ai_description.md` file.
 
@@ -68,6 +68,6 @@ Throughout this project, I have always treated my work seriously and strived for
 
 ---
 
-**Prepared by:** [Your Name]  
+**Prepared by:** Yichang Wang  
 **Project:** *Magic Forest: Apprentice Wizard*  
 **Date:** June 2026
