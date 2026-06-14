@@ -4,6 +4,7 @@ public partial class OldTreeInteraction
 {
     private void ReadRewardChoiceKeys()
     {
+        // Nest reward choices use both letter keys and number keys.
         if (IsChoiceKeyPressed(KeyCode.A, KeyCode.Alpha1))
         {
             ChooseReward(rewardChoiceA);
@@ -16,10 +17,6 @@ public partial class OldTreeInteraction
         {
             ChooseReward(rewardChoiceC);
         }
-        else if (IsChoiceKeyPressed(KeyCode.D, KeyCode.Alpha4))
-        {
-            ChooseReward(rewardChoiceD);
-        }
     }
 
     private static bool IsChoiceKeyPressed(KeyCode letterKey, KeyCode numberKey)
@@ -29,6 +26,7 @@ public partial class OldTreeInteraction
 
     private void ChooseReward(string choice)
     {
+        // Only restraint gives the mushroom; taking or destroying the egg closes with a lesson.
         branchFlowActive = false;
 
         if (choice == rewardChoiceA)
@@ -72,28 +70,11 @@ public partial class OldTreeInteraction
                 "Old Tree: That deserves a small gift."
             }, GiveMagicMushroomReward);
         }
-        else
-        {
-            ActivateFairyBackstorySideQuest();
-            StartDialogue(new[]
-            {
-                "Old Tree: Moving it sounds kind, but it still changes the nest.",
-                "Old Tree: Help should solve the problem, not create a new one.",
-                "Old Tree: If you want to help, build a safe shelter nearby.",
-                "Old Tree: Use wisdom, not force.",
-                "Old Tree: That is the lesson."
-            }, CompleteShelterInstruction);
-        }
-    }
-
-    private void CompleteShelterInstruction()
-    {
-        ActivateFairyBackstorySideQuest();
-        CloseDialogueAndReset();
     }
 
     private void GiveMagicMushroomReward()
     {
+        // Adds the optional old tree reward to the shared backpack.
         GlobalBackpackUI.AddItem(magicMushroomInventoryName);
         StartDialogue(new[]
         {

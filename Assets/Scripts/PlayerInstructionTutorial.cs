@@ -4,13 +4,15 @@ using UnityEngine.SceneManagement;
 
 public class PlayerInstructionTutorial : MonoBehaviour
 {
+    // Tutorial only runs on new-game loads of Enchanted Forest A.
     private const string TutorialSceneName = "Enchanted Forest A";
-    private const string TutorialCompletedKey = "TutorialCompleted_EnchantedForestA";
+    private const string TutorialNextLoadKey = "Tutorial.EnabledForNextLoad";
     private const float StepPauseSeconds = 0.45f;
     private const float FinalMessageSeconds = 5f;
 
     private enum TutorialStep
     {
+        // Input gates open step by step so the player sees one instruction at a time.
         Look,
         Move,
         Jump,
@@ -33,19 +35,26 @@ public class PlayerInstructionTutorial : MonoBehaviour
 
     private void Awake()
     {
-        tutorialEnabled = SceneManager.GetActiveScene().name == TutorialSceneName && !HasCompletedTutorial();
+        // Continue game disables tutorial through PlayerPrefs.
+        tutorialEnabled = SceneManager.GetActiveScene().name == TutorialSceneName;
+        if (tutorialEnabled && PlayerPrefs.GetInt(TutorialNextLoadKey, 1) == 0)
+        {
+            tutorialEnabled = false;
+        }
+
         if (!tutorialEnabled)
         {
             enabled = false;
             return;
         }
 
-        ApplyTutorialFlags(true, false, false, false, false, false);
+        StartTutorialInputLock();
         EnterStep(TutorialStep.Look);
     }
 
     private void Update()
     {
+        // Each tutorial step waits for the player to perform that action once.
         switch (step)
         {
             case TutorialStep.Look:
@@ -87,8 +96,9 @@ public class PlayerInstructionTutorial : MonoBehaviour
                 break;
 
             case TutorialStep.Run:
-                if (DemoCharacter.TutorialRunObserved)
+                if (DemoCharacter.TutorialRunObserved || HasRunInput())
                 {
+                    DemoCharacter.TutorialRunObserved = true;
                     EnterStep(TutorialStep.Interact);
                 }
                 break;
@@ -118,27 +128,21 @@ public class PlayerInstructionTutorial : MonoBehaviour
     private void CompleteTutorial()
     {
         step = TutorialStep.Complete;
-        ApplyTutorialFlags(false, true, true, true, true, false);
-        PlayerPrefs.SetInt(TutorialCompletedKey, 1);
+        ReleaseTutorialInputLock(false);
+        Destroy(this);
+    }
+
+    public static void SetTutorialEnabledForNextLoad(bool enabled)
+    {
+        PlayerPrefs.SetInt(TutorialNextLoadKey, enabled ? 1 : 0);
         PlayerPrefs.Save();
-        Destroy(gameObject);
-    }
-
-    public static bool HasCompletedTutorial()
-    {
-        return PlayerPrefs.GetInt(TutorialCompletedKey, 0) == 1;
-    }
-
-    public static void ClearPersistentState()
-    {
-        PlayerPrefs.DeleteKey(TutorialCompletedKey);
     }
 
     private void OnDestroy()
     {
         if (tutorialEnabled)
         {
-            ApplyTutorialFlags(false, true, true, true, true, false);
+            ReleaseTutorialInputLock(false);
         }
 
         if (panelStyle != null && panelStyle.normal.background != null)
@@ -147,14 +151,26 @@ public class PlayerInstructionTutorial : MonoBehaviour
         }
     }
 
-    private static void ApplyTutorialFlags(bool active, bool allowMove, bool allowJump, bool allowCrouch, bool allowRun, bool runObserved)
+    private static void StartTutorialInputLock()
     {
-        DemoCharacter.TutorialActive = active;
+        // Uses DemoCharacter tutorial flags so movement rules stay inside the player controller.
+        DemoCharacter.TutorialActive = true;
         DemoCharacter.TutorialAllowLook = true;
-        DemoCharacter.TutorialAllowMove = allowMove;
-        DemoCharacter.TutorialAllowJump = allowJump;
-        DemoCharacter.TutorialAllowCrouch = allowCrouch;
-        DemoCharacter.TutorialAllowRun = allowRun;
+        DemoCharacter.TutorialAllowMove = true;
+        DemoCharacter.TutorialAllowJump = true;
+        DemoCharacter.TutorialAllowCrouch = true;
+        DemoCharacter.TutorialAllowRun = true;
+        DemoCharacter.TutorialRunObserved = false;
+    }
+
+    private static void ReleaseTutorialInputLock(bool runObserved)
+    {
+        DemoCharacter.TutorialActive = false;
+        DemoCharacter.TutorialAllowLook = true;
+        DemoCharacter.TutorialAllowMove = true;
+        DemoCharacter.TutorialAllowJump = true;
+        DemoCharacter.TutorialAllowCrouch = true;
+        DemoCharacter.TutorialAllowRun = true;
         DemoCharacter.TutorialRunObserved = runObserved;
     }
 
@@ -165,7 +181,7 @@ public class PlayerInstructionTutorial : MonoBehaviour
             return;
         }
 
-        EnsureStyles();
+        BuildStyles();
         float width = Mathf.Min(760f, Screen.width - 48f);
         float height = step == TutorialStep.FinalMessage ? 146f : 176f;
         Rect panel = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.72f, width, height);
@@ -183,7 +199,7 @@ public class PlayerInstructionTutorial : MonoBehaviour
         }
     }
 
-    private void EnsureStyles()
+    private void BuildStyles()
     {
         if (panelStyle != null)
         {
@@ -248,5 +264,11 @@ public class PlayerInstructionTutorial : MonoBehaviour
     {
         return Mathf.Abs(Input.GetAxisRaw("Horizontal")) > 0.1f ||
             Mathf.Abs(Input.GetAxisRaw("Vertical")) > 0.1f;
+    }
+
+    private static bool HasRunInput()
+    {
+        return HasMoveInput() &&
+            (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift));
     }
 }

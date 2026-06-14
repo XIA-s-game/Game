@@ -5,6 +5,7 @@ public partial class OldTreeInteraction
 {
     private void ReadChoiceKeys()
     {
+        // First old tree choice: simple answer, nest lesson, or angry attack.
         if (IsChoiceKeyPressed(KeyCode.A, KeyCode.Alpha1))
         {
             Choose(answerA);
@@ -35,6 +36,7 @@ public partial class OldTreeInteraction
 
     private void StartBranchDialogue()
     {
+        // The learning branch lowers the nest before asking the moral choice.
         branchFlowActive = true;
         StartDialogue(new[]
         {
@@ -45,6 +47,7 @@ public partial class OldTreeInteraction
 
     private void StartNestDialogue()
     {
+        // Nest lesson ends with reward choices instead of a normal close.
         StartDialogue(new[]
         {
             "Old Tree: This nest belongs to the reed bird.",
@@ -56,19 +59,20 @@ public partial class OldTreeInteraction
         }, ShowRewardChoices, true);
     }
 
-    private void StartDialogue(string[] lines, System.Action onComplete, bool autoCompleteLastLine)
+    private void StartDialogue(string[] lines, System.Action onComplete, bool finishOnLastLine)
     {
+        // Shared dialogue runner for the old tree branch text.
         StopCoroutineIfRunning(ref resetCoroutine);
         StopCoroutineIfRunning(ref finalInstructionCoroutine);
 
         currentLines = lines;
         currentLineIndex = 0;
         currentDialogueComplete = onComplete;
-        autoCompleteOnLastLine = autoCompleteLastLine;
+        finishAfterLastLine = finishOnLastLine;
         currentAnswer = currentLines[0];
         state = DialogueState.Speaking;
 
-        if (autoCompleteOnLastLine && currentLines.Length == 1)
+        if (finishAfterLastLine && currentLines.Length == 1)
         {
             currentDialogueComplete?.Invoke();
         }
@@ -81,12 +85,12 @@ public partial class OldTreeInteraction
         {
             currentAnswer = currentLines[currentLineIndex];
 
-            if (autoCompleteOnLastLine && currentLineIndex == currentLines.Length - 1)
+            if (finishAfterLastLine && currentLineIndex == currentLines.Length - 1)
             {
                 System.Action finalLineComplete = currentDialogueComplete;
                 currentLines = null;
                 currentDialogueComplete = null;
-                autoCompleteOnLastLine = false;
+                finishAfterLastLine = false;
                 finalLineComplete?.Invoke();
             }
 
@@ -96,12 +100,13 @@ public partial class OldTreeInteraction
         System.Action dialogueComplete = currentDialogueComplete;
         currentLines = null;
         currentDialogueComplete = null;
-        autoCompleteOnLastLine = false;
+        finishAfterLastLine = false;
         dialogueComplete?.Invoke();
     }
 
     private void StartNestMove()
     {
+        // Moves the branch before showing the nest explanation.
         currentAnswer = null;
         state = DialogueState.MovingNest;
 
@@ -115,6 +120,7 @@ public partial class OldTreeInteraction
 
     private IEnumerator MoveNestBranchDown()
     {
+        // Lowers the nest to the chosen scene height, then continues the dialogue.
         if (nestBranch == null)
         {
             StartNestDialogue();
@@ -141,6 +147,7 @@ public partial class OldTreeInteraction
 
     private void CloseDialogueAndReset()
     {
+        // Normal branch close: clear text, reset tree objects, and turn away from the player.
         currentAnswer = null;
         branchFlowActive = false;
         state = DialogueState.Waiting;
@@ -152,32 +159,6 @@ public partial class OldTreeInteraction
     {
         currentAnswer = null;
         state = DialogueState.RewardChoosing;
-    }
-
-    private void CloseSideQuestReminder()
-    {
-        currentAnswer = null;
-        state = DialogueState.Waiting;
-        StartLookCoroutine(ReturnToOriginalRotation());
-    }
-
-    private void StartPeasantGirlDialogue()
-    {
-        StartDialogue(new[]
-        {
-            peasantFirstLine,
-            peasantSecondLine
-        }, CompletePeasantGirlTrade);
-    }
-
-    private void CompletePeasantGirlTrade()
-    {
-        peasantRewardGiven = true;
-        collectedSaplingCount = requiredSaplingCount;
-        GlobalBackpackUI.SetItemCount(saplingInventoryName, Mathf.Max(0, collectedSaplingCount - plantedSaplingCount));
-        currentAnswer = null;
-        state = DialogueState.Waiting;
-        ShowSaplingPlantTargets();
     }
 
     private void ShowFinalInstructionForFiveSeconds()
@@ -194,35 +175,6 @@ public partial class OldTreeInteraction
 
         finalInstructionCoroutine = null;
         CloseDialogueAndReset();
-    }
-
-    public void ActivateFairyBackstorySideQuest()
-    {
-        if (sideQuestActivatedOnce)
-        {
-            return;
-        }
-
-        sideQuestActivatedOnce = true;
-        sideQuestActive = true;
-        collectedFenceCount = 0;
-        collectedSaplingCount = 0;
-        plantedSaplingCount = 0;
-        GlobalBackpackUI.RemoveAll(fenceInventoryName);
-        GlobalBackpackUI.RemoveAll(saplingInventoryName);
-        fenceBuilt = false;
-        fenceBuildTargetShown = false;
-        nearbyFenceBuildTarget = false;
-        peasantRewardGiven = false;
-        saplingPlantTargetsShown = false;
-        nearbySaplingPlantTarget = null;
-        if (fenceBuildTarget != null)
-        {
-            fenceBuildTarget.gameObject.SetActive(false);
-        }
-
-        PrepareSaplingPlantTargets();
-        CollectFenceTargets();
     }
 
     private void StopCoroutineIfRunning(ref Coroutine coroutine)

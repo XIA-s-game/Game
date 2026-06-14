@@ -5,8 +5,31 @@ using UnityEngine.SceneManagement;
 
 public partial class OldTreeInteraction
 {
+    private void UseTreeAsMissingTargets()
+    {
+        if (lookRoot == null)
+        {
+            lookRoot = transform;
+        }
+
+        if (interactionTarget == null)
+        {
+            interactionTarget = lookRoot;
+        }
+
+        if (faceResetTarget == null)
+        {
+            faceResetTarget = interactionTarget;
+        }
+    }
+
     private void KeepPlayerInsideTreeRange()
     {
+        if (interactionTarget == null || player == null)
+        {
+            return;
+        }
+
         Vector3 center = interactionTarget.position;
         Vector3 playerPosition = player.position;
         Vector3 offset = playerPosition - center;
@@ -85,16 +108,6 @@ public partial class OldTreeInteraction
         return IsPlayerWithinDistance(interactionTarget, interactDistance);
     }
 
-    private bool IsPlayerNearPeasant()
-    {
-        if (peasantGirl == null || player == null)
-        {
-            return false;
-        }
-
-        return IsPlayerWithinDistance(peasantGirl, peasantInteractDistance);
-    }
-
     private bool IsTargetScene()
     {
         return SceneManager.GetActiveScene().name == targetSceneName;
@@ -102,6 +115,11 @@ public partial class OldTreeInteraction
 
     private bool IsPlayerWithinDistance(Transform target, float distance)
     {
+        if (target == null || player == null)
+        {
+            return false;
+        }
+
         Vector3 targetPosition = target.position;
         Vector3 playerPosition = player.position;
         targetPosition.y = 0f;

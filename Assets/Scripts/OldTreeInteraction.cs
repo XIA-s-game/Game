@@ -5,6 +5,7 @@ using UnityEngine.SceneManagement;
 
 public partial class OldTreeInteraction : MonoBehaviour
 {
+    // Old tree conversation modes: normal talk, nest lesson, angry attack, and reward choice.
     private enum DialogueState
     {
         Waiting,
@@ -18,6 +19,7 @@ public partial class OldTreeInteraction : MonoBehaviour
     }
 
     [Header("Player")]
+    // Old tree is only active in my scene and uses this player reference for distance checks.
     [SerializeField] private string targetSceneName = "my scene";
     [SerializeField] private float interactDistance = 20f;
     [SerializeField] private KeyCode interactKey = KeyCode.E;
@@ -25,6 +27,7 @@ public partial class OldTreeInteraction : MonoBehaviour
     [SerializeField] private Transform playerCameraTransform;
 
     [Header("Tree Look")]
+    // The tree turns toward the player while a conversation is active.
     [SerializeField] private Transform lookRoot;
     [SerializeField] private Transform interactionTarget;
     [SerializeField] private float turnDuration = 1.8f;
@@ -32,6 +35,7 @@ public partial class OldTreeInteraction : MonoBehaviour
     [SerializeField] private float answerDuration = 5f;
 
     [Header("Nest Quest")]
+    // Branch and nest transforms are reset after the lesson branch finishes.
     [SerializeField] private Transform nestBranch;
     [SerializeField] private Transform cylinderResetTarget;
     [SerializeField] private Transform nest;
@@ -40,38 +44,15 @@ public partial class OldTreeInteraction : MonoBehaviour
     [SerializeField] private float nestMoveDuration = 4f;
 
     [Header("Reward Choices")]
+    // Final nest choice controls whether the player receives the magic mushroom.
     [SerializeField] private string rewardGreeting = "Make a choice:";
     [SerializeField] private string rewardChoiceA = "A: Take the egg";
     [SerializeField] private string rewardChoiceB = "B: Destroy the egg";
     [SerializeField] private string rewardChoiceC = "C: Leave it there";
-    [SerializeField] private string rewardChoiceD = "D: Move it somewhere safer";
     [SerializeField] private string magicMushroomInventoryName = "Magic Mushroom";
 
-    [Header("Side Quest")]
-    [SerializeField] private string sideQuestTitle = "Side Quest: Build a safe shelter";
-    [SerializeField] private string fenceTaskText = "Find 7 fences";
-    [SerializeField] private string saplingTaskText = "Ask the witch for 2 saplings";
-    [SerializeField] private string fenceInventoryName = "Fence";
-    [SerializeField] private string fencePickupPrompt = "Press E to pick up";
-    [SerializeField] private Transform[] fenceCollectibleTargets;
-    [SerializeField] private Transform fenceBuildTarget;
-    [SerializeField] private string fenceBuildPrompt = "Press E to build";
-    [SerializeField] private string sideQuestTreeReminder = "Go finish this task.";
-    [SerializeField] private Transform peasantGirl;
-    [SerializeField] private float peasantInteractDistance = 4f;
-    [SerializeField] private string peasantFirstLine = "Bring me something to trade.";
-    [SerializeField] private string peasantSecondLine = "Here are two saplings. Plant them well.";
-    [SerializeField] private string saplingInventoryName = "Sapling";
-    [SerializeField] private string saplingPlantPrompt = "Press E to plant";
-    [SerializeField] private Transform[] saplingPlantTargetRefs;
-    [SerializeField] private int requiredFenceCount = 7;
-    [SerializeField] private int requiredSaplingCount = 2;
-    [SerializeField] private float fencePickupDistance = 3f;
-    [SerializeField] private float fenceBuildDistance = 5f;
-    [SerializeField] private float saplingPlantDistance = 5f;
-    [SerializeField] private Color fenceHighlightColor = new Color(1f, 0.9f, 0.2f, 1f);
-
     [Header("Angry Attack")]
+    // The rude-answer branch locks the player and plays the falling impact sequence.
     [SerializeField] private Transform[] attackCylinderTargets;
     [SerializeField] private float attackMoveAmount = 1.4f;
     [SerializeField] private float attackMoveSpeed = 3.5f;
@@ -111,6 +92,7 @@ public partial class OldTreeInteraction : MonoBehaviour
     [SerializeField] private string answerC = "Rude words have consequences.";
 
     private Quaternion originalRotation;
+    // Cached transforms let the tree scene return to its starting pose after each branch.
     private Vector3 interactionTargetOriginalPosition;
     private Vector3 nestBranchOriginalPosition;
     private Vector3 cylinderOriginalPosition;
@@ -153,49 +135,22 @@ public partial class OldTreeInteraction : MonoBehaviour
     private bool characterControllerWasEnabled;
     private bool rigidbodyWasKinematic;
     private DialogueState state = DialogueState.Waiting;
+    // Current dialogue line data shared by the UI partial and dialogue partial.
     private string currentAnswer;
     private string[] currentLines;
     private int currentLineIndex;
     private System.Action currentDialogueComplete;
-    private bool autoCompleteOnLastLine;
+    private bool finishAfterLastLine;
     private Coroutine lookCoroutine;
     private Coroutine resetCoroutine;
     private Coroutine nestMoveCoroutine;
     private Coroutine finalInstructionCoroutine;
     private Coroutine cylinderAttackCoroutine;
     private Coroutine playerLaunchCoroutine;
-    private readonly List<Transform> fenceCollectibles = new List<Transform>();
-    private readonly List<Renderer> highlightedFenceRenderers = new List<Renderer>();
-    private readonly List<Color> highlightedFenceOriginalColors = new List<Color>();
-    private readonly List<Color> highlightedFenceOriginalEmissionColors = new List<Color>();
-    private readonly List<bool> highlightedFenceHadEmissionEnabled = new List<bool>();
-    private readonly List<Renderer> fenceBuildRenderers = new List<Renderer>();
-    private readonly List<Color> fenceBuildOriginalColors = new List<Color>();
-    private readonly List<Transform> saplingPlantTargets = new List<Transform>();
-    private readonly List<Renderer> saplingGhostRenderers = new List<Renderer>();
-    private readonly List<Color> saplingGhostOriginalColors = new List<Color>();
-    private readonly Dictionary<Transform, Renderer[]> treeRendererCache = new Dictionary<Transform, Renderer[]>();
-    private Transform nearbyFence;
-    private Transform nearbySaplingPlantTarget;
-    private bool fenceBuildTargetShown;
-    private bool nearbyFenceBuildTarget;
-    private bool fenceBuilt;
-    private bool peasantRewardGiven;
-    private bool saplingPlantTargetsShown;
-    private bool sideQuestActive;
-    private bool sideQuestActivatedOnce;
-    private int collectedFenceCount;
-    private int collectedSaplingCount;
-    private int plantedSaplingCount;
-
     private void Awake()
     {
-        if (fenceBuildTarget != null)
-        {
-            fenceBuildTarget.gameObject.SetActive(false);
-        }
-
-        PrepareSaplingPlantTargets();
+        // Cache all reset points before the player can start a branch.
+        UseTreeAsMissingTargets();
 
         if (lookRoot != null)
         {
@@ -208,6 +163,7 @@ public partial class OldTreeInteraction : MonoBehaviour
 
     private void Update()
     {
+        // Main old tree loop: start talk, read choices, keep branch player nearby, advance dialogue.
         if (!IsTargetScene())
         {
             return;
@@ -220,23 +176,10 @@ public partial class OldTreeInteraction : MonoBehaviour
 
         bool interactPressed = Input.GetKeyDown(interactKey);
 
-        if (state == DialogueState.Waiting && IsSideQuestInProgress() && !peasantRewardGiven && nearbyFence == null && !nearbyFenceBuildTarget && nearbySaplingPlantTarget == null && IsPlayerNearPeasant() && interactPressed)
-        {
-            StartPeasantGirlDialogue();
-        }
-
         if (state == DialogueState.Waiting && IsPlayerNear() && interactPressed)
         {
-            if (IsSideQuestInProgress() && nearbyFence == null && !nearbyFenceBuildTarget && nearbySaplingPlantTarget == null)
-            {
-                StartLookCoroutine(TurnTowardPlayer());
-                StartDialogue(new[] { sideQuestTreeReminder }, CloseSideQuestReminder);
-            }
-            else
-            {
-                StartLookCoroutine(TurnTowardPlayer());
-                state = DialogueState.Choosing;
-            }
+            StartLookCoroutine(TurnTowardPlayer());
+            state = DialogueState.Choosing;
         }
 
         if (state == DialogueState.Choosing)
@@ -259,12 +202,6 @@ public partial class OldTreeInteraction : MonoBehaviour
         {
             ReadRewardChoiceKeys();
         }
-
-        if (sideQuestActive)
-        {
-            UpdateSideQuestCollection();
-            UpdateSaplingPlanting();
-        }
     }
 
     private void StartDialogue(string[] lines, System.Action onComplete)
@@ -274,6 +211,7 @@ public partial class OldTreeInteraction : MonoBehaviour
 
     private IEnumerator CloseAnswerAndReset()
     {
+        // Short answers close automatically and then restore the tree pose.
         yield return new WaitForSeconds(answerDuration);
 
         currentAnswer = null;
@@ -285,6 +223,7 @@ public partial class OldTreeInteraction : MonoBehaviour
 
     private void CollectAttackCylinders()
     {
+        // Attack cylinders are cached once and restored before each angry branch.
         if (attackCylinderBaselineCached)
         {
             RestoreAttackCylinders();
@@ -300,5 +239,77 @@ public partial class OldTreeInteraction : MonoBehaviour
     private void DrawDialogueBox(string text, bool showChoices)
     {
         DrawDialogueBox(text, showChoices, false);
+    }
+
+    private IEnumerator TurnTowardPlayer()
+    {
+        // Smooth tree face turn when the player starts interacting.
+        if (lookRoot == null || player == null)
+        {
+            yield break;
+        }
+
+        Quaternion startRotation = lookRoot.rotation;
+        Quaternion targetRotation = GetLookAtPlayerRotation();
+        float elapsed = 0f;
+
+        while (elapsed < turnDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = turnDuration > 0.01f ? Mathf.Clamp01(elapsed / turnDuration) : 1f;
+            lookRoot.rotation = Quaternion.Slerp(startRotation, targetRotation, t);
+            yield return null;
+        }
+
+        lookRoot.rotation = targetRotation;
+    }
+
+    private IEnumerator ReturnToOriginalRotation()
+    {
+        if (lookRoot == null)
+        {
+            yield break;
+        }
+
+        Quaternion startRotation = lookRoot.rotation;
+        float elapsed = 0f;
+
+        while (elapsed < turnDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = turnDuration > 0.01f ? Mathf.Clamp01(elapsed / turnDuration) : 1f;
+            lookRoot.rotation = Quaternion.Slerp(startRotation, originalRotation, t);
+            yield return null;
+        }
+
+        lookRoot.rotation = originalRotation;
+    }
+
+    private Quaternion GetLookAtPlayerRotation()
+    {
+        if (lookRoot == null || player == null)
+        {
+            return originalRotation;
+        }
+
+        Vector3 target = player.position;
+        if (playerCameraTransform != null)
+        {
+            target = playerCameraTransform.position;
+        }
+        else if (interactionTarget != null)
+        {
+            target = interactionTarget.position;
+        }
+
+        Vector3 direction = target - lookRoot.position;
+        direction.y = 0f;
+        if (direction.sqrMagnitude < 0.001f)
+        {
+            return lookRoot.rotation;
+        }
+
+        Quaternion lookRotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
+        return lookRotation * Quaternion.Euler(lookDownAngle, 0f, 0f);
     }
 }

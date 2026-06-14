@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using AquariusMax.Fae.demo;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 public class OldManCardChallenge : MonoBehaviour
@@ -9,12 +10,14 @@ public class OldManCardChallenge : MonoBehaviour
     public static bool hasGreenKey;
 
     [Header("Scene")]
+    // Player and old man references drive the talk prompt before the card game starts.
     public Transform oldMan;
     public Transform oldManInteractPoint;
     public Transform player;
     public float interactDistance = 4f;
 
     [Header("Cards")]
+    // Four visible card objects are treated as fixed slots for the shuffle challenge.
     public GameObject card_bird;
     public GameObject card_castle;
     public GameObject card_clean;
@@ -24,10 +27,9 @@ public class OldManCardChallenge : MonoBehaviour
     public float stepSeconds = 0.68f;
 
     [Header("Camera And Control")]
-    public Camera playerCamera;
-    public MonoBehaviour[] playerControllers;
-    public Vector3 challengeCameraPosition = new Vector3(446.11f, 36.815f, 652.58f);
-    public Vector3 challengeCameraEuler = new Vector3(46.816f, -1.604f, -4.523f);
+    // This camera is the actual card-table view shown during the challenge.
+    [FormerlySerializedAs("playerCamera")]
+    public Camera challengeViewCamera;
 
     [Header("UI")]
     public Text dialogueText;
@@ -35,6 +37,7 @@ public class OldManCardChallenge : MonoBehaviour
 
     private enum State
     {
+        // Card challenge input is gated by state so dialogue, choice, and card picking do not overlap.
         Exploring,
         Dialogue,
         Choice,
@@ -114,6 +117,7 @@ public class OldManCardChallenge : MonoBehaviour
 
     private static readonly ShuffleStep[][] PresetSequences =
     {
+        // Preset shuffles keep the challenge readable instead of randomizing every card every frame.
         new[]
         {
             ShuffleStep.Swap(0, 1),
@@ -192,7 +196,6 @@ public class OldManCardChallenge : MonoBehaviour
     private readonly List<CardData> cards = new List<CardData>();
     private readonly Vector3[] slotPositions = new Vector3[4];
     private readonly Quaternion[] slotRotations = new Quaternion[4];
-    private readonly List<MonoBehaviour> disabledControllers = new List<MonoBehaviour>();
     private GameObject[] cardObjects;
 
     private State state = State.Exploring;
@@ -203,16 +206,37 @@ public class OldManCardChallenge : MonoBehaviour
     private System.Action declineChoice;
     private bool hasFailedChallenge;
     private bool initializedCards;
-    private bool cameraWasSaved;
     private bool hasSubmittedChoice;
     private CardType targetCardType;
-    private Vector3 savedCameraPosition;
-    private Quaternion savedCameraRotation;
+    private Camera playerCameraDuringChallenge;
+    private AudioListener challengeViewAudioListener;
+    private readonly List<CameraState> disabledCameraStates = new List<CameraState>();
     private Coroutine runningChallenge;
     private string currentDialogueText;
     private string currentHintText;
-    private GUIStyle fallbackDialogueStyle;
-    private GUIStyle fallbackHintStyle;
+    private GUIStyle dialoguePanelStyle;
+    private GUIStyle hintPanelStyle;
+
+    private struct CameraState
+    {
+        public readonly Camera camera;
+        public readonly bool cameraEnabled;
+        public readonly AudioListener listener;
+        public readonly bool listenerEnabled;
+
+        public CameraState(Camera camera, bool cameraEnabled, AudioListener listener, bool listenerEnabled)
+        {
+            this.camera = camera;
+            this.cameraEnabled = cameraEnabled;
+            this.listener = listener;
+            this.listenerEnabled = listenerEnabled;
+        }
+    }
+
+    private void Awake()
+    {
+        SetChallengeViewCameraActive(false);
+    }
 
     private void OnDisable()
     {
@@ -264,7 +288,7 @@ public class OldManCardChallenge : MonoBehaviour
             GameUiStyle.DrawDialoguePanel(rect);
             GUI.Label(new Rect(rect.x + 132f, rect.y + 22f, rect.width - 128f, rect.height - 44f),
                 currentDialogueText,
-                GameUiStyle.LabelStyle(ref fallbackDialogueStyle, 26, TextAnchor.MiddleLeft, FontStyle.Bold));
+                GameUiStyle.LabelStyle(ref dialoguePanelStyle, 26, TextAnchor.MiddleLeft, FontStyle.Bold));
         }
 
         string promptText = promptOnly ? currentDialogueText : currentHintText;
@@ -274,12 +298,13 @@ public class OldManCardChallenge : MonoBehaviour
             GameUiStyle.DrawPanel(rect);
             GUI.Label(rect,
                 promptText,
-                GameUiStyle.LabelStyle(ref fallbackHintStyle, 24, TextAnchor.MiddleCenter, FontStyle.Bold));
+                GameUiStyle.LabelStyle(ref hintPanelStyle, 24, TextAnchor.MiddleCenter, FontStyle.Bold));
         }
     }
 
     private void UpdateExploring()
     {
+        // Free exploration only shows the old man prompt and starts the conversation.
         bool nearOldMan = IsNearOldMan();
         SetUi(nearOldMan ? "Press E to talk" : string.Empty, string.Empty);
 
@@ -357,6 +382,12 @@ public class OldManCardChallenge : MonoBehaviour
             yield break;
         }
 
+        if (challengeViewCamera == null)
+        {
+            StartDialogue(new[] { "Old Man: The card table camera is not ready yet." }, EndConversation);
+            yield break;
+        }
+
         LockPlayerControl();
         SwitchToChallengeCamera();
         ResetCardsToDefault();
@@ -394,6 +425,7 @@ public class OldManCardChallenge : MonoBehaviour
 
     private void UpdateCardChoice()
     {
+        // A/B/C/D map directly to the four card slots from left to right.
         if (hasSubmittedChoice)
         {
             return;
@@ -422,6 +454,7 @@ public class OldManCardChallenge : MonoBehaviour
 
     private IEnumerator RevealAndFinish(CardData chosenCard)
     {
+        // Reveals the chosen card, then awards or retries the green key.
         state = State.Shuffling;
         yield return FlipCards(false);
 
@@ -511,6 +544,7 @@ public class OldManCardChallenge : MonoBehaviour
 
     private IEnumerator FlipCards(bool toBack)
     {
+        // Cards flip in place before and after the shuffle.
         if (cards.Count < 4)
         {
             yield break;
@@ -545,6 +579,7 @@ public class OldManCardChallenge : MonoBehaviour
 
     private IEnumerator RunPresetSequence(ShuffleStep[] sequence)
     {
+        // Plays one whole shuffle script from the preset list.
         for (int i = 0; i < sequence.Length; i++)
         {
             yield return RunShuffleStep(sequence[i]);
@@ -684,6 +719,7 @@ public class OldManCardChallenge : MonoBehaviour
 
     private IEnumerator AnimateCards(CardData[] movingCards, Vector3[] starts, Vector3[] targets, float duration)
     {
+        // Shared movement tween for swaps and rotations.
         float elapsed = 0f;
         while (elapsed < duration)
         {
@@ -786,64 +822,100 @@ public class OldManCardChallenge : MonoBehaviour
 
     private void SwitchToChallengeCamera()
     {
-        if (playerCamera == null)
+        // Turns on the dragged card camera and temporarily disables the player camera.
+        playerCameraDuringChallenge = FindPlayerCamera();
+        if (challengeViewCamera == null)
         {
             return;
         }
 
-        savedCameraPosition = playerCamera.transform.position;
-        savedCameraRotation = playerCamera.transform.rotation;
-        cameraWasSaved = true;
-        playerCamera.transform.SetPositionAndRotation(challengeCameraPosition, Quaternion.Euler(challengeCameraEuler));
+        disabledCameraStates.Clear();
+        if (playerCameraDuringChallenge != null && playerCameraDuringChallenge != challengeViewCamera)
+        {
+            AudioListener listener = playerCameraDuringChallenge.GetComponent<AudioListener>();
+            disabledCameraStates.Add(new CameraState(
+                playerCameraDuringChallenge,
+                playerCameraDuringChallenge.enabled,
+                listener,
+                listener != null && listener.enabled));
+
+            if (playerCameraDuringChallenge.enabled)
+            {
+                playerCameraDuringChallenge.enabled = false;
+            }
+
+            if (listener != null && listener.enabled)
+            {
+                listener.enabled = false;
+            }
+        }
+
+        SetChallengeViewCameraActive(true);
     }
 
     private void RestoreCamera()
     {
-        if (playerCamera != null && cameraWasSaved)
-        {
-            playerCamera.transform.SetPositionAndRotation(savedCameraPosition, savedCameraRotation);
-        }
+        // Restores the camera/listener states captured before the card challenge.
+        SetChallengeViewCameraActive(false);
 
-        cameraWasSaved = false;
-    }
-
-    private void LockPlayerControl()
-    {
-        disabledControllers.Clear();
-        if (playerControllers != null)
+        for (int i = 0; i < disabledCameraStates.Count; i++)
         {
-            for (int i = 0; i < playerControllers.Length; i++)
+            CameraState state = disabledCameraStates[i];
+            if (state.camera != null)
             {
-                DisableController(playerControllers[i]);
+                state.camera.enabled = state.cameraEnabled;
+            }
+
+            if (state.listener != null)
+            {
+                state.listener.enabled = state.listenerEnabled;
             }
         }
 
-        DemoCharacter.LockPlayerInput = true;
-        OnLockPlayerControl();
+        disabledCameraStates.Clear();
+
+        playerCameraDuringChallenge = null;
     }
 
-    private void DisableController(MonoBehaviour behaviour)
+    private Camera FindPlayerCamera()
     {
-        if (behaviour == null || behaviour == this || !behaviour.enabled)
+        if (player != null)
+        {
+            Camera playerChildCamera = player.GetComponentInChildren<Camera>(true);
+            if (playerChildCamera != null && playerChildCamera != challengeViewCamera)
+            {
+                return playerChildCamera;
+            }
+        }
+
+        return null;
+    }
+
+    private void SetChallengeViewCameraActive(bool active)
+    {
+        if (challengeViewCamera == null)
         {
             return;
         }
 
-        behaviour.enabled = false;
-        disabledControllers.Add(behaviour);
+        challengeViewCamera.enabled = active;
+
+        challengeViewAudioListener = challengeViewCamera.GetComponent<AudioListener>();
+        if (challengeViewAudioListener != null)
+        {
+            challengeViewAudioListener.enabled = active;
+        }
+    }
+
+    private void LockPlayerControl()
+    {
+        // Player cannot walk away while the card table camera is active.
+        DemoCharacter.LockPlayerInput = true;
+        OnLockPlayerControl();
     }
 
     private void UnlockPlayerControl()
     {
-        for (int i = 0; i < disabledControllers.Count; i++)
-        {
-            if (disabledControllers[i] != null)
-            {
-                disabledControllers[i].enabled = true;
-            }
-        }
-
-        disabledControllers.Clear();
         DemoCharacter.LockPlayerInput = false;
         OnUnlockPlayerControl();
     }
@@ -858,6 +930,7 @@ public class OldManCardChallenge : MonoBehaviour
 
     private bool InitializeCards()
     {
+        // Caches the original card slots once and reuses them for every retry.
         if (initializedCards)
         {
             return cards.Count == 4;

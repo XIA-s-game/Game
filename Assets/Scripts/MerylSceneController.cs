@@ -1,5 +1,4 @@
 using System.Collections;
-using System.IO;
 using AquariusMax.Fae.demo;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -8,13 +7,17 @@ using UnityEngine.Video;
 
 public class MerylSceneController : MonoBehaviour
 {
+    // Built with AI assistance to keep shared menu layout consistent across scenes.
+    private const string MenuSceneName = "Mainmenu";
+
     [Header("Player Setup")]
-    [SerializeField] private string playerName = "AQM_FPS_Character";
-    [SerializeField] private string visibleHeroName = "Walking";
-    [SerializeField] private Vector3 playerCameraLocalPosition = new Vector3(0f, 2.25f, -1.6f);
+    // Visible hero is attached to the player controller used in the final scene.
+    [SerializeField] private Transform visibleHero;
+    [SerializeField] private Camera playerCamera;
     [SerializeField] private Camera sceneMainCamera;
 
     [Header("Scene Flow")]
+    // Fall recovery and LT trigger settings for the 11 1 scene.
     [SerializeField] private float respawnFallY = -10f;
     [SerializeField] private float spawnLift = 0.02f;
     [SerializeField] private float groundRayStartHeight = 25f;
@@ -23,23 +26,19 @@ public class MerylSceneController : MonoBehaviour
     [SerializeField] private float fallRespawnDelay = 5f;
 
     [Header("Scene References")]
+    // Ending video is dragged here; the overlay UI is built at runtime.
     [SerializeField] private GameObject playerObject;
     [SerializeField] private GameObject endObject;
-    [SerializeField] private Canvas uiCanvas;
-    [SerializeField] private GameObject promptPanelObject;
-    [SerializeField] private Text promptText;
-    [SerializeField] private GameObject videoOverlayObject;
-    [SerializeField] private RawImage videoImage;
-    [SerializeField] private AspectRatioFitter videoAspectFitter;
-    [SerializeField] private VideoPlayer videoPlayer;
-    [SerializeField] private AudioSource videoAudioSource;
+    [SerializeField] private VideoClip endingVideoClip;
 
-    private Scene activeScene;
     private GameObject player;
     private CharacterController playerController;
     private DemoCharacter demoCharacter;
-    private Transform visibleHero;
     private RenderTexture activeVideoTexture;
+    private GameObject videoOverlayObject;
+    private RawImage videoImage;
+    private VideoPlayer videoPlayer;
+    private AudioSource videoAudioSource;
     private bool videoFinished;
     private bool lt1Triggered;
     private bool bootstrapComplete;
@@ -58,152 +57,32 @@ public class MerylSceneController : MonoBehaviour
 
     private void Awake()
     {
-        activeScene = SceneManager.GetActiveScene();
         player = playerObject;
 
-        if (uiCanvas == null)
+        if (playerObject == null)
         {
-            GameObject canvasObject = new GameObject("MerylSceneUI");
-            canvasObject.transform.SetParent(transform, false);
-
-            uiCanvas = canvasObject.AddComponent<Canvas>();
-            uiCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            uiCanvas.sortingOrder = 9999;
-
-            CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-
-            canvasObject.AddComponent<GraphicRaycaster>();
+            Debug.LogError("MerylSceneController is missing Player Object.", this);
+            enabled = false;
+            return;
         }
 
-        if (promptPanelObject == null)
-        {
-            promptPanelObject = new GameObject("PromptPanel");
-            promptPanelObject.transform.SetParent(uiCanvas.transform, false);
-
-            Image promptPanelImage = promptPanelObject.AddComponent<Image>();
-            promptPanelImage.color = new Color(0.04f, 0.06f, 0.06f, 0.78f);
-
-            RectTransform promptPanelRect = promptPanelObject.GetComponent<RectTransform>();
-            promptPanelRect.anchorMin = new Vector2(0.5f, 0f);
-            promptPanelRect.anchorMax = new Vector2(0.5f, 0f);
-            promptPanelRect.pivot = new Vector2(0.5f, 0f);
-            promptPanelRect.sizeDelta = new Vector2(900f, 80f);
-            promptPanelRect.anchoredPosition = new Vector2(0f, 74f);
-        }
-
-        if (promptText == null)
-        {
-            GameObject textObject = new GameObject("PromptText");
-            textObject.transform.SetParent(promptPanelObject.transform, false);
-
-            promptText = textObject.AddComponent<Text>();
-            promptText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            promptText.fontSize = 34;
-            promptText.alignment = TextAnchor.MiddleCenter;
-            promptText.horizontalOverflow = HorizontalWrapMode.Wrap;
-            promptText.verticalOverflow = VerticalWrapMode.Overflow;
-            promptText.color = Color.white;
-
-            RectTransform promptRect = promptText.rectTransform;
-            promptRect.anchorMin = Vector2.zero;
-            promptRect.anchorMax = Vector2.one;
-            promptRect.offsetMin = new Vector2(18f, 8f);
-            promptRect.offsetMax = new Vector2(-18f, -8f);
-        }
-
-        if (videoOverlayObject == null)
-        {
-            videoOverlayObject = new GameObject("VideoOverlay");
-            videoOverlayObject.transform.SetParent(uiCanvas.transform, false);
-
-            Image background = videoOverlayObject.AddComponent<Image>();
-            background.color = Color.black;
-
-            RectTransform overlayRect = videoOverlayObject.GetComponent<RectTransform>();
-            overlayRect.anchorMin = Vector2.zero;
-            overlayRect.anchorMax = Vector2.one;
-            overlayRect.offsetMin = Vector2.zero;
-            overlayRect.offsetMax = Vector2.zero;
-            videoOverlayObject.SetActive(false);
-        }
-
-        if (videoImage == null)
-        {
-            GameObject imageObject = new GameObject("VideoImage");
-            imageObject.transform.SetParent(videoOverlayObject.transform, false);
-
-            videoImage = imageObject.AddComponent<RawImage>();
-            videoImage.color = Color.white;
-
-            RectTransform imageRect = videoImage.rectTransform;
-            imageRect.anchorMin = Vector2.zero;
-            imageRect.anchorMax = Vector2.one;
-            imageRect.offsetMin = Vector2.zero;
-            imageRect.offsetMax = Vector2.zero;
-        }
-
-        if (videoAspectFitter == null)
-        {
-            videoAspectFitter = videoImage.gameObject.AddComponent<AspectRatioFitter>();
-            videoAspectFitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
-            videoAspectFitter.aspectRatio = 16f / 9f;
-        }
-
-        if (videoPlayer == null)
-        {
-            videoPlayer = gameObject.GetComponent<VideoPlayer>();
-        }
-
-        if (videoPlayer == null)
-        {
-            videoPlayer = gameObject.AddComponent<VideoPlayer>();
-        }
-
-        if (videoAudioSource == null)
-        {
-            videoAudioSource = gameObject.GetComponent<AudioSource>();
-        }
-
-        if (videoAudioSource == null)
-        {
-            videoAudioSource = gameObject.AddComponent<AudioSource>();
-        }
-
-        videoAudioSource.playOnAwake = false;
-        videoAudioSource.loop = false;
-        videoAudioSource.spatialBlend = 0f;
-
-        videoPlayer.playOnAwake = false;
-        videoPlayer.waitForFirstFrame = false;
-        videoPlayer.skipOnDrop = true;
-        videoPlayer.loopPointReached -= HandleVideoFinished;
-        videoPlayer.loopPointReached += HandleVideoFinished;
-        videoPlayer.errorReceived -= HandleVideoError;
-        videoPlayer.errorReceived += HandleVideoError;
-
-        SetPromptText(string.Empty);
     }
 
     private IEnumerator Start()
     {
-        yield return null;
-
         SetupPlayerForMeryl();
-        RespawnPlayerToStart();
-
-        flowState = FlowState.FreeRoam;
-        yield return null;
 
         if (player != null)
         {
             playerController = player.GetComponent<CharacterController>();
             ApplyPlayerCamera(player);
-            RespawnPlayerToStart();
         }
 
+        RespawnPlayerToStart();
+        flowState = FlowState.FreeRoam;
         bootstrapComplete = true;
+
+        yield break;
     }
 
     private void Update()
@@ -237,6 +116,7 @@ public class MerylSceneController : MonoBehaviour
 
     private void SetupPlayerForMeryl()
     {
+        // Prepares the shared player controller and visible hero for the final scene.
         if (playerObject == null)
         {
             Debug.LogError("MerylSceneController is missing Player Object.", this);
@@ -244,12 +124,10 @@ public class MerylSceneController : MonoBehaviour
         }
 
         player = playerObject;
-        player.name = playerName;
         player.SetActive(true);
-        Transform hero = FindChildByName(player.transform, visibleHeroName);
+        Transform hero = visibleHero;
         if (hero != null)
         {
-            hero.name = visibleHeroName;
             hero.SetParent(player.transform, false);
             hero.gameObject.SetActive(true);
 
@@ -276,6 +154,11 @@ public class MerylSceneController : MonoBehaviour
             {
                 animator.applyRootMotion = false;
                 animator.enabled = true;
+
+                if (demoCharacter != null)
+                {
+                    demoCharacter.SetAnimator(animator);
+                }
             }
         }
 
@@ -283,8 +166,6 @@ public class MerylSceneController : MonoBehaviour
         SetupDemoCharacter(player);
         playerController = player.GetComponent<CharacterController>();
         ResetDemoCharacterState();
-        visibleHero = FindChildByName(player.transform, visibleHeroName);
-
         if (!hasInitialPlayerPosition)
         {
             initialPlayerPosition = player.transform.position;
@@ -294,22 +175,27 @@ public class MerylSceneController : MonoBehaviour
 
     private void ApplyPlayerCamera(GameObject playerObject)
     {
-        Camera playerCamera = playerObject.GetComponentInChildren<Camera>(true);
-        if (playerCamera == null)
+        Camera activePlayerCamera = playerCamera;
+        if (activePlayerCamera == null)
         {
             return;
         }
 
-        DisableSceneMainCamera(playerCamera);
-        playerCamera.transform.localPosition = playerCameraLocalPosition;
-        playerCamera.transform.localRotation = Quaternion.identity;
-        playerCamera.gameObject.SetActive(true);
-        playerCamera.tag = "MainCamera";
+        playerCamera = activePlayerCamera;
+        DisableSceneMainCamera(activePlayerCamera);
+        activePlayerCamera.gameObject.SetActive(true);
+        activePlayerCamera.enabled = true;
+        activePlayerCamera.tag = "MainCamera";
 
-        AudioListener listener = playerCamera.GetComponent<AudioListener>();
+        AudioListener listener = activePlayerCamera.GetComponent<AudioListener>();
         if (listener != null)
         {
             listener.enabled = true;
+        }
+
+        if (demoCharacter != null)
+        {
+            demoCharacter.SetCamera(activePlayerCamera);
         }
     }
 
@@ -321,29 +207,6 @@ public class MerylSceneController : MonoBehaviour
             return;
         }
 
-        GameObject[] roots = activeScene.GetRootGameObjects();
-        for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
-        {
-            Camera[] sceneCameras = roots[rootIndex].GetComponentsInChildren<Camera>(true);
-            for (int i = 0; i < sceneCameras.Length; i++)
-            {
-                Camera camera = sceneCameras[i];
-                if (camera == null || camera == playerCamera)
-                {
-                    continue;
-                }
-
-                if (camera.transform.IsChildOf(playerCamera.transform) || playerCamera.transform.IsChildOf(camera.transform))
-                {
-                    continue;
-                }
-
-                if (camera.CompareTag("MainCamera") || camera.name == "Main Camera")
-                {
-                    DisableCamera(camera);
-                }
-            }
-        }
     }
 
     private void SetupDemoCharacter(GameObject playerObject)
@@ -356,6 +219,15 @@ public class MerylSceneController : MonoBehaviour
 
         demoCharacter.enabled = true;
         demoCharacter.SetCollisionOptions(false, false);
+
+        if (visibleHero != null)
+        {
+            Animator heroAnimator = visibleHero.GetComponent<Animator>();
+            if (heroAnimator != null)
+            {
+                demoCharacter.SetAnimator(heroAnimator);
+            }
+        }
     }
 
     private void ResetDemoCharacterState()
@@ -386,6 +258,7 @@ public class MerylSceneController : MonoBehaviour
 
     private void RespawnPlayerToStart()
     {
+        // Used when the player falls out of the scene for several seconds.
         if (player == null)
         {
             return;
@@ -394,7 +267,6 @@ public class MerylSceneController : MonoBehaviour
         fallBelowThresholdStartedAt = -1f;
         Vector3 spawnPosition = hasInitialPlayerPosition ? initialPlayerPosition : player.transform.position;
         TeleportPlayer(spawnPosition);
-        SetPromptText(string.Empty);
 
         if (flowState == FlowState.Lt1Sequence)
         {
@@ -473,9 +345,9 @@ public class MerylSceneController : MonoBehaviour
 
     private IEnumerator HandleLt1Sequence()
     {
+        // End trigger locks the player, snaps to the ending position, plays video, then returns to menu.
         lt1Triggered = true;
         flowState = FlowState.Lt1Sequence;
-        SetPromptText(string.Empty);
 
         SetPlayerLocked(true);
         GameObject lt1Target = endObject;
@@ -490,23 +362,25 @@ public class MerylSceneController : MonoBehaviour
         }
 
         yield return StartCoroutine(PlayVideoCutscene());
-        SceneManager.LoadScene("MainMenu");
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
+        SceneManager.LoadScene(MenuSceneName);
     }
 
     private IEnumerator PlayVideoCutscene()
     {
-        string videoPath = Path.Combine(Application.dataPath, "new/final/video.mp4");
-        if (!File.Exists(videoPath) || videoPlayer == null)
-        {
-            yield break;
-        }
-
-        if (videoImage == null)
+        // Creates a black fullscreen video overlay and plays the dragged ending clip.
+        if (!CanPlayEndingVideo())
         {
             yield break;
         }
 
         videoFinished = false;
+        MainMenuController.PauseBackgroundMusicForSceneAudio();
+        AudioListener.pause = false;
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
+        CreateVideoOverlay();
         ReleaseActiveVideoTexture();
         activeVideoTexture = new RenderTexture(1920, 1080, 0, RenderTextureFormat.ARGB32);
         activeVideoTexture.Create();
@@ -514,8 +388,8 @@ public class MerylSceneController : MonoBehaviour
         videoOverlayObject.SetActive(true);
 
         videoPlayer.Stop();
-        videoPlayer.source = VideoSource.Url;
-        videoPlayer.url = videoPath;
+        videoPlayer.source = VideoSource.VideoClip;
+        videoPlayer.clip = endingVideoClip;
         videoPlayer.renderMode = VideoRenderMode.RenderTexture;
         videoPlayer.targetTexture = activeVideoTexture;
         videoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
@@ -535,20 +409,17 @@ public class MerylSceneController : MonoBehaviour
             yield break;
         }
 
-        if (videoPlayer.width > 0 && videoPlayer.height > 0 && videoAspectFitter != null)
-        {
-            videoAspectFitter.aspectRatio = (float)videoPlayer.width / videoPlayer.height;
-        }
+        UpdateVideoLayout();
 
         videoPlayer.Play();
 
-        float fallbackDuration = (float)videoPlayer.length;
-        if (fallbackDuration <= 0f || fallbackDuration > 600f)
+        float videoDuration = (float)videoPlayer.length;
+        if (videoDuration <= 0f || videoDuration > 600f)
         {
-            fallbackDuration = 10f;
+            videoDuration = 10f;
         }
 
-        float playDeadline = Time.unscaledTime + fallbackDuration + 1f;
+        float playDeadline = Time.unscaledTime + videoDuration + 1f;
         while (!videoFinished && Time.unscaledTime < playDeadline)
         {
             if (!videoPlayer.isPlaying && videoPlayer.frame > 0)
@@ -565,19 +436,23 @@ public class MerylSceneController : MonoBehaviour
 
     private void CleanupVideoPlayback()
     {
+        // Destroys runtime video UI and releases the render texture after playback.
+        MainMenuController.ResumeBackgroundMusicAfterSceneAudio();
+
         if (videoOverlayObject != null)
         {
-            videoOverlayObject.SetActive(false);
+            Destroy(videoOverlayObject);
+            videoOverlayObject = null;
         }
 
-        if (videoImage != null)
-        {
-            videoImage.texture = null;
-        }
+        videoImage = null;
+        videoAudioSource = null;
 
         if (videoPlayer != null)
         {
             videoPlayer.targetTexture = null;
+            Destroy(videoPlayer);
+            videoPlayer = null;
         }
 
         ReleaseActiveVideoTexture();
@@ -605,36 +480,83 @@ public class MerylSceneController : MonoBehaviour
         videoFinished = true;
     }
 
-    private void SetPromptText(string value)
+    private void UpdateVideoLayout()
     {
-        if (promptText != null)
+        if (videoImage == null)
         {
-            promptText.text = value;
+            return;
         }
 
-        if (promptPanelObject != null)
+        Canvas.ForceUpdateCanvases();
+
+        RectTransform imageRect = videoImage.rectTransform;
+        RectTransform canvasRect = videoOverlayObject != null ? videoOverlayObject.GetComponent<RectTransform>() : null;
+        float aspect = 16f / 9f;
+        if (videoPlayer != null && videoPlayer.width > 0 && videoPlayer.height > 0)
         {
-            promptPanelObject.SetActive(!string.IsNullOrEmpty(value));
+            aspect = (float)videoPlayer.width / videoPlayer.height;
         }
+
+        float targetHeight = canvasRect != null ? canvasRect.rect.height : Screen.height;
+        targetHeight *= 0.82f;
+        float targetWidth = targetHeight * aspect;
+
+        imageRect.anchorMin = new Vector2(0.5f, 0.5f);
+        imageRect.anchorMax = new Vector2(0.5f, 0.5f);
+        imageRect.pivot = new Vector2(0.5f, 0.5f);
+        imageRect.anchoredPosition = Vector2.zero;
+        imageRect.sizeDelta = new Vector2(targetWidth, targetHeight);
     }
 
-    private Transform FindChildByName(Transform root, string childName)
+    private void CreateVideoOverlay()
     {
-        if (root == null)
+        // Runtime overlay avoids needing extra empty UI objects in the scene hierarchy.
+        if (videoOverlayObject != null)
         {
-            return null;
+            return;
         }
 
-        Transform[] children = root.GetComponentsInChildren<Transform>(true);
-        for (int i = 0; i < children.Length; i++)
-        {
-            if (children[i] != null && children[i].name == childName)
-            {
-                return children[i];
-            }
-        }
+        videoOverlayObject = new GameObject("Ending Video Overlay", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        Canvas canvas = videoOverlayObject.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 5000;
 
-        return null;
+        CanvasScaler scaler = videoOverlayObject.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        scaler.matchWidthOrHeight = 0.5f;
+
+        GameObject blackBackground = new GameObject("Black Background", typeof(Image));
+        blackBackground.transform.SetParent(videoOverlayObject.transform, false);
+        RectTransform backgroundRect = blackBackground.GetComponent<RectTransform>();
+        backgroundRect.anchorMin = Vector2.zero;
+        backgroundRect.anchorMax = Vector2.one;
+        backgroundRect.offsetMin = Vector2.zero;
+        backgroundRect.offsetMax = Vector2.zero;
+        blackBackground.GetComponent<Image>().color = Color.black;
+
+        GameObject videoObject = new GameObject("Ending Video Image", typeof(RawImage));
+        videoObject.transform.SetParent(videoOverlayObject.transform, false);
+        videoImage = videoObject.GetComponent<RawImage>();
+
+        videoPlayer = videoOverlayObject.AddComponent<VideoPlayer>();
+        videoAudioSource = videoOverlayObject.AddComponent<AudioSource>();
+        videoAudioSource.playOnAwake = false;
+        videoAudioSource.loop = false;
+        videoAudioSource.spatialBlend = 0f;
+
+        videoPlayer.playOnAwake = false;
+        videoPlayer.waitForFirstFrame = false;
+        videoPlayer.skipOnDrop = true;
+        videoPlayer.loopPointReached -= HandleVideoFinished;
+        videoPlayer.loopPointReached += HandleVideoFinished;
+        videoPlayer.errorReceived -= HandleVideoError;
+        videoPlayer.errorReceived += HandleVideoError;
+    }
+
+    private bool CanPlayEndingVideo()
+    {
+        return endingVideoClip != null;
     }
 
     private void DisableCamera(Camera camera)

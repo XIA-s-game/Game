@@ -45,6 +45,14 @@ public class RouteWaypointWalker : MonoBehaviour
         PlayWalkingAnimation();
     }
 
+    private void OnEnable()
+    {
+        if (hasRoute)
+        {
+            PlayWalkingAnimation();
+        }
+    }
+
     private void Update()
     {
         if (!hasRoute || targetIndex >= routePoints.Length)
@@ -125,9 +133,19 @@ public class RouteWaypointWalker : MonoBehaviour
             return;
         }
 
+        animator.enabled = true;
+        animator.speed = 1f;
+        animator.applyRootMotion = false;
+        animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+
         if (walkingController != null)
         {
             animator.runtimeAnimatorController = walkingController;
+        }
+
+        if (animator.layerCount > 0)
+        {
+            animator.SetLayerWeight(0, 1f);
         }
 
         if (!string.IsNullOrWhiteSpace(walkingStateName))

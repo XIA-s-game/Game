@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[RequireComponent(typeof(AudioSource))]
 public class PianoMemoryChallenge : MonoBehaviour
 {
     [Header("Scene References")]
@@ -58,21 +57,27 @@ public class PianoMemoryChallenge : MonoBehaviour
     private bool rewardGiven;
     private int roundIndex;
     private int inputIndex;
+    private bool interactReleasedSinceEnable;
     private GUIStyle promptStyle;
     private GUIStyle titleStyle;
     private GUIStyle keyButtonStyle;
-    private bool loggedFirstNote;
 
     private void Awake()
     {
-        EnsureAudioSource();
+        ConfigureAudioSource();
+        interactReleasedSinceEnable = false;
     }
 
     private void Update()
     {
         if (!active)
         {
-            if (IsNearPiano() && Input.GetKeyDown(interactKey))
+            if (!Input.GetKey(interactKey))
+            {
+                interactReleasedSinceEnable = true;
+            }
+
+            if (interactReleasedSinceEnable && IsNearPiano() && Input.GetKeyDown(interactKey))
             {
                 StartChallenge();
             }
@@ -162,6 +167,7 @@ public class PianoMemoryChallenge : MonoBehaviour
         failed = false;
         won = false;
         playingSequence = false;
+        interactReleasedSinceEnable = false;
     }
 
     private IEnumerator PlayCurrentRound()
@@ -268,21 +274,14 @@ public class PianoMemoryChallenge : MonoBehaviour
 
     private void PlayNote(int noteIndex)
     {
-        EnsureAudioSource();
         AudioClip clip = GetOrCreateNoteClip(noteIndex);
         if (clip != null && audioSource != null)
         {
-            if (!loggedFirstNote)
-            {
-                Debug.Log("[PianoMemoryChallenge] Playing piano note audio.");
-                loggedFirstNote = true;
-            }
-
             audioSource.PlayOneShot(clip, Mathf.Max(1f, noteVolume));
         }
     }
 
-    private void EnsureAudioSource()
+    private void ConfigureAudioSource()
     {
         if (audioSource == null)
         {
@@ -330,37 +329,15 @@ public class PianoMemoryChallenge : MonoBehaviour
 
     private bool IsNearPiano()
     {
-        return player != null && piano != null && GetClosestDistance(player.position, piano) <= interactDistance;
-    }
-
-    private float GetClosestDistance(Vector3 point, Transform target)
-    {
-        Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
-        float closestSqrDistance = float.PositiveInfinity;
-        bool found = false;
-
-        for (int i = 0; i < colliders.Length; i++)
+        if (player == null || piano == null)
         {
-            Collider collider = colliders[i];
-            if (collider == null)
-            {
-                continue;
-            }
-
-            Vector3 closest = collider.ClosestPoint(point);
-            float sqrDistance = (point - closest).sqrMagnitude;
-            if (sqrDistance < closestSqrDistance)
-            {
-                closestSqrDistance = sqrDistance;
-                found = true;
-            }
+            return false;
         }
 
-        if (found)
-        {
-            return Mathf.Sqrt(closestSqrDistance);
-        }
-
-        return Vector3.Distance(point, target.position);
+        Vector3 playerPosition = player.position;
+        Vector3 pianoPosition = piano.position;
+        playerPosition.y = 0f;
+        pianoPosition.y = 0f;
+        return Vector3.Distance(playerPosition, pianoPosition) <= interactDistance;
     }
 }

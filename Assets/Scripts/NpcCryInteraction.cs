@@ -6,6 +6,7 @@ using UnityEngine.SceneManagement;
 
 public class NpcCryInteraction : MonoBehaviour
 {
+    // Tracks Luna's side quest from the first cry interaction through the portal reward.
     private enum QuestState
     {
         NotStarted,
@@ -21,31 +22,38 @@ public class NpcCryInteraction : MonoBehaviour
     }
 
     [Header("Player")]
+    // Player reference used for all distance checks and ladder movement.
     [SerializeField] private Transform player;
     [SerializeField] private float interactDistance = 3f;
     [SerializeField] private KeyCode interactKey = KeyCode.E;
     [SerializeField] private KeyCode continueKey = KeyCode.C;
 
     [Header("Luna")]
+    // Luna returns to this point after the first conversation.
     [SerializeField] private Transform lunaHome;
+    [SerializeField] private Animator lunaAnimator;
     [SerializeField] private string prompt = "Press E to talk";
     [SerializeField] private string standParameter = "Stand";
     [SerializeField] private string standStateName = "Stand";
     [SerializeField] private float lunaFlyHeight = 1.2f;
 
     [Header("Witch")]
+    // The witch gives the feather task and unlocks the ladder step.
     [SerializeField] private Transform witch;
+    [SerializeField] private Animator witchAnimator;
     [SerializeField] private float witchInteractDistance = 6f;
     [SerializeField] private RuntimeAnimatorController witchStandController;
     [SerializeField] private string witchStandStateName = "mixamo_com";
 
     [Header("Feathers")]
+    // Feathers are collected only for the active side quest and are removed after the witch accepts them.
     [SerializeField] private Transform[] feathers;
     [SerializeField] private string featherItemName = "Feather";
     [SerializeField] private float featherPickupDistance = 6f;
     [SerializeField] private Color featherHighlightColor = new Color(1f, 0.92f, 0.2f, 1f);
 
     [Header("Ladder And Key")]
+    // Ladder and key are hidden until the feather step is complete.
     [SerializeField] private Transform ladder;
     [SerializeField] private Transform climbTarget;
     [SerializeField] private Transform keyObject;
@@ -55,6 +63,7 @@ public class NpcCryInteraction : MonoBehaviour
     [SerializeField] private float climbDuration = 2.2f;
 
     [Header("Reward And Portal")]
+    // The fourth page reward opens the scene transition portal.
     [SerializeField] private string fourthPageItemName = "Fourth Page";
     [SerializeField] private Transform portal;
     [SerializeField] private string nextSceneName = "11 1";
@@ -100,8 +109,6 @@ public class NpcCryInteraction : MonoBehaviour
         "Player: The key really was in the nest."
     };
 
-    private Animator animator;
-    private Animator witchAnimator;
     private Material highlightMaterial;
     private readonly Dictionary<Renderer, Material[]> originalFeatherMaterials = new Dictionary<Renderer, Material[]>();
     private string[] dialogueLines;
@@ -115,10 +122,14 @@ public class NpcCryInteraction : MonoBehaviour
     private GUIStyle dialogueStyle;
     private GUIStyle hintStyle;
     private GUIStyle promptStyle;
+    private GUIStyle titleStyle;
 
     private void Awake()
     {
-        animator = GetComponent<Animator>();
+        if (player == null)
+        {
+            Debug.LogWarning("NpcCryInteraction is missing Player reference.", this);
+        }
     }
 
     private void Start()
@@ -152,6 +163,7 @@ public class NpcCryInteraction : MonoBehaviour
 
     private void UpdateInteractions()
     {
+        // Handles the current quest step in one place so the side quest has a clear order.
         if (state == QuestState.NotStarted && IsNear(transform, interactDistance) && Input.GetKeyDown(interactKey))
         {
             StartLunaIntro();
@@ -207,6 +219,7 @@ public class NpcCryInteraction : MonoBehaviour
 
     private void StartLunaIntro()
     {
+        // First Luna conversation sends the player to the witch.
         SetLunaStand();
         state = QuestState.LunaIntro;
         StartDialogue(lunaIntroLines, () =>
@@ -218,6 +231,7 @@ public class NpcCryInteraction : MonoBehaviour
 
     private void TalkToWitch()
     {
+        // Witch dialogue changes depending on feather progress.
         if (state == QuestState.GoAskWitch)
         {
             PlayWitchStand();
@@ -250,15 +264,15 @@ public class NpcCryInteraction : MonoBehaviour
 
     private void SetLunaStand()
     {
-        if (animator == null)
+        if (lunaAnimator == null || !lunaAnimator.gameObject.activeInHierarchy || lunaAnimator.runtimeAnimatorController == null)
         {
             return;
         }
 
-        animator.SetBool(standParameter, true);
+        lunaAnimator.SetBool(standParameter, true);
         if (!string.IsNullOrEmpty(standStateName))
         {
-            animator.CrossFade(standStateName, 0.15f);
+            lunaAnimator.CrossFade(standStateName, 0.15f);
         }
     }
 
@@ -281,11 +295,6 @@ public class NpcCryInteraction : MonoBehaviour
 
         if (witchAnimator == null)
         {
-            witchAnimator = witch.GetComponentInChildren<Animator>(true);
-        }
-
-        if (witchAnimator == null)
-        {
             return;
         }
 
@@ -304,6 +313,7 @@ public class NpcCryInteraction : MonoBehaviour
 
     private bool TryGetNearbyFeather(out int featherIndex)
     {
+        // Checks object bounds as well as transform distance so larger feather models are easier to pick up.
         featherIndex = -1;
         if (feathers == null || featherCollected == null)
         {
@@ -369,6 +379,7 @@ public class NpcCryInteraction : MonoBehaviour
 
     private IEnumerator ClimbLadder()
     {
+        // Moves the player to the nest target before enabling the key pickup step.
         isClimbing = true;
 
         Vector3 start = player.position;
@@ -408,6 +419,7 @@ public class NpcCryInteraction : MonoBehaviour
 
     private void CompleteQuest()
     {
+        // Consumes the temporary key and gives the final page for this side quest.
         GlobalBackpackUI.RemoveAll(keyItemName);
         GlobalBackpackUI.AddItem(fourthPageItemName);
         SetPortalVisible(true);
@@ -432,6 +444,7 @@ public class NpcCryInteraction : MonoBehaviour
 
     private void SetFeatherHighlights(bool highlighted)
     {
+        // Swaps feather materials during the search step, then restores their original materials.
         if (feathers == null)
         {
             return;
@@ -484,6 +497,7 @@ public class NpcCryInteraction : MonoBehaviour
 
     private void StartDialogue(string[] lines, Action onComplete)
     {
+        // Opens a blocking dialogue sequence and stores the action that should run after the last line.
         dialogueLines = lines;
         dialogueIndex = 0;
         dialogueComplete = onComplete;
@@ -580,11 +594,18 @@ public class NpcCryInteraction : MonoBehaviour
     private void DrawDialogue()
     {
         string text = dialogueLines != null && dialogueIndex < dialogueLines.Length ? dialogueLines[dialogueIndex] : string.Empty;
-        Rect rect = GameUiStyle.DialogueRect(260f);
+        Rect rect = GameUiStyle.DialogueRect(220f);
         GameUiStyle.DrawDialoguePanel(rect);
 
-        GUI.Label(new Rect(rect.x + 36f, rect.y + 30f, rect.width - 72f, rect.height - 126f), text, GameUiStyle.LabelStyle(ref dialogueStyle, 30, TextAnchor.UpperLeft, FontStyle.Normal, true));
-        GUI.Label(new Rect(rect.x + 36f, rect.yMax - 72f, rect.width - 72f, 48f), "Press C to continue", GameUiStyle.LabelStyle(ref hintStyle, 22, TextAnchor.MiddleRight));
+        GUI.Label(
+            new Rect(rect.x + 180f, rect.y + 118f, rect.width - 252f, rect.height - 190f),
+            text,
+            GameUiStyle.LabelStyle(ref dialogueStyle, 30, TextAnchor.UpperLeft, FontStyle.Normal, true));
+
+        GUI.Label(
+            new Rect(rect.x + 180f, rect.yMax - 86f, rect.width - 252f, 48f),
+            "Press C to continue",
+            GameUiStyle.LabelStyle(ref hintStyle, 22, TextAnchor.MiddleRight));
     }
 
     private void DrawPrompt(string text)
@@ -596,11 +617,29 @@ public class NpcCryInteraction : MonoBehaviour
 
     private void DrawFeatherProgress()
     {
-        Rect rect = GameUiStyle.SideQuestRect(420f, 156f);
+        // Right-side quest tracker for the feather collection step.
+        const float panelWidth = 640f;
+        Rect rect = GameUiStyle.SideQuestRect(panelWidth, 230f);
         GameUiStyle.DrawDialoguePanel(rect);
         int collectedCount = CollectedFeatherCount();
-        GUI.Label(new Rect(rect.x + 22f, rect.y + 18f, rect.width - 44f, 58f), "Find feathers", GameUiStyle.LabelStyle(ref hintStyle, 22, TextAnchor.MiddleLeft, FontStyle.Bold));
-        GUI.Label(new Rect(rect.x + 22f, rect.y + 88f, rect.width - 44f, 48f), collectedCount + "/" + FeatherCount, GameUiStyle.LabelStyle(ref promptStyle, 20, TextAnchor.MiddleLeft));
+        float textX = rect.x + 156f;
+        float textWidth = 448f;
+        float textY = rect.y + 8f;
+
+        GUI.Label(
+            new Rect(textX, textY + 58f, textWidth, 48f),
+            "Side Quest",
+            GameUiStyle.LabelStyle(ref titleStyle, 26, TextAnchor.MiddleLeft, FontStyle.Bold));
+
+        GUI.Label(
+            new Rect(textX, textY + 112f, textWidth, 48f),
+            "Find feathers",
+            GameUiStyle.LabelStyle(ref hintStyle, 24, TextAnchor.MiddleLeft, FontStyle.Bold));
+
+        GUI.Label(
+            new Rect(textX + 38f, textY + 146f, 300f, 54f),
+            collectedCount + "/" + FeatherCount,
+            GameUiStyle.LabelStyle(ref promptStyle, 32, TextAnchor.MiddleRight, FontStyle.Bold));
     }
 
     private bool IsNear(Transform target, float distance)

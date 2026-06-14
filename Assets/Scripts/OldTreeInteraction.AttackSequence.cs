@@ -5,11 +5,12 @@ public partial class OldTreeInteraction
 {
     private void StartAngryAttack()
     {
+        // Angry branch takes over control, animates the tree pieces, and launches the player.
         branchFlowActive = false;
         currentAnswer = answerC;
         currentLines = null;
         currentDialogueComplete = null;
-        autoCompleteOnLastLine = false;
+        finishAfterLastLine = false;
         state = DialogueState.Attacking;
 
         StopCoroutineIfRunning(ref resetCoroutine);
@@ -27,6 +28,7 @@ public partial class OldTreeInteraction
 
     private void CacheAttackSceneState()
     {
+        // Stores player, camera, and animator state so the scene can be restored after impact.
         if (player != null)
         {
             originalPlayerPosition = player.position;
@@ -40,14 +42,12 @@ public partial class OldTreeInteraction
             rigidbodyWasKinematic = playerRigidbody == null || playerRigidbody.isKinematic;
         }
 
-        FindPlayerAnimator();
         if (playerAnimator != null)
         {
             originalAnimatorController = playerAnimator.runtimeAnimatorController;
             hasAnimatorOriginal = true;
         }
 
-        FindPlayerCamera();
         if (playerCameraTransform != null)
         {
             originalCameraLocalPosition = playerCameraTransform.localPosition;
@@ -69,6 +69,7 @@ public partial class OldTreeInteraction
 
     private void LockPlayerControl()
     {
+        // Disables player behaviours during the scripted fall sequence.
         disabledPlayerBehaviours.Clear();
 
         MonoBehaviour[] playerBehaviours = player.GetComponents<MonoBehaviour>();
@@ -85,6 +86,7 @@ public partial class OldTreeInteraction
 
     private void CollectAttackCylinders(Transform root)
     {
+        // Recursively gathers loose tree cylinders used by the angry animation.
         if (root == null)
         {
             return;
@@ -140,6 +142,7 @@ public partial class OldTreeInteraction
 
     private IEnumerator AnimateAttackCylinders()
     {
+        // Keeps attack cylinders moving until the angry sequence ends.
         while (state == DialogueState.Attacking)
         {
             float time = Time.time * attackMoveSpeed;
@@ -173,6 +176,7 @@ public partial class OldTreeInteraction
 
     private IEnumerator SweepAndLaunchPlayer()
     {
+        // A nearby cylinder sweeps past the player before the launch animation begins.
         yield return new WaitForSeconds(0.28f);
 
         Transform sweeper = GetSweepCylinder();
@@ -242,6 +246,7 @@ public partial class OldTreeInteraction
 
     private IEnumerator LaunchPlayerHigh()
     {
+        // Plays falling, impact, and stand-up controllers while player movement is locked.
         CharacterController controller = player.GetComponent<CharacterController>();
         if (controller != null)
         {
@@ -321,8 +326,6 @@ public partial class OldTreeInteraction
             return;
         }
 
-        FindPlayerAnimator();
-
         if (playerAnimator == null)
         {
             return;
@@ -337,22 +340,22 @@ public partial class OldTreeInteraction
         }
     }
 
-    private IEnumerator WaitForCurrentPlayerAnimation(float fallbackDuration)
+    private IEnumerator WaitForCurrentPlayerAnimation(float defaultDuration)
     {
         yield return null;
 
         if (playerAnimator == null)
         {
-            yield return new WaitForSeconds(fallbackDuration);
+            yield return new WaitForSeconds(defaultDuration);
             yield break;
         }
 
         AnimatorStateInfo stateInfo = playerAnimator.GetCurrentAnimatorStateInfo(0);
         float speed = Mathf.Abs(stateInfo.speed);
-        float duration = speed > 0.01f ? stateInfo.length / speed : fallbackDuration;
+        float duration = speed > 0.01f ? stateInfo.length / speed : defaultDuration;
         if (duration <= 0.01f)
         {
-            duration = fallbackDuration;
+            duration = defaultDuration;
         }
 
         yield return new WaitForSeconds(duration);
@@ -365,7 +368,6 @@ public partial class OldTreeInteraction
 
     private void SetCameraLocalView(Vector3 localPosition, Quaternion localRotation)
     {
-        FindPlayerCamera();
         if (playerCameraTransform == null)
         {
             return;
@@ -377,7 +379,6 @@ public partial class OldTreeInteraction
 
     private void SetLaunchCameraView(Vector3 launchDirection)
     {
-        FindPlayerCamera();
         if (playerCameraTransform == null || player == null)
         {
             return;
@@ -416,7 +417,6 @@ public partial class OldTreeInteraction
 
     private void SetImpactCameraView()
     {
-        FindPlayerCamera();
         if (playerCameraTransform == null || player == null)
         {
             return;
@@ -498,7 +498,6 @@ public partial class OldTreeInteraction
             SetCameraLocalView(originalCameraLocalPosition, originalCameraLocalRotation);
         }
 
-        FindPlayerAnimator();
         if (playerAnimator != null && hasAnimatorOriginal)
         {
             playerAnimator.runtimeAnimatorController = originalAnimatorController;
@@ -514,66 +513,6 @@ public partial class OldTreeInteraction
         }
 
         disabledPlayerBehaviours.Clear();
-    }
-
-    private void FindPlayerAnimator()
-    {
-        if (playerAnimator != null)
-        {
-            return;
-        }
-
-        if (player != null)
-        {
-            playerAnimator = player.GetComponentInChildren<Animator>(true);
-        }
-
-        if (playerAnimator != null || player == null)
-        {
-            return;
-        }
-
-        Animator[] animators = FindObjectsOfType<Animator>();
-        float bestDistance = float.MaxValue;
-        for (int i = 0; i < animators.Length; i++)
-        {
-            Animator candidate = animators[i];
-            if (candidate == null)
-            {
-                continue;
-            }
-
-            float distance = Vector3.SqrMagnitude(candidate.transform.position - player.position);
-            if (distance < bestDistance)
-            {
-                bestDistance = distance;
-                playerAnimator = candidate;
-            }
-        }
-    }
-
-    private void FindPlayerCamera()
-    {
-        if (playerCameraTransform != null)
-        {
-            return;
-        }
-
-        Camera playerCamera = null;
-        if (player != null)
-        {
-            playerCamera = player.GetComponentInChildren<Camera>(true);
-        }
-
-        if (playerCamera == null)
-        {
-            playerCamera = Camera.main;
-        }
-
-        if (playerCamera != null)
-        {
-            playerCameraTransform = playerCamera.transform;
-        }
     }
 
     private void CacheManualAttackCylinders()
