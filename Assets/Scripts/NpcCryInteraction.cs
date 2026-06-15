@@ -69,20 +69,40 @@ public class NpcCryInteraction : MonoBehaviour
     [SerializeField] private string nextSceneName = "11 1";
     [SerializeField] private float portalInteractDistance = 4f;
 
+    [Header("Side Quest UI")]
+    [SerializeField] private Vector2 sideQuestPanelSize = new Vector2(640f, 230f);
+    [SerializeField] private Vector2 sideQuestTextOrigin = new Vector2(156f, 8f);
+    [SerializeField] private float sideQuestTextWidth = 448f;
+    [SerializeField] private Rect sideQuestTitleRect = new Rect(0f, 58f, 448f, 48f);
+    [SerializeField] private Rect sideQuestTaskRect = new Rect(0f, 112f, 448f, 48f);
+    [SerializeField] private Rect sideQuestCountRect = new Rect(38f, 146f, 300f, 54f);
+    [SerializeField] private int sideQuestTitleFontSize = 26;
+    [SerializeField] private int sideQuestTaskFontSize = 24;
+    [SerializeField] private int sideQuestCountFontSize = 32;
+
+    [Header("Dialogue UI")]
+    [SerializeField] private float dialoguePanelHeight = 220f;
+    [SerializeField] private Rect dialogueTextRect = new Rect(180f, 118f, -252f, -190f);
+    [SerializeField] private Rect dialogueContinueRect = new Rect(180f, -86f, -252f, 48f);
+    [SerializeField] private int dialogueFontSize = 30;
+    [SerializeField] private int dialogueContinueFontSize = 22;
+    [SerializeField] private Vector2 promptSize = new Vector2(440f, 60f);
+    [SerializeField] private int promptFontSize = 28;
+
 
     private readonly string[] lunaIntroLines =
     {
         "Luna: I lost my house key.",
-        "Player: How can I help?",
+        "Casper: How can I help?",
         "Luna: Please ask the forest witch.",
-        "Player: I will help.",
+        "Casper: I will help.",
         "Luna: Thank you."
     };
 
     private readonly string[] witchFirstLines =
     {
         "Witch: I can help, but bring me four feathers first.",
-        "Player: I will find them."
+        "Casper: I will find them."
     };
 
     private readonly string[] witchNeedFeathersLines =
@@ -93,20 +113,20 @@ public class NpcCryInteraction : MonoBehaviour
     private readonly string[] witchCompleteLines =
     {
         "Witch: These feathers look familiar.",
-        "Player: Maybe the key was taken by a bird.",
+        "Casper: Maybe the key was taken by a bird.",
         "Witch: The ladder is ready. Check the nest.",
-        "Player: Thank you."
+        "Casper: Thank you."
     };
 
     private readonly string[] lunaCompleteLines =
     {
-        "Player: I found your key in the nest.",
+        "Casper: I found your key in the nest.",
         "Luna: Thank you. Please take this fourth magic page."
     };
 
     private readonly string[] keyDiscoveryLines =
     {
-        "Player: The key really was in the nest."
+        "Casper: The key really was in the nest."
     };
 
     private Material highlightMaterial;
@@ -594,52 +614,64 @@ public class NpcCryInteraction : MonoBehaviour
     private void DrawDialogue()
     {
         string text = dialogueLines != null && dialogueIndex < dialogueLines.Length ? dialogueLines[dialogueIndex] : string.Empty;
-        Rect rect = GameUiStyle.DialogueRect(220f);
+        Rect rect = GameUiStyle.DialogueRect(dialoguePanelHeight);
         GameUiStyle.DrawDialoguePanel(rect);
 
         GUI.Label(
-            new Rect(rect.x + 180f, rect.y + 118f, rect.width - 252f, rect.height - 190f),
+            InnerRect(rect, dialogueTextRect),
             text,
-            GameUiStyle.LabelStyle(ref dialogueStyle, 30, TextAnchor.UpperLeft, FontStyle.Normal, true));
+            GameUiStyle.LabelStyle(ref dialogueStyle, dialogueFontSize, TextAnchor.UpperLeft, FontStyle.Normal, true));
 
         GUI.Label(
-            new Rect(rect.x + 180f, rect.yMax - 86f, rect.width - 252f, 48f),
+            InnerRect(rect, dialogueContinueRect),
             "Press C to continue",
-            GameUiStyle.LabelStyle(ref hintStyle, 22, TextAnchor.MiddleRight));
+            GameUiStyle.LabelStyle(ref hintStyle, dialogueContinueFontSize, TextAnchor.MiddleRight));
     }
 
     private void DrawPrompt(string text)
     {
-        Rect rect = GameUiStyle.InteractionPromptRect();
+        Rect rect = GameUiStyle.InteractionPromptRect(promptSize.x, promptSize.y);
         GameUiStyle.DrawDialoguePanel(rect);
-        GUI.Label(rect, text, GameUiStyle.LabelStyle(ref promptStyle, 28, TextAnchor.MiddleCenter));
+        GUI.Label(rect, text, GameUiStyle.LabelStyle(ref promptStyle, promptFontSize, TextAnchor.MiddleCenter));
     }
 
     private void DrawFeatherProgress()
     {
         // Right-side quest tracker for the feather collection step.
-        const float panelWidth = 640f;
-        Rect rect = GameUiStyle.SideQuestRect(panelWidth, 230f);
+        Rect rect = GameUiStyle.SideQuestRect(sideQuestPanelSize.x, sideQuestPanelSize.y);
         GameUiStyle.DrawDialoguePanel(rect);
         int collectedCount = CollectedFeatherCount();
-        float textX = rect.x + 156f;
-        float textWidth = 448f;
-        float textY = rect.y + 8f;
+        float textX = rect.x + sideQuestTextOrigin.x;
+        float textY = rect.y + sideQuestTextOrigin.y;
 
         GUI.Label(
-            new Rect(textX, textY + 58f, textWidth, 48f),
+            OffsetRect(sideQuestTitleRect, textX, textY, sideQuestTextWidth),
             "Side Quest",
-            GameUiStyle.LabelStyle(ref titleStyle, 26, TextAnchor.MiddleLeft, FontStyle.Bold));
+            GameUiStyle.LabelStyle(ref titleStyle, sideQuestTitleFontSize, TextAnchor.MiddleLeft, FontStyle.Bold));
 
         GUI.Label(
-            new Rect(textX, textY + 112f, textWidth, 48f),
+            OffsetRect(sideQuestTaskRect, textX, textY, sideQuestTextWidth),
             "Find feathers",
-            GameUiStyle.LabelStyle(ref hintStyle, 24, TextAnchor.MiddleLeft, FontStyle.Bold));
+            GameUiStyle.LabelStyle(ref hintStyle, sideQuestTaskFontSize, TextAnchor.MiddleLeft, FontStyle.Bold));
 
         GUI.Label(
-            new Rect(textX + 38f, textY + 146f, 300f, 54f),
+            OffsetRect(sideQuestCountRect, textX, textY, sideQuestCountRect.width),
             collectedCount + "/" + FeatherCount,
-            GameUiStyle.LabelStyle(ref promptStyle, 32, TextAnchor.MiddleRight, FontStyle.Bold));
+            GameUiStyle.LabelStyle(ref promptStyle, sideQuestCountFontSize, TextAnchor.MiddleRight, FontStyle.Bold));
+    }
+
+    private static Rect OffsetRect(Rect localRect, float originX, float originY, float fallbackWidth)
+    {
+        float width = localRect.width > 0f ? localRect.width : fallbackWidth;
+        return new Rect(originX + localRect.x, originY + localRect.y, width, localRect.height);
+    }
+
+    private static Rect InnerRect(Rect parent, Rect localRect)
+    {
+        float y = localRect.y >= 0f ? parent.y + localRect.y : parent.yMax + localRect.y;
+        float width = localRect.width >= 0f ? localRect.width : parent.width + localRect.width;
+        float height = localRect.height >= 0f ? localRect.height : parent.height + localRect.height;
+        return new Rect(parent.x + localRect.x, y, width, height);
     }
 
     private bool IsNear(Transform target, float distance)

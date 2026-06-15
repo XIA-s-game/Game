@@ -25,6 +25,7 @@ public partial class OldTreeInteraction
         branchFlowActive = false;
         currentAnswer = answer;
         state = DialogueState.Answered;
+        GlobalBackpackUI.SetInputBlocked(false);
 
         if (resetCoroutine != null)
         {
@@ -64,6 +65,7 @@ public partial class OldTreeInteraction
         // Shared dialogue runner for the old tree branch text.
         StopCoroutineIfRunning(ref resetCoroutine);
         StopCoroutineIfRunning(ref finalInstructionCoroutine);
+        GlobalBackpackUI.SetInputBlocked(false);
 
         currentLines = lines;
         currentLineIndex = 0;
@@ -151,6 +153,7 @@ public partial class OldTreeInteraction
         currentAnswer = null;
         branchFlowActive = false;
         state = DialogueState.Waiting;
+        GlobalBackpackUI.SetInputBlocked(false);
         ResetTreeToInitialState();
         StartLookCoroutine(ReturnToOriginalRotation());
     }
@@ -159,6 +162,7 @@ public partial class OldTreeInteraction
     {
         currentAnswer = null;
         state = DialogueState.RewardChoosing;
+        GlobalBackpackUI.SetInputBlocked(true);
     }
 
     private void ShowFinalInstructionForFiveSeconds()

@@ -5,12 +5,13 @@ public partial class ChapterOnePuzzle
 {
     private void UpdateMainlineStory()
     {
-        // Story order: hear help, inspect altar, ask fairy, solve puzzle, then start the attack sequence.
+        // Story order: hear help, inspect altar, ask fairy, solve puzzle, then use the portal.
         if (UpdateActiveDialogue())
         {
             return;
         }
 
+        UpdateStrangeSymbolPrompt();
         UpdateRecognizeHelpPrompt();
         UpdateStrangeAltarPrompt();
         UpdateAskHelpInteraction();
@@ -49,6 +50,19 @@ public partial class ChapterOnePuzzle
         return true;
     }
 
+    private void UpdateStrangeSymbolPrompt()
+    {
+        if (strangeSymbolPromptShown || !IsPlayerNearStoryTarget(strangeSymbol))
+        {
+            return;
+        }
+
+        strangeSymbolPromptShown = true;
+        storyPrompt = strangeSymbolPrompt;
+        storyPromptEndsAt = Time.time + promptDuration;
+        GameAudioManager.PlayKnob();
+    }
+
     private void UpdateRecognizeHelpPrompt()
     {
         // First story hint is shown once when the player reaches the help marker.
@@ -59,7 +73,7 @@ public partial class ChapterOnePuzzle
 
         recognizeHelpShown = true;
         storyPrompt = recognizeHelpPrompt;
-        storyPromptEndsAt = Time.time + 3f;
+        storyPromptEndsAt = Time.time + promptDuration;
         GameAudioManager.PlayKnob();
     }
 
@@ -73,17 +87,13 @@ public partial class ChapterOnePuzzle
 
         strangeAltarPromptShown = true;
         storyPrompt = strangeAltarPrompt;
-        storyPromptEndsAt = Time.time + 3f;
+        storyPromptEndsAt = Time.time + promptDuration;
+        GameAudioManager.PlayKnob();
     }
 
     private void UpdateAskHelpInteraction()
     {
         // Before rescue this is the ask-help point; after rescue it becomes the fairy reward talk.
-        if (forestAttackDialogueFinished)
-        {
-            return;
-        }
-
         Transform interactionTarget = rescueApplied ? fairy : askHelp;
         if (rescueApplied && pageRewardFinished)
         {
@@ -151,20 +161,6 @@ public partial class ChapterOnePuzzle
         {
             pageRewardFinished = true;
             AddFirstPageToBackpack();
-            GameAudioManager.StartRoarLoop();
-            StartDialogue(forestAttackDialogueLines, KeyCode.C, "Press C to continue");
-        }
-        else if (finishedLines == forestAttackDialogueLines)
-        {
-            forestAttackDialogueFinished = true;
-            if (fairy != null)
-            {
-                fairy.gameObject.SetActive(false);
-            }
-        }
-        else if (finishedLines == heroAfterCombatDialogueLines)
-        {
-            heroPostCombatDialogueFinished = true;
             UnlockPortal();
         }
     }
@@ -203,275 +199,9 @@ public partial class ChapterOnePuzzle
         }
     }
 
-    private void CollectDelayedEnemies()
-    {
-        // Enemies start hidden so the forest attack feels triggered by the story beat.
-        if (delayedEnemiesCollected)
-        {
-            return;
-        }
-
-        delayedEnemies.Clear();
-        delayedEnemyRenderers.Clear();
-        delayedEnemyColliders.Clear();
-        delayedEnemyWalkers.Clear();
-        delayedEnemyAnimators.Clear();
-        if (delayedEnemyObjects == null)
-        {
-            delayedEnemiesCollected = true;
-            return;
-        }
-
-        for (int i = 0; i < delayedEnemyObjects.Length; i++)
-        {
-            GameObject enemy = delayedEnemyObjects[i];
-            if (enemy == null || delayedEnemies.Contains(enemy))
-            {
-                continue;
-            }
-
-            delayedEnemies.Add(enemy);
-            HideDelayedEnemy(enemy);
-            SetAudioSourcesPlayingInHierarchy(enemy.transform, false);
-        }
-
-        delayedEnemiesCollected = true;
-    }
-
-    private void HideDelayedEnemy(GameObject enemy)
-    {
-        Renderer[] renderers = enemy.GetComponentsInChildren<Renderer>(true);
-        foreach (Renderer renderer in renderers)
-        {
-            if (renderer != null && renderer.enabled)
-            {
-                delayedEnemyRenderers.Add(renderer);
-                renderer.enabled = false;
-            }
-        }
-
-        Collider[] colliders = enemy.GetComponentsInChildren<Collider>(true);
-        foreach (Collider collider in colliders)
-        {
-            if (collider != null && collider.enabled)
-            {
-                delayedEnemyColliders.Add(collider);
-                collider.enabled = false;
-            }
-        }
-
-        RouteWaypointWalker[] walkers = enemy.GetComponentsInChildren<RouteWaypointWalker>(true);
-        foreach (RouteWaypointWalker walker in walkers)
-        {
-            if (walker != null && walker.enabled)
-            {
-                delayedEnemyWalkers.Add(walker);
-                walker.enabled = false;
-            }
-        }
-
-        Animator[] animators = enemy.GetComponentsInChildren<Animator>(true);
-        foreach (Animator animator in animators)
-        {
-            if (animator != null && animator.enabled)
-            {
-                delayedEnemyAnimators.Add(animator);
-                animator.enabled = false;
-            }
-        }
-    }
-
-    private void UpdateEnemyAmbush()
-    {
-        // After the attack dialogue, entering the trigger wakes the hidden enemies.
-        if (enemiesActivated || !forestAttackDialogueFinished)
-        {
-            return;
-        }
-
-        if (enemyTrigger == null || !IsPlayerOnTrigger(enemyTrigger, enemyTriggerDistance))
-        {
-            return;
-        }
-
-        ActivateDelayedEnemies();
-    }
-
-    private void ActivateDelayedEnemies()
-    {
-        // Restores enemy visuals, colliders, walking scripts, and audio at the same time.
-        CollectDelayedEnemies();
-        enemiesActivated = true;
-        GameAudioManager.StartEnemyLoop();
-
-        for (int i = 0; i < delayedEnemies.Count; i++)
-        {
-            GameObject enemy = delayedEnemies[i];
-            if (enemy == null)
-            {
-                continue;
-            }
-
-            RouteWaypointWalker walker = enemy.GetComponent<RouteWaypointWalker>();
-            if (walker != null && !delayedEnemyWalkers.Contains(walker))
-            {
-                delayedEnemyWalkers.Add(walker);
-            }
-
-            SetAudioSourcesPlayingInHierarchy(enemy.transform, true);
-        }
-
-        for (int i = 0; i < delayedEnemyRenderers.Count; i++)
-        {
-            if (delayedEnemyRenderers[i] != null)
-            {
-                delayedEnemyRenderers[i].enabled = true;
-            }
-        }
-
-        for (int i = 0; i < delayedEnemyColliders.Count; i++)
-        {
-            if (delayedEnemyColliders[i] != null)
-            {
-                delayedEnemyColliders[i].enabled = true;
-            }
-        }
-
-        for (int i = 0; i < delayedEnemyWalkers.Count; i++)
-        {
-            if (delayedEnemyWalkers[i] != null)
-            {
-                delayedEnemyWalkers[i].enabled = true;
-            }
-        }
-
-        for (int i = 0; i < delayedEnemyAnimators.Count; i++)
-        {
-            if (delayedEnemyAnimators[i] != null)
-            {
-                delayedEnemyAnimators[i].enabled = true;
-            }
-        }
-
-        StartHeroCombat();
-    }
-
-    private void StartHeroCombat()
-    {
-        // Hero appears after the ambush and automatically fights the delayed enemies.
-        if (hero == null)
-        {
-            return;
-        }
-
-        SetHeroVisible(true);
-        CacheHeroAnimator();
-
-        if (heroAnimator != null)
-        {
-            heroAnimator.applyRootMotion = false;
-        }
-
-        heroCombatY = hero.position.y;
-        if (heroAnimator != null)
-        {
-            heroAnimator.speed = 1f;
-        }
-
-        heroCombatActive = true;
-        heroCombatFinished = false;
-        heroAttacking = false;
-        defeatedEnemies.Clear();
-        heroTargetEnemy = FindNextHeroTarget();
-        PlayHeroAnimation(heroWalkController, heroWalkStateName);
-    }
-
-    private void SetHeroVisible(bool visible)
-    {
-        if (hero == null)
-        {
-            return;
-        }
-
-        CacheHeroAnimator();
-
-        if (heroAnimator != null)
-        {
-            heroAnimator.enabled = visible;
-        }
-
-        Renderer[] renderers = hero.GetComponentsInChildren<Renderer>(true);
-        for (int i = 0; i < renderers.Length; i++)
-        {
-            if (renderers[i] != null)
-            {
-                renderers[i].enabled = visible;
-            }
-        }
-
-        Collider[] colliders = hero.GetComponentsInChildren<Collider>(true);
-        for (int i = 0; i < colliders.Length; i++)
-        {
-            if (colliders[i] != null)
-            {
-                colliders[i].enabled = visible;
-            }
-        }
-    }
-
-    private void FinishHeroCombat()
-    {
-        // Combat ending stops attack audio and unlocks the final hero conversation.
-        heroCombatActive = false;
-        heroAttacking = false;
-        heroCombatFinished = true;
-        heroPromptVisible = false;
-        GameAudioManager.StopRoarLoop();
-        GameAudioManager.StopEnemyLoop();
-
-        if (heroAnimator != null)
-        {
-            heroAnimator.speed = 0f;
-        }
-    }
-
-    private void UpdateHeroStory()
-    {
-        // Player can talk to the hero during combat for warning, then after combat for portal unlock.
-        heroPromptVisible = false;
-        if (helpDialogueActive || hero == null || !enemiesActivated)
-        {
-            return;
-        }
-
-        if (heroCombatActive)
-        {
-            if (!heroWarningShown && IsPlayerNearTransform(hero, heroInteractDistance))
-            {
-                heroWarningShown = true;
-                StartDialogue(heroWarningDialogueLines, KeyCode.C, "Press C to continue");
-            }
-
-            return;
-        }
-
-        if (!heroCombatFinished || heroPostCombatDialogueFinished || !IsPlayerNearTransform(hero, heroInteractDistance))
-        {
-            return;
-        }
-
-        heroPromptVisible = true;
-        if (Input.GetKeyDown(KeyCode.E))
-        {
-            interactionInputConsumed = true;
-            heroPromptVisible = false;
-            StartDialogue(heroAfterCombatDialogueLines, KeyCode.C, "Press C to continue");
-        }
-    }
-
     private void UnlockPortal()
     {
-        // Portal is only visible after the hero explains the next destination.
+        // The rescued fairy opens the portal after giving the first page.
         portalUnlocked = true;
 
         if (portalTrigger != null && !portalTrigger.gameObject.activeSelf)

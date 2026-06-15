@@ -37,40 +37,57 @@ public partial class ChapterTwoPuzzle
             return;
         }
 
-        Rect rect = GameUiStyle.SystemPromptRect(760f, 92f);
+        Rect rect = GameUiStyle.SystemPromptRect(systemPromptSize.x, systemPromptSize.y);
         GameUiStyle.DrawDialoguePanel(rect);
-        GUI.Label(rect, currentSystemPrompt, GameUiStyle.LabelStyle(ref promptStyle, 30, TextAnchor.MiddleCenter, FontStyle.Bold));
+        GUI.Label(rect, currentSystemPrompt, GameUiStyle.LabelStyle(ref promptStyle, systemPromptFontSize, TextAnchor.MiddleCenter, FontStyle.Bold));
     }
 
     private void DrawDialogue()
     {
         string line = activeLines != null && lineIndex >= 0 && lineIndex < activeLines.Length ? activeLines[lineIndex] : string.Empty;
-        Rect rect = GameUiStyle.DialogueRect(260f);
+        Rect rect = GameUiStyle.DialogueRect(dialoguePanelHeight);
         GameUiStyle.DrawDialoguePanel(rect);
-        GUI.Label(new Rect(rect.x + 180f, rect.y + 130f, rect.width - 72f, rect.height - 126f), line, GameUiStyle.LabelStyle(ref dialogueStyle, 30, TextAnchor.UpperLeft, FontStyle.Normal, true));
-        GUI.Label(new Rect(rect.x + 0f, rect.y + rect.height - 130f, rect.width - 160f, 48f), continuePrompt, GameUiStyle.LabelStyle(ref hintStyle, 22, TextAnchor.LowerRight));
+        GUI.Label(
+            new Rect(
+                rect.x + dialogueTextOffset.x,
+                rect.y + dialogueTextOffset.y,
+                rect.width - dialogueTextOffset.x - dialogueTextRightPadding,
+                rect.height - dialogueTextOffset.y - dialogueTextBottomPadding),
+            line,
+            GameUiStyle.LabelStyle(ref dialogueStyle, dialogueTextFontSize, TextAnchor.UpperLeft, FontStyle.Normal, true));
+
+        GUI.Label(
+            new Rect(
+                rect.x + continuePromptOffset.x,
+                rect.y + rect.height - continuePromptOffset.y,
+                rect.width - continuePromptRightPadding,
+                continuePromptHeight),
+            continuePrompt,
+            GameUiStyle.LabelStyle(ref hintStyle, continuePromptFontSize, TextAnchor.LowerRight));
     }
 
     private void DrawQuiz()
     {
-        Rect rect = new Rect(70f, 50f, Screen.width - 140f, Screen.height - 100f);
+        Rect rect = ScreenRect(quizPanelRect);
         GameUiStyle.DrawDialoguePanel(rect);
 
         if (showingQuizFeedback)
         {
-            GUI.Label(new Rect(rect.x + 396f, rect.y + 558f, rect.width - 112f, rect.height - 160f), quizFeedback, GameUiStyle.LabelStyle(ref dialogueStyle, 36, TextAnchor.UpperLeft, FontStyle.Normal, true));
-            GUI.Label(new Rect(rect.x - 200f, rect.y + 988f, rect.width - 112f, 54f), continuePrompt, GameUiStyle.LabelStyle(ref hintStyle, 26, TextAnchor.MiddleRight));
+            GUI.Label(InnerRect(rect, quizFeedbackTextRect), quizFeedback, GameUiStyle.LabelStyle(ref dialogueStyle, quizFeedbackFontSize, TextAnchor.UpperLeft, FontStyle.Normal, true));
+            GUI.Label(InnerRect(rect, quizFeedbackContinueRect), continuePrompt, GameUiStyle.LabelStyle(ref hintStyle, quizFeedbackContinueFontSize, TextAnchor.MiddleRight));
             return;
         }
 
         Question q = quizQuestions[Mathf.Clamp(currentQuestionIndex, 0, quizQuestions.Count - 1)];
-        GUI.Label(new Rect(rect.x + 98f, rect.y + 428f, rect.width - 96f, 72f), "Question " + (currentQuestionIndex + 1) + " / " + quizQuestions.Count + "   " + q.virtue + "   Correct " + correctAnswerCount + "/8   Wrong " + wrongAnswerCount + "/2", GameUiStyle.LabelStyle(ref titleStyle, 28, TextAnchor.MiddleCenter, FontStyle.Bold, true));
-        GUI.Label(new Rect(rect.x + 388f, rect.y + 528f, rect.width - 116f, 168f), q.text, GameUiStyle.LabelStyle(ref dialogueStyle, 30, TextAnchor.UpperLeft, FontStyle.Normal, true));
+        GUI.Label(InnerRect(rect, quizHeaderRect), "Question " + (currentQuestionIndex + 1) + " / " + quizQuestions.Count + "   " + q.virtue + "   Correct " + correctAnswerCount + "/8   Wrong " + wrongAnswerCount + "/2", GameUiStyle.LabelStyle(ref titleStyle, quizHeaderFontSize, TextAnchor.MiddleCenter, FontStyle.Bold, true));
+        GUI.Label(InnerRect(rect, quizQuestionRect), q.text, GameUiStyle.LabelStyle(ref dialogueStyle, quizQuestionFontSize, TextAnchor.UpperLeft, FontStyle.Normal, true));
 
         string[] labels = { "A: ", "B: ", "C: ", "D: " };
         for (int i = 0; i < q.options.Length; i++)
         {
-            GUI.Label(new Rect(rect.x + 388f, rect.y + 590f + i * 92f, rect.width - 140f, 78f), labels[i] + q.options[i], GameUiStyle.LabelStyle(ref optionStyle, 26, TextAnchor.MiddleLeft, FontStyle.Normal, true));
+            Rect optionRect = quizOptionStartRect;
+            optionRect.y += i * quizOptionSpacing;
+            GUI.Label(InnerRect(rect, optionRect), labels[i] + q.options[i], GameUiStyle.LabelStyle(ref optionStyle, quizOptionFontSize, TextAnchor.MiddleLeft, FontStyle.Normal, true));
         }
     }
 
@@ -132,9 +149,9 @@ public partial class ChapterTwoPuzzle
 
     private void DrawPrompt(string text)
     {
-        Rect rect = GameUiStyle.InteractionPromptRect(440f, 60f);
+        Rect rect = GameUiStyle.InteractionPromptRect(interactionPromptSize.x, interactionPromptSize.y);
         GameUiStyle.DrawDialoguePanel(rect);
-        GUI.Label(rect, text, GameUiStyle.LabelStyle(ref promptStyle, 30, TextAnchor.MiddleCenter, FontStyle.Bold));
+        GUI.Label(rect, text, GameUiStyle.LabelStyle(ref promptStyle, interactionPromptFontSize, TextAnchor.MiddleCenter, FontStyle.Bold));
     }
 
     private void DrawBoardGame()
@@ -157,9 +174,24 @@ public partial class ChapterTwoPuzzle
             text = boardWonPrompt;
         }
 
-        Rect rect = GameUiStyle.SystemPromptRect(620f, 86f);
+        Rect rect = GameUiStyle.SystemPromptRect(boardPromptSize.x, boardPromptSize.y);
         GameUiStyle.DrawDialoguePanel(rect);
-        GUI.Label(rect, text, GameUiStyle.LabelStyle(ref promptStyle, 30, TextAnchor.MiddleCenter, FontStyle.Bold));
+        GUI.Label(rect, text, GameUiStyle.LabelStyle(ref promptStyle, boardPromptFontSize, TextAnchor.MiddleCenter, FontStyle.Bold));
+    }
+
+    private static Rect ScreenRect(Rect localRect)
+    {
+        float width = localRect.width >= 0f ? localRect.width : Screen.width + localRect.width;
+        float height = localRect.height >= 0f ? localRect.height : Screen.height + localRect.height;
+        return new Rect(localRect.x, localRect.y, width, height);
+    }
+
+    private static Rect InnerRect(Rect parent, Rect localRect)
+    {
+        float y = localRect.y >= 0f ? parent.y + localRect.y : parent.yMax + localRect.y;
+        float width = localRect.width >= 0f ? localRect.width : parent.width + localRect.width;
+        float height = localRect.height >= 0f ? localRect.height : parent.height + localRect.height;
+        return new Rect(parent.x + localRect.x, y, width, height);
     }
 
     private void ShowSystemPrompt(string text, float seconds)

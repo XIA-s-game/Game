@@ -34,6 +34,16 @@ public class OldManCardChallenge : MonoBehaviour
     [Header("UI")]
     public Text dialogueText;
     public Text hintText;
+    [SerializeField] private bool showIntroOnStart;
+    [SerializeField] private float previewDelaySeconds = 0.2f;
+    [SerializeField] private float dialoguePanelHeight = 190f;
+    [SerializeField] private Vector2 dialogueTextOffset = new Vector2(132f, 22f);
+    [SerializeField] private Vector2 dialogueTextInset = new Vector2(128f, 44f);
+    [SerializeField] private Vector2 dialogueHintPadding = new Vector2(18f, 18f);
+    [SerializeField] private int dialogueFontSize = 26;
+    [SerializeField] private int dialogueHintFontSize = 22;
+    [SerializeField] private Vector2 promptBoxSize = new Vector2(520f, 60f);
+    [SerializeField] private int promptFontSize = 24;
 
     private enum State
     {
@@ -238,6 +248,21 @@ public class OldManCardChallenge : MonoBehaviour
         SetChallengeViewCameraActive(false);
     }
 
+    private IEnumerator Start()
+    {
+        if (!showIntroOnStart)
+        {
+            yield break;
+        }
+
+        yield return new WaitForSeconds(previewDelaySeconds);
+
+        if (state == State.Exploring && !hasGreenKey)
+        {
+            StartIntroDialogue();
+        }
+    }
+
     private void OnDisable()
     {
         if (state != State.Exploring)
@@ -284,21 +309,37 @@ public class OldManCardChallenge : MonoBehaviour
         bool promptOnly = state == State.Exploring && string.IsNullOrEmpty(currentHintText);
         if (!string.IsNullOrEmpty(currentDialogueText) && !promptOnly)
         {
-            Rect rect = GameUiStyle.DialogueRect(190f);
+            Rect rect = GameUiStyle.DialogueRect(dialoguePanelHeight);
             GameUiStyle.DrawDialoguePanel(rect);
-            GUI.Label(new Rect(rect.x + 132f, rect.y + 22f, rect.width - 128f, rect.height - 44f),
+            GUI.Label(new Rect(
+                    rect.x + dialogueTextOffset.x,
+                    rect.y + dialogueTextOffset.y,
+                    rect.width - dialogueTextInset.x,
+                    rect.height - dialogueTextInset.y),
                 currentDialogueText,
-                GameUiStyle.LabelStyle(ref dialoguePanelStyle, 26, TextAnchor.MiddleLeft, FontStyle.Bold));
+                GameUiStyle.LabelStyle(ref dialoguePanelStyle, dialogueFontSize, TextAnchor.MiddleLeft, FontStyle.Bold));
+
+            if (!string.IsNullOrEmpty(currentHintText))
+            {
+                Rect hintRect = new Rect(
+                    rect.x + dialogueHintPadding.x,
+                    rect.y + dialogueHintPadding.y,
+                    rect.width - dialogueHintPadding.x * 2f,
+                    rect.height - dialogueHintPadding.y * 2f);
+                GUI.Label(new Rect(hintRect.x, hintRect.yMax - 38f, hintRect.width, 38f),
+                    currentHintText,
+                    GameUiStyle.LabelStyle(ref hintPanelStyle, dialogueHintFontSize, TextAnchor.LowerRight, FontStyle.Normal, true));
+            }
         }
 
         string promptText = promptOnly ? currentDialogueText : currentHintText;
-        if (!string.IsNullOrEmpty(promptText))
+        if (!string.IsNullOrEmpty(promptText) && promptOnly)
         {
-            Rect rect = GameUiStyle.InteractionPromptRect(520f, 60f);
+            Rect rect = GameUiStyle.InteractionPromptRect(promptBoxSize.x, promptBoxSize.y);
             GameUiStyle.DrawPanel(rect);
             GUI.Label(rect,
                 promptText,
-                GameUiStyle.LabelStyle(ref hintPanelStyle, 24, TextAnchor.MiddleCenter, FontStyle.Bold));
+                GameUiStyle.LabelStyle(ref hintPanelStyle, promptFontSize, TextAnchor.MiddleCenter, FontStyle.Bold));
         }
     }
 
@@ -332,11 +373,11 @@ public class OldManCardChallenge : MonoBehaviour
         StartDialogue(new[]
         {
             "Old Man: Looking for a key?",
-            "Player: Do you know where it is?",
+            "Casper: Do you know where it is?",
             "Old Man: I do, but you must pass my card test first.",
-            "Player: What test?",
+            "Casper: What test?",
             "Old Man: Watch the four cards. I will shuffle them, then you pick the one I name.",
-            "Player: Sounds simple.",
+            "Casper: Sounds simple.",
             "Old Man: Wait until they move."
         }, () =>
         {

@@ -22,6 +22,22 @@ public class MagicCubeChallenge : MonoBehaviour
     [SerializeField] private float tileHeight = 0.16f;
     [SerializeField] private float playerGroundOffset = 0.01f;
 
+    [Header("Start Prompt")]
+    [SerializeField] private string startPromptText = "Stand on the target colored block. When the countdown ends, all other colored blocks will disappear.";
+    [SerializeField] private float startPromptSeconds = 5f;
+    [SerializeField] private Vector2 startPromptSize = new Vector2(920f, 140f);
+    [SerializeField] private int startPromptFontSize = 26;
+
+    [Header("Game UI")]
+    [SerializeField] private Vector2 roundPromptSize = new Vector2(560f, 64f);
+    [SerializeField] private int roundPromptFontSize = 26;
+    [SerializeField] private Vector2 resultPanelSize = new Vector2(480f, 220f);
+    [SerializeField] private Rect resultTitleRect = new Rect(20f, 22f, -40f, 44f);
+    [SerializeField] private Rect resultRestartRect = new Rect(20f, 96f, -40f, 34f);
+    [SerializeField] private Rect resultExitRect = new Rect(20f, 132f, -40f, 34f);
+    [SerializeField] private int resultTitleFontSize = 28;
+    [SerializeField] private int resultPromptFontSize = 22;
+
     private static readonly Color[] TileColors =
     {
         Color.red,
@@ -68,6 +84,8 @@ public class MagicCubeChallenge : MonoBehaviour
     private Coroutine fallRoutine;
     private GUIStyle promptStyle;
     private GUIStyle titleStyle;
+    private GUIStyle startPromptStyle;
+    private float startPromptEndsAt;
 
     private void Awake()
     {
@@ -152,6 +170,11 @@ public class MagicCubeChallenge : MonoBehaviour
         float timeLeft = Mathf.Max(0f, roundEndsAt - Time.time);
         string text = "Round " + (currentRound + 1) + "  Target: " + ColorNames[targetColorIndices[currentRound]] + "  Time: " + Mathf.CeilToInt(timeLeft);
         DrawPrompt(text);
+
+        if (Time.time < startPromptEndsAt)
+        {
+            DrawStartPrompt();
+        }
     }
 
     private void StartChallenge()
@@ -171,6 +194,7 @@ public class MagicCubeChallenge : MonoBehaviour
         showingResult = false;
         MovePlayer(GetArenaPlayerStartPosition(), Quaternion.identity);
         StartRound();
+        ShowStartPrompt();
     }
 
     private void StartRound()
@@ -245,6 +269,7 @@ public class MagicCubeChallenge : MonoBehaviour
         currentRound = 0;
         MovePlayer(GetArenaPlayerStartPosition(), Quaternion.identity);
         StartRound();
+        ShowStartPrompt();
     }
 
     private void ExitChallenge()
@@ -254,6 +279,7 @@ public class MagicCubeChallenge : MonoBehaviour
         won = false;
         showingResult = false;
         waitingForRound = false;
+        startPromptEndsAt = 0f;
         if (fallRoutine != null)
         {
             StopCoroutine(fallRoutine);
@@ -455,19 +481,39 @@ public class MagicCubeChallenge : MonoBehaviour
 
     private void DrawPrompt(string text)
     {
-        Rect rect = GameUiStyle.InteractionPromptRect(560f, 64f);
+        Rect rect = GameUiStyle.InteractionPromptRect(roundPromptSize.x, roundPromptSize.y);
         GameUiStyle.DrawPanel(rect);
-        GUI.Label(rect, text, GameUiStyle.LabelStyle(ref promptStyle, 26, TextAnchor.MiddleCenter, FontStyle.Bold));
+        GUI.Label(rect, text, GameUiStyle.LabelStyle(ref promptStyle, roundPromptFontSize, TextAnchor.MiddleCenter, FontStyle.Bold));
+    }
+
+    private void ShowStartPrompt()
+    {
+        startPromptEndsAt = Time.time + startPromptSeconds;
+    }
+
+    private void DrawStartPrompt()
+    {
+        Rect rect = GameUiStyle.SystemPromptRect(startPromptSize.x, startPromptSize.y);
+        GameUiStyle.DrawDialoguePanel(rect);
+        GUI.Label(rect, startPromptText, GameUiStyle.LabelStyle(ref startPromptStyle, startPromptFontSize, TextAnchor.MiddleCenter, FontStyle.Bold, true));
     }
 
     private void DrawResultPanel(string title)
     {
-        Rect rect = GameUiStyle.SystemPromptRect(480f, 220f);
+        Rect rect = GameUiStyle.SystemPromptRect(resultPanelSize.x, resultPanelSize.y);
         GameUiStyle.DrawPanel(rect);
-        GUI.Label(new Rect(rect.x + 20f, rect.y + 22f, rect.width - 40f, 44f), title, GameUiStyle.LabelStyle(ref titleStyle, 28, TextAnchor.MiddleCenter, FontStyle.Bold));
+        GUI.Label(InnerRect(rect, resultTitleRect), title, GameUiStyle.LabelStyle(ref titleStyle, resultTitleFontSize, TextAnchor.MiddleCenter, FontStyle.Bold));
 
-        GUI.Label(new Rect(rect.x + 20f, rect.y + 96f, rect.width - 40f, 34f), "Press A to restart", GameUiStyle.LabelStyle(ref promptStyle, 22, TextAnchor.MiddleCenter, FontStyle.Bold));
-        GUI.Label(new Rect(rect.x + 20f, rect.y + 132f, rect.width - 40f, 34f), "Press B to exit", GameUiStyle.LabelStyle(ref promptStyle, 22, TextAnchor.MiddleCenter, FontStyle.Bold));
+        GUI.Label(InnerRect(rect, resultRestartRect), "Press A to restart", GameUiStyle.LabelStyle(ref promptStyle, resultPromptFontSize, TextAnchor.MiddleCenter, FontStyle.Bold));
+        GUI.Label(InnerRect(rect, resultExitRect), "Press B to exit", GameUiStyle.LabelStyle(ref promptStyle, resultPromptFontSize, TextAnchor.MiddleCenter, FontStyle.Bold));
+    }
+
+    private static Rect InnerRect(Rect parent, Rect localRect)
+    {
+        float y = localRect.y >= 0f ? parent.y + localRect.y : parent.yMax + localRect.y;
+        float width = localRect.width >= 0f ? localRect.width : parent.width + localRect.width;
+        float height = localRect.height >= 0f ? localRect.height : parent.height + localRect.height;
+        return new Rect(parent.x + localRect.x, y, width, height);
     }
 
     private void BuildMaterials()

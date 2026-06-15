@@ -18,6 +18,43 @@ public class MerchantDeliverySideQuest : MonoBehaviour
     [SerializeField] private float interactDistance = 4f;
     [SerializeField] private KeyCode interactKey = KeyCode.E;
 
+    [Header("Side Quest UI")]
+    [SerializeField] private Vector2 sideQuestPanelSize = new Vector2(600f, 170f);
+    [SerializeField] private float sideQuestExpandedHeight = 240f;
+    [SerializeField] private Rect sideQuestTitleRect = new Rect(22f, 18f, 556f, 56f);
+    [SerializeField] private Rect sideQuestFirstTaskRect = new Rect(22f, 86f, 556f, 54f);
+    [SerializeField] private Rect sideQuestSecondTaskRect = new Rect(22f, 154f, 556f, 54f);
+    [SerializeField] private int sideQuestTitleFontSize = 26;
+    [SerializeField] private int sideQuestItemFontSize = 24;
+
+    [Header("Merchant UI")]
+    [SerializeField] private Vector2 interactionPromptSize = new Vector2(420f, 60f);
+    [SerializeField] private int interactionPromptFontSize = 34;
+    [SerializeField] private float messagePanelHeight = 260f;
+    [SerializeField] private Rect messageTextRect = new Rect(180f, 118f, -252f, 90f);
+    [SerializeField] private int messageFontSize = 30;
+    [SerializeField] private TextAnchor messageAlignment = TextAnchor.UpperLeft;
+    [SerializeField] private Rect continueHintRect = new Rect(36f, -72f, -72f, 48f);
+    [SerializeField] private int continueHintFontSize = 22;
+    [SerializeField] private float choicePanelMaxWidth = 900f;
+    [SerializeField] private float choicePanelScreenPadding = 80f;
+    [SerializeField] private float choicePanelCenterOffsetY = -180f;
+    [SerializeField] private float choicePanelHeight = 360f;
+    [SerializeField] private Rect choiceTitleRect = new Rect(36f, 28f, -72f, 68f);
+    [SerializeField] private Rect choiceAcceptRect = new Rect(56f, 124f, -112f, 78f);
+    [SerializeField] private Rect choiceLeaveRect = new Rect(56f, 222f, -112f, 78f);
+    [SerializeField] private int choiceTitleFontSize = 32;
+    [SerializeField] private int choiceOptionFontSize = 28;
+
+    [Header("Merchant Text")]
+    [SerializeField] private string continueHintText = "Press C to continue";
+    [SerializeField] private string merchantTalkPrompt = "Press E to talk";
+    [SerializeField] private string pickUpPrompt = "Press E to pick up";
+    [SerializeField] private string repairPrompt = "Press E to repair";
+    [SerializeField] private string choiceTitleText = "Choose";
+    [SerializeField] private string choiceAcceptText = "A: I will check";
+    [SerializeField] private string choiceLeaveText = "B: Leave";
+
     private bool questAccepted;
     private bool repairTaskAdded;
     private bool merchantChoiceVisible;
@@ -43,24 +80,25 @@ public class MerchantDeliverySideQuest : MonoBehaviour
     private GUIStyle continueHintStyle;
     private GUIStyle choiceTitleStyle;
     private GUIStyle choiceOptionStyle;
-    private readonly string[] merchantConversation =
+    [Header("Merchant Dialogue")]
+    [SerializeField] private string[] merchantConversation =
     {
-        "Player: What happened?",
+        "Casper: What happened?",
         "Merchant: My apple delivery is late. Can you check on it?"
     };
 
-    private readonly string[] workerConversation =
+    [SerializeField] private string[] workerConversation =
     {
         "Worker: The cart broke down halfway here.",
-        "Player: I can help repair it."
+        "Casper: I can help repair it."
     };
 
-    private readonly string[] workerRepairCompleteConversation =
+    [SerializeField] private string[] workerRepairCompleteConversation =
     {
         "Worker: Thank you. The cart is fixed."
     };
 
-    private readonly string[] merchantRewardConversation =
+    [SerializeField] private string[] merchantRewardConversation =
     {
         "Merchant: Thank you for helping. Please take this glow berry."
     };
@@ -207,21 +245,33 @@ public class MerchantDeliverySideQuest : MonoBehaviour
             return;
         }
 
-        float width = 600f;
-        float height = repairTaskAdded ? 240f : 170f;
-        Rect rect = GameUiStyle.SideQuestRect(width, height);
+        float height = repairTaskAdded ? sideQuestExpandedHeight : sideQuestPanelSize.y;
+        Rect rect = GameUiStyle.SideQuestRect(sideQuestPanelSize.x, height);
         GameUiStyle.DrawDialoguePanel(rect);
 
-        GUIStyle titleStyle = GameUiStyle.LabelStyle(ref questTitleStyle, 26, TextAnchor.MiddleLeft, FontStyle.Bold);
-        GUIStyle itemStyle = GameUiStyle.LabelStyle(ref questItemStyle, 24, TextAnchor.MiddleLeft);
+        GUIStyle titleStyle = GameUiStyle.LabelStyle(ref questTitleStyle, sideQuestTitleFontSize, TextAnchor.MiddleLeft, FontStyle.Bold);
+        GUIStyle itemStyle = GameUiStyle.LabelStyle(ref questItemStyle, sideQuestItemFontSize, TextAnchor.MiddleLeft);
 
-        GUI.Label(new Rect(rect.x + 22f, rect.y + 18f, rect.width - 44f, 56f), "Side Quest", titleStyle);
-        GUI.Label(new Rect(rect.x + 22f, rect.y + 86f, rect.width - 44f, 54f), "Check the merchant delivery", itemStyle);
+        GUI.Label(OffsetRect(rect, sideQuestTitleRect), "Side Quest", titleStyle);
+        GUI.Label(OffsetRect(rect, sideQuestFirstTaskRect), "Check the merchant delivery", itemStyle);
 
         if (repairTaskAdded)
         {
-            GUI.Label(new Rect(rect.x + 22f, rect.y + 154f, rect.width - 44f, 54f), "Repair the cart", itemStyle);
+            GUI.Label(OffsetRect(rect, sideQuestSecondTaskRect), "Repair the cart", itemStyle);
         }
+    }
+
+    private static Rect OffsetRect(Rect parent, Rect localRect)
+    {
+        return new Rect(parent.x + localRect.x, parent.y + localRect.y, localRect.width, localRect.height);
+    }
+
+    private static Rect InnerRect(Rect parent, Rect localRect)
+    {
+        float y = localRect.y >= 0f ? parent.y + localRect.y : parent.yMax + localRect.y;
+        float width = localRect.width >= 0f ? localRect.width : parent.width + localRect.width;
+        float height = localRect.height >= 0f ? localRect.height : parent.height + localRect.height;
+        return new Rect(parent.x + localRect.x, y, width, height);
     }
 
     private void DrawInteractPrompt()
@@ -240,11 +290,11 @@ public class MerchantDeliverySideQuest : MonoBehaviour
             return;
         }
 
-        GUIStyle style = GameUiStyle.LabelStyle(ref promptStyle, 34, TextAnchor.MiddleCenter, FontStyle.Bold);
+        GUIStyle style = GameUiStyle.LabelStyle(ref promptStyle, interactionPromptFontSize, TextAnchor.MiddleCenter, FontStyle.Bold);
 
-        Rect rect = GameUiStyle.InteractionPromptRect(420f, 60f);
+        Rect rect = GameUiStyle.InteractionPromptRect(interactionPromptSize.x, interactionPromptSize.y);
         GameUiStyle.DrawDialoguePanel(rect);
-        string text = showToolPrompt ? "Press E to pick up" : (showRepairPrompt ? "Press E to repair" : "Press E to talk");
+        string text = showToolPrompt ? pickUpPrompt : (showRepairPrompt ? repairPrompt : merchantTalkPrompt);
         GUI.Label(rect, text, style);
     }
 
@@ -255,18 +305,18 @@ public class MerchantDeliverySideQuest : MonoBehaviour
             return;
         }
 
-        Rect rect = GameUiStyle.DialogueRect(260f);
+        Rect rect = GameUiStyle.DialogueRect(messagePanelHeight);
         GameUiStyle.DrawDialoguePanel(rect);
 
-        GUIStyle style = GameUiStyle.LabelStyle(ref messageStyle, 34, TextAnchor.MiddleCenter, FontStyle.Normal, true);
+        GUIStyle style = GameUiStyle.LabelStyle(ref messageStyle, messageFontSize, messageAlignment, FontStyle.Normal, true);
 
-        GUI.Label(new Rect(rect.x + 36f, rect.y + 30f, rect.width - 72f, rect.height - 126f), timedMessage, style);
+        GUI.Label(InnerRect(rect, messageTextRect), timedMessage, style);
 
         if (showContinueHint)
         {
-            GUIStyle hintStyle = GameUiStyle.LabelStyle(ref continueHintStyle, 22, TextAnchor.MiddleRight);
+            GUIStyle hintStyle = GameUiStyle.LabelStyle(ref continueHintStyle, continueHintFontSize, TextAnchor.MiddleRight);
             hintStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f);
-            GUI.Label(new Rect(rect.x + 36f, rect.y + rect.height - 72f, rect.width - 72f, 48f), "Press C to continue", hintStyle);
+            GUI.Label(InnerRect(rect, continueHintRect), continueHintText, hintStyle);
         }
     }
 
@@ -277,16 +327,16 @@ public class MerchantDeliverySideQuest : MonoBehaviour
             return;
         }
 
-        float width = Mathf.Min(900f, Screen.width - 80f);
-        Rect rect = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.5f - 180f, width, 360f);
+        float width = Mathf.Min(choicePanelMaxWidth, Screen.width - choicePanelScreenPadding);
+        Rect rect = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.5f + choicePanelCenterOffsetY, width, choicePanelHeight);
         GameUiStyle.DrawDialoguePanel(rect);
 
-        GUIStyle titleStyle = GameUiStyle.LabelStyle(ref choiceTitleStyle, 32, TextAnchor.MiddleCenter, FontStyle.Bold);
-        GUIStyle optionStyle = GameUiStyle.LabelStyle(ref choiceOptionStyle, 28, TextAnchor.MiddleLeft);
+        GUIStyle titleStyle = GameUiStyle.LabelStyle(ref choiceTitleStyle, choiceTitleFontSize, TextAnchor.MiddleCenter, FontStyle.Bold);
+        GUIStyle optionStyle = GameUiStyle.LabelStyle(ref choiceOptionStyle, choiceOptionFontSize, TextAnchor.MiddleLeft);
 
-        GUI.Label(new Rect(rect.x + 36f, rect.y + 28f, rect.width - 72f, 68f), "Choose", titleStyle);
-        GUI.Label(new Rect(rect.x + 56f, rect.y + 124f, rect.width - 112f, 78f), "A: I will check", optionStyle);
-        GUI.Label(new Rect(rect.x + 56f, rect.y + 222f, rect.width - 112f, 78f), "B: Leave", optionStyle);
+        GUI.Label(InnerRect(rect, choiceTitleRect), choiceTitleText, titleStyle);
+        GUI.Label(InnerRect(rect, choiceAcceptRect), choiceAcceptText, optionStyle);
+        GUI.Label(InnerRect(rect, choiceLeaveRect), choiceLeaveText, optionStyle);
     }
 
     private void ShowTimedMessage(string message, float seconds, bool waitForContinue)

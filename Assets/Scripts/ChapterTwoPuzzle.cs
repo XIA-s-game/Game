@@ -40,38 +40,41 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
     [SerializeField] private float finalUnlockMoveSeconds = 1.2f;
     [SerializeField] private KeyCode interactKey = KeyCode.E;
     [SerializeField] private KeyCode continueKey = KeyCode.C;
+    [SerializeField] private Vector2 wallButtonSize = new Vector2(180f, 56f);
+    [SerializeField] private Vector2 wallButtonMargin = new Vector2(18f, 18f);
+    [SerializeField] private string wallButtonText = "Drop Wall";
 
     [Header("Dialogue")]
-    [SerializeField] private string[] boxFoundDialogue = { "Player: The third page is in this box." };
-    [SerializeField] private string[] lockedHouseDialogue = { "Player: This house is locked. I need four keys." };
+    [SerializeField] private string[] boxFoundDialogue = { "Casper: The third page is in this box." };
+    [SerializeField] private string[] lockedHouseDialogue = { "Casper: This house is locked. I need four keys." };
     [SerializeField] private string[] listenerDialogue =
     {
-        "Player: Do you know where the third page is?",
+        "Casper: Do you know where the third page is?",
         "Villager: Try the locked house up the hill.",
-        "Player: Thank you."
+        "Casper: Thank you."
     };
-    [SerializeField] private string[] mazeExitDialogue = { "Player: I finally made it out." };
+    [SerializeField] private string[] mazeExitDialogue = { "Casper: I finally made it out." };
     [SerializeField] private string[] bakerReadyDialogue = { "Baker: Everything is ready now." };
     [SerializeField] private string[] bakerRewardDialogue = { "Baker: Thank you. Take this yellow key." };
     [SerializeField] private string[] bakerIntroDialogue =
     {
-        "Player: Do you know where the four keys are?",
+        "Casper: Do you know where the four keys are?",
         "Baker: I have the yellow key, but I need honey first.",
-        "Player: I can help with that.",
+        "Casper: I can help with that.",
         "Baker: Please bring me a jar of honey."
     };
     [SerializeField] private string[] bakerHintDialogue = { "Baker: The bear near the tree has honey." };
     [SerializeField] private string[] bearEmptyDialogue = { "Bear: That was my only honey jar." };
     [SerializeField] private string[] bearLeafFoundDialogue =
     {
-        "Player: I found the silver leaf.",
+        "Casper: I found the silver leaf.",
         "Bear: Pour the honey into the jar over there."
     };
     [SerializeField] private string[] bearIntroDialogue =
     {
-        "Player: I need some honey.",
+        "Casper: I need some honey.",
         "Bear: Bring me a silver leaf first.",
-        "Player: I will find one."
+        "Casper: I will find one."
     };
     [SerializeField] private string[] bearWaitingDialogue = { "Bear: Did you find the silver leaf?" };
     [SerializeField] private string[] bearPourDialogue = { "Bear: Pour the honey into the jar over there." };
@@ -79,12 +82,12 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
     [SerializeField] private string[] guardMazeIntroDialogue = { "Guard: Pass the maze and answer my questions to earn the second page." };
     [SerializeField] private string[] guardFirstDialogue =
     {
-        "Player: I am looking for the second page.",
+        "Casper: I am looking for the second page.",
         "Guard: No pass, no entry.",
-        "Player: Then I need to find a pass first."
+        "Casper: Then I need to find a pass first."
     };
     [SerializeField] private string[] guardNoPassDialogue = { "Guard: No pass, no entry." };
-    [SerializeField] private string[] welcomeDialogue = { "Player: This maze is huge." };
+    [SerializeField] private string[] welcomeDialogue = { "Casper: This maze is huge." };
     [SerializeField] private string[] quizIntroDialogue =
     {
         "Guard: You passed the maze. Now answer my questions.",
@@ -123,6 +126,39 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
     [SerializeField] private string quizPassedPrompt = "Quiz passed. Second page received.";
     [SerializeField] private string quizFailedPrompt = "Two wrong answers. Start the maze again.";
     [SerializeField] private string quizFailedFeedback = "Two wrong answers. Go through the maze again.";
+
+    [Header("Dialogue UI")]
+    [SerializeField] private float dialoguePanelHeight = 260f;
+    [SerializeField] private Vector2 dialogueTextOffset = new Vector2(180f, 130f);
+    [SerializeField] private float dialogueTextRightPadding = 72f;
+    [SerializeField] private float dialogueTextBottomPadding = 126f;
+    [SerializeField] private int dialogueTextFontSize = 30;
+    [SerializeField] private Vector2 continuePromptOffset = new Vector2(0f, 130f);
+    [SerializeField] private float continuePromptRightPadding = 160f;
+    [SerializeField] private float continuePromptHeight = 48f;
+    [SerializeField] private int continuePromptFontSize = 22;
+
+    [Header("Prompt UI")]
+    [SerializeField] private Vector2 systemPromptSize = new Vector2(760f, 92f);
+    [SerializeField] private int systemPromptFontSize = 30;
+    [SerializeField] private Vector2 interactionPromptSize = new Vector2(440f, 60f);
+    [SerializeField] private int interactionPromptFontSize = 30;
+    [SerializeField] private Vector2 boardPromptSize = new Vector2(620f, 86f);
+    [SerializeField] private int boardPromptFontSize = 30;
+
+    [Header("Quiz UI")]
+    [SerializeField] private Rect quizPanelRect = new Rect(70f, 50f, -140f, -100f);
+    [SerializeField] private Rect quizFeedbackTextRect = new Rect(396f, 558f, -112f, -160f);
+    [SerializeField] private Rect quizFeedbackContinueRect = new Rect(-200f, 988f, -112f, 54f);
+    [SerializeField] private Rect quizHeaderRect = new Rect(98f, 428f, -96f, 72f);
+    [SerializeField] private Rect quizQuestionRect = new Rect(388f, 528f, -116f, 168f);
+    [SerializeField] private Rect quizOptionStartRect = new Rect(388f, 590f, -140f, 78f);
+    [SerializeField] private float quizOptionSpacing = 92f;
+    [SerializeField] private int quizFeedbackFontSize = 36;
+    [SerializeField] private int quizFeedbackContinueFontSize = 26;
+    [SerializeField] private int quizHeaderFontSize = 28;
+    [SerializeField] private int quizQuestionFontSize = 30;
+    [SerializeField] private int quizOptionFontSize = 26;
 
     private enum FlowState
     {
@@ -274,7 +310,6 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
         instance = this;
         BuildQuestions();
         ReadSceneReferences();
-        DropAirWallTwo();
     }
 
     private void OnDisable()
@@ -348,6 +383,26 @@ public partial class ChapterTwoPuzzle : MonoBehaviour
         else
         {
             DrawInteractPrompts();
+            DrawWallButton();
+        }
+    }
+
+    private void DrawWallButton()
+    {
+        if (!IsTargetScene() || state != FlowState.Exploring || airWallTwo == null || airWallTwoDropped)
+        {
+            return;
+        }
+
+        Rect rect = new Rect(
+            wallButtonMargin.x,
+            Screen.height - wallButtonMargin.y - wallButtonSize.y,
+            wallButtonSize.x,
+            wallButtonSize.y);
+
+        if (GUI.Button(rect, wallButtonText))
+        {
+            DropAirWallTwo();
         }
     }
 }

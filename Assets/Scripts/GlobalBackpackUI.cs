@@ -8,14 +8,34 @@ public class GlobalBackpackUI : MonoBehaviour
     [SerializeField] private string menuSceneName = "MainMenu";
     [SerializeField] private string menuSceneAlias = "Mainmenu";
 
+    [Header("Backpack UI")]
+    [SerializeField] private float panelWidth = 560f;
+    [SerializeField] private float panelMaxHeight = 620f;
+    [SerializeField] private float panelBaseHeight = 150f;
+    [SerializeField] private float rowHeight = 62f;
+    [SerializeField] private Vector2 bagIconSize = new Vector2(124f, 102f);
+    [SerializeField] private Vector2 bagIconOffset = new Vector2(148f, 18f);
+    [SerializeField] private UiPadding titlePadding;
+    [SerializeField] private UiPadding hintPadding;
+    [SerializeField] private UiPadding listPadding;
+    [SerializeField] private int titleFontSize = 32;
+    [SerializeField] private int hintFontSize = 18;
+    [SerializeField] private int itemFontSize = 24;
+
     private static GlobalBackpackUI instance;
     private static bool enabledForGameSession;
+    private static bool inputBlocked;
 
     private readonly Dictionary<string, int> itemCounts = new Dictionary<string, int>();
     private readonly List<string> itemOrder = new List<string>();
     private bool inventoryOpen;
     private GUIStyle labelStyle;
     private GUIStyle titleStyle;
+
+    private void OnValidate()
+    {
+        FillMissingInspectorDefaults();
+    }
 
     public static void AddItem(string itemName, int amount = 1)
     {
@@ -47,21 +67,33 @@ public class GlobalBackpackUI : MonoBehaviour
             instance.Remove(itemName, amount);
         }
     }
-
+    
+    // Remove all quantities of a certain item.
     public static void RemoveAll(string itemName)
     {
         SetItemCount(itemName, 0);
     }
-
+    // Enable the backpack for the current game session, allowing it to be opened and displayed. Does not add any items by itself.
     public static void EnableForGameSession()
     {
         enabledForGameSession = true;
     }
-
+    // Disable the backpack for the current game session, hiding it and preventing it from being opened. Does not clear existing items.
     public static void DisableForGameSession()
     {
         enabledForGameSession = false;
+        inputBlocked = false;
         if (instance != null)
+        {
+            instance.inventoryOpen = false;
+        }
+    }
+    
+    // Prevent backpack input during the dialogue/selection process.
+    public static void SetInputBlocked(bool blocked)
+    {
+        inputBlocked = blocked;
+        if (blocked && instance != null)
         {
             instance.inventoryOpen = false;
         }
@@ -126,6 +158,7 @@ public class GlobalBackpackUI : MonoBehaviour
 
     private void Awake()
     {
+        FillMissingInspectorDefaults();
         if (instance != null && instance != this)
         {
             Destroy(gameObject);
@@ -160,7 +193,7 @@ public class GlobalBackpackUI : MonoBehaviour
             return;
         }
 
-        if (Input.GetKeyDown(KeyCode.B))
+        if (!inputBlocked && Input.GetKeyDown(KeyCode.B))
         {
             inventoryOpen = !inventoryOpen;
         }
@@ -242,21 +275,23 @@ public class GlobalBackpackUI : MonoBehaviour
             return;
         }
 
-        float width = inventoryOpen ? 560f : 240f;
-        float height = inventoryOpen ? Mathf.Min(620f, 150f + Mathf.Max(1, itemOrder.Count) * 62f) : 150f;
+        float width = panelWidth;
+        float height = Mathf.Min(panelMaxHeight, panelBaseHeight + Mathf.Max(1, itemOrder.Count) * rowHeight);
         Rect rect = GameUiStyle.BackpackRect(width, height);
 
         GameUiStyle.DrawPanel(rect);
-        Rect bagRect = new Rect(rect.x + rect.width - 148f, rect.y + 18f, 124f, 102f);
+        Rect bagRect = new Rect(rect.x + rect.width - bagIconOffset.x, rect.y + bagIconOffset.y, bagIconSize.x, bagIconSize.y);
         GameUiStyle.DrawBag(bagRect);
-        GUI.Label(new Rect(rect.x + 34f, rect.y + 24f, rect.width - 190f, 60f), "Backpack", GameUiStyle.LabelStyle(ref titleStyle, 32, TextAnchor.MiddleLeft, FontStyle.Bold));
-        GUI.Label(new Rect(rect.x + 34f, rect.y + 86f, rect.width - 68f, 36f), "Press B to close", GameUiStyle.LabelStyle(ref labelStyle, 18, TextAnchor.MiddleLeft));
+        Rect titleRect = titlePadding.Apply(rect);
+        Rect hintRect = hintPadding.Apply(rect);
+        GUI.Label(new Rect(titleRect.x, titleRect.y, titleRect.width, 60f), "Backpack", GameUiStyle.LabelStyle(ref titleStyle, titleFontSize, TextAnchor.MiddleLeft, FontStyle.Bold));
+        GUI.Label(new Rect(hintRect.x, hintRect.y, hintRect.width, 36f), "Press B to close", GameUiStyle.LabelStyle(ref labelStyle, hintFontSize, TextAnchor.MiddleLeft));
 
-        float listY = rect.y + 150f;
+        float listY = rect.y + listPadding.top;
 
         if (itemOrder.Count == 0)
         {
-            GUI.Label(new Rect(rect.x + 40f, listY, rect.width - 80f, 54f), "Empty", GameUiStyle.LabelStyle(ref labelStyle, 24, TextAnchor.MiddleLeft));
+            GUI.Label(new Rect(rect.x + listPadding.left, listY, rect.width - listPadding.left - listPadding.right, 54f), "Empty", GameUiStyle.LabelStyle(ref labelStyle, itemFontSize, TextAnchor.MiddleLeft));
             return;
         }
 
@@ -269,7 +304,70 @@ public class GlobalBackpackUI : MonoBehaviour
             }
 
             string text = count > 1 ? itemName + " x" + count : itemName;
-            GUI.Label(new Rect(rect.x + 40f, listY + i * 62f, rect.width - 80f, 56f), text, GameUiStyle.LabelStyle(ref labelStyle, 24, TextAnchor.MiddleLeft));
+            GUI.Label(new Rect(rect.x + listPadding.left, listY + i * rowHeight, rect.width - listPadding.left - listPadding.right, rowHeight - 6f), text, GameUiStyle.LabelStyle(ref labelStyle, itemFontSize, TextAnchor.MiddleLeft));
+        }
+    }
+
+    private void FillMissingInspectorDefaults()
+    {
+        if (panelWidth <= 0f)
+        {
+            panelWidth = 560f;
+        }
+
+        if (panelMaxHeight <= 0f)
+        {
+            panelMaxHeight = 620f;
+        }
+
+        if (panelBaseHeight <= 0f)
+        {
+            panelBaseHeight = 150f;
+        }
+
+        if (rowHeight <= 0f)
+        {
+            rowHeight = 62f;
+        }
+
+        if (bagIconSize == Vector2.zero)
+        {
+            bagIconSize = new Vector2(124f, 102f);
+        }
+
+        if (bagIconOffset == Vector2.zero)
+        {
+            bagIconOffset = new Vector2(148f, 18f);
+        }
+
+        if (titlePadding.IsZero)
+        {
+            titlePadding = UiPadding.Create(34f, 190f, 24f, 0f);
+        }
+
+        if (hintPadding.IsZero)
+        {
+            hintPadding = UiPadding.Create(34f, 68f, 86f, 0f);
+        }
+
+        if (listPadding.IsZero)
+        {
+            listPadding = UiPadding.Create(40f, 80f, 150f, 0f);
+        }
+
+        if (titleFontSize <= 0)
+        {
+            titleFontSize = 32;
+        }
+
+        if (hintFontSize <= 0)
+        {
+            hintFontSize = 18;
+        }
+
+        if (itemFontSize <= 0)
+        {
+            itemFontSize = 24;
         }
     }
 

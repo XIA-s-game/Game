@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -91,6 +91,39 @@ public partial class OldTreeInteraction : MonoBehaviour
     [SerializeField] private string answerA = "Do not rush, young one.";
     [SerializeField] private string answerC = "Rude words have consequences.";
 
+    [Header("Dialogue UI")]
+    [SerializeField] private float choiceDialogueHeight = 470f;
+    [SerializeField] private float continueDialogueHeight = 260f;
+    [SerializeField] private float normalDialogueHeight = 230f;
+    [SerializeField] private float choiceDialogueMaxWidth = 1280f;
+    [SerializeField] private float choiceDialogueHorizontalPadding = 96f;
+    [SerializeField] private Rect dialogueTextRect = new Rect(180f, 130f, -252f, -126f);
+    [SerializeField] private float choiceTextExtraY = 80f;
+    [SerializeField] private float choiceTextHeight = 120f;
+    [SerializeField] private float continueHintX = 840f;
+    [SerializeField] private float continueHintY = 130f;
+    [SerializeField] private float continueHintWidth = 280f;
+    [SerializeField] private float continueHintHeight = 48f;
+    [SerializeField] private Rect choiceHintRect = new Rect(180f, 326f, -252f, 38f);
+    [SerializeField] private Rect choiceARect = new Rect(180f, 382f, -252f, 42f);
+    [SerializeField] private Rect choiceBRect = new Rect(180f, 432f, -252f, 54f);
+    [SerializeField] private Rect choiceCRect = new Rect(180f, 494f, -252f, 42f);
+    [SerializeField] private int dialogueTextFontSize = 30;
+    [SerializeField] private int continueHintFontSize = 22;
+    [SerializeField] private int choiceHintFontSize = 22;
+    [SerializeField] private int choiceOptionFontSize = 26;
+    [SerializeField] private Vector2 interactionPromptSize = new Vector2(520f, 60f);
+    [SerializeField] private int interactionPromptFontSize = 28;
+
+    [Header("Reward UI")]
+    [SerializeField] private float rewardDialogueHeight = 500f;
+    [SerializeField] private Rect rewardGreetingRect = new Rect(180f, 280f, -252f, 88f);
+    [SerializeField] private Rect rewardChoiceARect = new Rect(180f, 382f, -252f, 42f);
+    [SerializeField] private Rect rewardChoiceBRect = new Rect(180f, 432f, -252f, 42f);
+    [SerializeField] private Rect rewardChoiceCRect = new Rect(180f, 494f, -252f, 42f);
+    [SerializeField] private int rewardGreetingFontSize = 28;
+    [SerializeField] private int rewardChoiceFontSize = 24;
+
     private Quaternion originalRotation;
     // Cached transforms let the tree scene return to its starting pose after each branch.
     private Vector3 interactionTargetOriginalPosition;
@@ -180,6 +213,7 @@ public partial class OldTreeInteraction : MonoBehaviour
         {
             StartLookCoroutine(TurnTowardPlayer());
             state = DialogueState.Choosing;
+            GlobalBackpackUI.SetInputBlocked(true);
         }
 
         if (state == DialogueState.Choosing)

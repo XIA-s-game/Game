@@ -382,10 +382,6 @@ public class MerylSceneController : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         CreateVideoOverlay();
         ReleaseActiveVideoTexture();
-        activeVideoTexture = new RenderTexture(1920, 1080, 0, RenderTextureFormat.ARGB32);
-        activeVideoTexture.Create();
-        videoImage.texture = activeVideoTexture;
-        videoOverlayObject.SetActive(true);
 
         videoPlayer.Stop();
         videoPlayer.source = VideoSource.VideoClip;
@@ -408,6 +404,14 @@ public class MerylSceneController : MonoBehaviour
             CleanupVideoPlayback();
             yield break;
         }
+
+        int textureWidth = videoPlayer.width > 0 ? (int)videoPlayer.width : 1920;
+        int textureHeight = videoPlayer.height > 0 ? (int)videoPlayer.height : 1080;
+        activeVideoTexture = new RenderTexture(textureWidth, textureHeight, 0, RenderTextureFormat.ARGB32);
+        activeVideoTexture.Create();
+        videoPlayer.targetTexture = activeVideoTexture;
+        videoImage.texture = activeVideoTexture;
+        videoOverlayObject.SetActive(true);
 
         UpdateVideoLayout();
 
@@ -498,7 +502,6 @@ public class MerylSceneController : MonoBehaviour
         }
 
         float targetHeight = canvasRect != null ? canvasRect.rect.height : Screen.height;
-        targetHeight *= 0.82f;
         float targetWidth = targetHeight * aspect;
 
         imageRect.anchorMin = new Vector2(0.5f, 0.5f);

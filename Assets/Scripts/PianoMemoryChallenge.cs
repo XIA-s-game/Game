@@ -16,6 +16,21 @@ public class PianoMemoryChallenge : MonoBehaviour
     [SerializeField] private float noteGapSeconds = 0.16f;
     [SerializeField] private float noteVolume = 1f;
 
+    [Header("Piano UI")]
+    [SerializeField] private float panelHeight = 280f;
+    [SerializeField] private Vector2 titleOffset = new Vector2(20f, 128f);
+    [SerializeField] private Vector2 titleSize = new Vector2(40f, 34f);
+    [SerializeField] private int titleFontSize = 26;
+    [SerializeField] private Vector2 resultPromptOffset = new Vector2(20f, 106f);
+    [SerializeField] private Vector2 resultPromptSize = new Vector2(40f, 30f);
+    [SerializeField] private int resultPromptFontSize = 22;
+    [SerializeField] private float keyStartX = 32f;
+    [SerializeField] private float keyY = 200f;
+    [SerializeField] private float keyAreaRightPadding = 32f;
+    [SerializeField] private float keyGap = 8f;
+    [SerializeField] private float keyHeight = 64f;
+    [SerializeField] private int keyFontSize = 20;
+
     private static readonly string[] KeyNames = { "1 Do", "2 Re", "3 Mi", "4 Fa", "5 Sol", "6 La", "7 Si", "8 Do" };
     private static readonly float[] NoteFrequencies = { 261.63f, 293.66f, 329.63f, 349.23f, 392f, 440f, 493.88f, 523.25f };
     private static readonly KeyCode[] NumberKeys =
@@ -221,7 +236,7 @@ public class PianoMemoryChallenge : MonoBehaviour
 
     private void DrawPianoPanel()
     {
-        Rect panel = GameUiStyle.DialogueRect(280f);
+        Rect panel = GameUiStyle.DialogueRect(panelHeight);
         GameUiStyle.DrawDialoguePanel(panel);
 
         string title;
@@ -242,22 +257,31 @@ public class PianoMemoryChallenge : MonoBehaviour
             title = "Round " + (roundIndex + 1) + ": repeat";
         }
 
-        GUI.Label(new Rect(panel.x + 20f, panel.y + 128f, panel.width - 40f, 34f), title, GameUiStyle.LabelStyle(ref titleStyle, 26, TextAnchor.MiddleCenter, FontStyle.Bold));
+        GUI.Label(
+            new Rect(panel.x + titleOffset.x, panel.y + titleOffset.y, panel.width - titleSize.x, titleSize.y),
+            title,
+            GameUiStyle.LabelStyle(ref titleStyle, titleFontSize, TextAnchor.MiddleCenter, FontStyle.Bold));
 
         if (failed)
         {
-            GUI.Label(new Rect(panel.x + 20f, panel.y + 106f, panel.width - 40f, 30f), "Press A to restart    Press B to exit", GameUiStyle.LabelStyle(ref promptStyle, 22, TextAnchor.MiddleCenter, FontStyle.Bold));
+            GUI.Label(
+                new Rect(panel.x + resultPromptOffset.x, panel.y + resultPromptOffset.y, panel.width - resultPromptSize.x, resultPromptSize.y),
+                "Press A to restart    Press B to exit",
+                GameUiStyle.LabelStyle(ref promptStyle, resultPromptFontSize, TextAnchor.MiddleCenter, FontStyle.Bold));
         }
         else if (won)
         {
-            GUI.Label(new Rect(panel.x + 20f, panel.y + 106f, panel.width - 40f, 30f), "Press B to exit", GameUiStyle.LabelStyle(ref promptStyle, 22, TextAnchor.MiddleCenter, FontStyle.Bold));
+            GUI.Label(
+                new Rect(panel.x + resultPromptOffset.x, panel.y + resultPromptOffset.y, panel.width - resultPromptSize.x, resultPromptSize.y),
+                "Press B to exit",
+                GameUiStyle.LabelStyle(ref promptStyle, resultPromptFontSize, TextAnchor.MiddleCenter, FontStyle.Bold));
         }
 
-        float keyWidth = (panel.width - 64f) / 8f;
-        GUIStyle keyStyle = GameUiStyle.ButtonStyle(ref keyButtonStyle, 20);
+        float keyWidth = (panel.width - keyStartX - keyAreaRightPadding) / 8f;
+        GUIStyle keyStyle = GameUiStyle.ButtonStyle(ref keyButtonStyle, keyFontSize);
         for (int i = 0; i < 8; i++)
         {
-            Rect keyRect = new Rect(panel.x + 32f + i * keyWidth, panel.y + 200f, keyWidth - 8f, 64f);
+            Rect keyRect = new Rect(panel.x + keyStartX + i * keyWidth, panel.y + keyY, keyWidth - keyGap, keyHeight);
             if (GUI.Button(keyRect, KeyNames[i], keyStyle) && !playingSequence && !failed && !won)
             {
                 HandlePlayerNote(i);
@@ -302,7 +326,7 @@ public class PianoMemoryChallenge : MonoBehaviour
         audioSource.ignoreListenerVolume = true;
         audioSource.ignoreListenerPause = true;
     }
-
+    // Helper method to generate or retrieve a cached AudioClip for a given note index. This creates a simple sine wave tone with an envelope to simulate a piano note, and caches it in a dictionary for future use to avoid regenerating the same clip multiple times.
     private AudioClip GetOrCreateNoteClip(int noteIndex)
     {
         if (noteClips.TryGetValue(noteIndex, out AudioClip clip))

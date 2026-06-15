@@ -4,17 +4,27 @@ using UnityEngine;
 public static class GameUiStyle
 {
     // Built with AI assistance to keep shared menu layout consistent across scenes.
-    public const float Margin = 24f;
-    public const float BottomPromptY = 132f;
-    public const float FontScale = 1.2f;
-    public static readonly Vector2 UiReferenceResolution = new Vector2(1920f, 1080f);
-    public static readonly Vector2 MainMenuButtonSize = new Vector2(450f, 82f);
-    public static readonly Vector2 MainMenuStartButton = new Vector2(0f, 46f);
-    public static readonly Vector2 MainMenuIntroButton = new Vector2(0f, -45f);
-    public static readonly Vector2 MainMenuControlsButton = new Vector2(0f, -136f);
-    public static readonly Vector2 MainMenuSettingsButton = new Vector2(0f, -227f);
-    public static readonly Vector2 MainMenuCreditsButton = new Vector2(0f, -318f);
-    public static readonly Vector2 MainMenuExitButton = new Vector2(0f, -409f);
+    public static float Margin { get; private set; } = 24f;
+    public static float BottomPromptY { get; private set; } = 132f;
+    public static float FontScale { get; private set; } = 1.2f;
+    public static Vector2 UiReferenceResolution { get; private set; } = new Vector2(1920f, 1080f);
+    public static Vector2 MainMenuButtonSize { get; private set; } = new Vector2(450f, 82f);
+    public static Vector2 MainMenuStartButton { get; private set; } = new Vector2(0f, 46f);
+    public static Vector2 MainMenuIntroButton { get; private set; } = new Vector2(0f, -45f);
+    public static Vector2 MainMenuControlsButton { get; private set; } = new Vector2(0f, -136f);
+    public static Vector2 MainMenuSettingsButton { get; private set; } = new Vector2(0f, -227f);
+    public static Vector2 MainMenuCreditsButton { get; private set; } = new Vector2(0f, -318f);
+    public static Vector2 MainMenuExitButton { get; private set; } = new Vector2(0f, -409f);
+
+    private static Vector2 interactionPromptMinSize = new Vector2(640f, 112f);
+    private static Vector2 systemPromptMinSize = new Vector2(920f, 156f);
+    private static float dialogueMaxWidth = 1280f;
+    private static float dialogueHorizontalPadding = 96f;
+    private static float dialogueHeightScale = 1.45f;
+    private static float dialogueMinHeight = 300f;
+    private static float dialogueBottomOffset = 34f;
+    private static float dialogueVerticalPadding = 80f;
+    private static float sideQuestStackGap = 12f;
 
     private static Texture2D panelTexture;
     private static Texture2D dialoguePanelTexture;
@@ -25,6 +35,54 @@ public static class GameUiStyle
     private const string DialoguePanelTexturePath = "new/dialogue_panel.png";
     private const string BagTexturePath = "new/bag.png";
     private const string MenuTexturePath = "new/menu.png";
+
+    public static void SetLayout(
+        float margin,
+        float bottomPromptY,
+        float fontScale,
+        Vector2 referenceResolution,
+        Vector2 interactionPromptMin,
+        Vector2 systemPromptMin,
+        float dialogueWidthMax,
+        float dialoguePaddingX,
+        float dialogueScale,
+        float dialogueHeightMin,
+        float dialogueBottom,
+        float dialoguePaddingY,
+        float sideQuestGap)
+    {
+        Margin = Mathf.Max(0f, margin);
+        BottomPromptY = bottomPromptY;
+        FontScale = Mathf.Max(0.1f, fontScale);
+        UiReferenceResolution = new Vector2(Mathf.Max(1f, referenceResolution.x), Mathf.Max(1f, referenceResolution.y));
+        interactionPromptMinSize = MaxVector(interactionPromptMin, Vector2.one);
+        systemPromptMinSize = MaxVector(systemPromptMin, Vector2.one);
+        dialogueMaxWidth = Mathf.Max(1f, dialogueWidthMax);
+        dialogueHorizontalPadding = Mathf.Max(0f, dialoguePaddingX);
+        dialogueHeightScale = Mathf.Max(0.1f, dialogueScale);
+        dialogueMinHeight = Mathf.Max(1f, dialogueHeightMin);
+        dialogueBottomOffset = dialogueBottom;
+        dialogueVerticalPadding = Mathf.Max(0f, dialoguePaddingY);
+        sideQuestStackGap = Mathf.Max(0f, sideQuestGap);
+    }
+
+    public static void SetMainMenuButtons(
+        Vector2 buttonSize,
+        Vector2 startButton,
+        Vector2 introButton,
+        Vector2 controlsButton,
+        Vector2 settingsButton,
+        Vector2 creditsButton,
+        Vector2 exitButton)
+    {
+        MainMenuButtonSize = MaxVector(buttonSize, Vector2.one);
+        MainMenuStartButton = startButton;
+        MainMenuIntroButton = introButton;
+        MainMenuControlsButton = controlsButton;
+        MainMenuSettingsButton = settingsButton;
+        MainMenuCreditsButton = creditsButton;
+        MainMenuExitButton = exitButton;
+    }
 
     public static void SetTextures(Texture2D panel, Texture2D dialoguePanel, Texture2D bag, Texture2D menu)
     {
@@ -37,8 +95,8 @@ public static class GameUiStyle
 
     public static Rect InteractionPromptRect(float width = 440f, float height = 60f)
     {
-        width = Mathf.Max(width, 640f);
-        height = Mathf.Max(height, 112f);
+        width = Mathf.Max(width, interactionPromptMinSize.x);
+        height = Mathf.Max(height, interactionPromptMinSize.y);
         width = Mathf.Min(width, Screen.width - Margin * 2f);
         height = Mathf.Min(height, Screen.height - Margin * 2f);
         return new Rect((Screen.width - width) * 0.5f, Screen.height - height - Margin * 2f, width, height);
@@ -46,8 +104,8 @@ public static class GameUiStyle
 
     public static Rect SystemPromptRect(float width = 760f, float height = 92f)
     {
-        width = Mathf.Max(width, 920f);
-        height = Mathf.Max(height, 156f);
+        width = Mathf.Max(width, systemPromptMinSize.x);
+        height = Mathf.Max(height, systemPromptMinSize.y);
         width = Mathf.Min(width, Screen.width - Margin * 2f);
         height = Mathf.Min(height, Screen.height - Margin * 2f);
         return new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
@@ -56,15 +114,15 @@ public static class GameUiStyle
     public static Rect DialogueRect(float height = 220f)
     {
         // Shared bottom dialogue panel used by side quests and main story conversations.
-        float width = Mathf.Min(1280f, Screen.width - 96f);
-        height = Mathf.Clamp(height * 1.45f, 300f, Screen.height - 80f);
-        return new Rect((Screen.width - width) * 0.5f, Screen.height - height - 34f, width, height);
+        float width = Mathf.Min(dialogueMaxWidth, Screen.width - dialogueHorizontalPadding);
+        height = Mathf.Clamp(height * dialogueHeightScale, dialogueMinHeight, Screen.height - dialogueVerticalPadding);
+        return new Rect((Screen.width - width) * 0.5f, Screen.height - height - dialogueBottomOffset, width, height);
     }
 
     public static Rect SideQuestRect(float width, float height, int stackIndex = 0)
     {
         // Right-side stacked panel slot for quest trackers.
-        return new Rect(Screen.width - width - Margin, Margin + stackIndex * (height + 12f), width, height);
+        return new Rect(Screen.width - width - Margin, Margin + stackIndex * (height + sideQuestStackGap), width, height);
     }
 
     public static Rect BackpackRect(float width, float height)
@@ -194,5 +252,10 @@ public static class GameUiStyle
         texture.Apply();
         texture.hideFlags = HideFlags.HideAndDontSave;
         return texture;
+    }
+
+    private static Vector2 MaxVector(Vector2 value, Vector2 min)
+    {
+        return new Vector2(Mathf.Max(value.x, min.x), Mathf.Max(value.y, min.y));
     }
 }

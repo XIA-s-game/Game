@@ -49,6 +49,64 @@ public class FairyMemorySideQuest : MonoBehaviour
     [SerializeField] private Texture2D[] memoryImages;
     [SerializeField] private float memoryShowcaseSeconds = 10f;
 
+    [Header("Choice UI")]
+    [SerializeField] private float choicePanelMaxWidth = 980f;
+    [SerializeField] private float choicePanelScreenPadding = 80f;
+    [SerializeField] private float choicePanelCenterOffsetY = -220f;
+    [SerializeField] private float choicePanelHeight = 440f;
+    [SerializeField] private Rect choiceTitleRect = new Rect(42f, 110f, -72f, 68f);
+    [SerializeField] private Rect choiceARect = new Rect(140f, 160f, -104f, 92f);
+    [SerializeField] private Rect choiceBRect = new Rect(140f, 250f, -104f, 92f);
+    [SerializeField] private Rect choiceHintRect = new Rect(0f, -108f, -150f, 48f);
+    [SerializeField] private int choiceTitleFontSize = 30;
+    [SerializeField] private int choiceOptionFontSize = 28;
+    [SerializeField] private int choiceHintFontSize = 22;
+
+    [Header("Quest UI")]
+    [SerializeField] private Vector2 questPanelSize = new Vector2(630f, 260f);
+    [SerializeField] private Rect questTitleRect = new Rect(120f, 90f, -44f, 76f);
+    [SerializeField] private Rect questTaskRect = new Rect(120f, 130f, -44f, 58f);
+    [SerializeField] private Rect questFragmentRect = new Rect(120f, 170f, -44f, 58f);
+    [SerializeField] private int questTitleFontSize = 22;
+    [SerializeField] private int questTaskFontSize = 22;
+
+    [Header("Puzzle UI")]
+    [SerializeField] private float puzzleSideBySideScreenWidth = 920f;
+    [SerializeField] private Vector2 puzzleSideBySideSizeRatio = new Vector2(0.44f, 0.68f);
+    [SerializeField] private Vector2 puzzleStackedSizeRatio = new Vector2(0.72f, 0.58f);
+    [SerializeField] private float referenceSideBySideScale = 0.62f;
+    [SerializeField] private float referenceSideBySideMaxSize = 280f;
+    [SerializeField] private float referenceStackedScale = 0.42f;
+    [SerializeField] private float referenceStackedMaxSize = 180f;
+    [SerializeField] private Vector2 puzzleSideBySidePanelPadding = new Vector2(76f, 92f);
+    [SerializeField] private Vector2 puzzleStackedPanelPadding = new Vector2(40f, 126f);
+    [SerializeField] private Rect puzzleHintRect = new Rect(16f, 10f, -32f, 40f);
+    [SerializeField] private Vector2 puzzleGridOffset = new Vector2(20f, 50f);
+    [SerializeField] private float puzzleTileGap = 2f;
+    [SerializeField] private Vector2 referenceSideBySideOffset = new Vector2(24f, 42f);
+    [SerializeField] private float referenceStackedOffsetY = 16f;
+    [SerializeField] private Rect referenceLabelRect = new Rect(0f, -28f, 0f, 24f);
+    [SerializeField] private float referenceImagePadding = 4f;
+    [SerializeField] private int puzzleHintFontSize = 20;
+    [SerializeField] private int referenceLabelFontSize = 18;
+
+    [Header("Memory Showcase UI")]
+    [SerializeField] private float memoryShowcaseScreenPadding = 80f;
+    [SerializeField] private float memoryShowcaseMinWidth = 240f;
+    [SerializeField] private float memoryShowcaseGap = 10f;
+    [SerializeField] private float memoryShowcaseHeightRatio = 0.32f;
+    [SerializeField] private float memoryShowcaseSlotAspect = 1.25f;
+    [SerializeField] private float memoryShowcasePanelPadding = 18f;
+    [SerializeField] private float memoryShowcaseImagePadding = 4f;
+
+    [Header("Prompt UI")]
+    [SerializeField] private Vector2 messageBoxSize = new Vector2(920f, 156f);
+    [SerializeField] private Rect messageTextRect = new Rect(18f, 12f, -36f, -24f);
+    [SerializeField] private int messageFontSize = 24;
+    [SerializeField] private Vector2 centeredPromptSize = new Vector2(680f, 118f);
+    [SerializeField] private int memoryPromptFontSize = 28;
+    [SerializeField] private int puzzleExitPromptFontSize = 22;
+
     private const int GridSize = 4;
     private const int TileCount = GridSize * GridSize;
 
@@ -618,7 +676,7 @@ public class FairyMemorySideQuest : MonoBehaviour
 
         if (!completed && !puzzleActive && !memoryShowcaseActive && nearbyMemoryIndex >= 0)
         {
-            DrawCenteredLabel(GetMemoryPrompt(nearbyMemoryIndex), 28);
+            DrawCenteredLabel(GetMemoryPrompt(nearbyMemoryIndex), memoryPromptFontSize);
         }
 
         if (!string.IsNullOrEmpty(currentMessage) && Time.time < messageEndsAt)
@@ -629,7 +687,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         if (puzzleActive)
         {
             DrawPuzzle();
-            DrawCenteredLabel("Press B to exit", 22);
+            DrawCenteredLabel("Press B to exit", puzzleExitPromptFontSize);
         }
 
         if (memoryShowcaseActive)
@@ -640,19 +698,19 @@ public class FairyMemorySideQuest : MonoBehaviour
 
     private void DrawTreeHouseChoicePanel()
     {
-        float width = Mathf.Min(980f, Screen.width - 80f);
-        Rect rect = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.5f - 220f, width, 440f);
+        float width = Mathf.Min(choicePanelMaxWidth, Screen.width - choicePanelScreenPadding);
+        Rect rect = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.5f + choicePanelCenterOffsetY, width, choicePanelHeight);
         GameUiStyle.DrawDialoguePanel(rect);
 
-        GUIStyle titleStyle = GameUiStyle.LabelStyle(ref choiceTitleStyle, 30, TextAnchor.MiddleCenter, FontStyle.Bold);
-        GUIStyle optionStyle = GameUiStyle.LabelStyle(ref choiceOptionStyle, 28, TextAnchor.MiddleLeft, FontStyle.Normal, true);
-        GUIStyle hintStyle = GameUiStyle.LabelStyle(ref choiceHintStyle, 22, TextAnchor.MiddleRight);
+        GUIStyle titleStyle = GameUiStyle.LabelStyle(ref choiceTitleStyle, choiceTitleFontSize, TextAnchor.MiddleCenter, FontStyle.Bold);
+        GUIStyle optionStyle = GameUiStyle.LabelStyle(ref choiceOptionStyle, choiceOptionFontSize, TextAnchor.MiddleLeft, FontStyle.Normal, true);
+        GUIStyle hintStyle = GameUiStyle.LabelStyle(ref choiceHintStyle, choiceHintFontSize, TextAnchor.MiddleRight);
         hintStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f);
 
-        GUI.Label(new Rect(rect.x + 42f, rect.y + 110f, rect.width - 72f, 68f), choiceTitle, titleStyle);
-        GUI.Label(new Rect(rect.x + 140f, rect.y + 160f, rect.width - 104f, 92f), choiceA, optionStyle);
-        GUI.Label(new Rect(rect.x + 140f, rect.y + 250f, rect.width - 104f, 92f), choiceB, optionStyle);
-        GUI.Label(new Rect(rect.x + 0f, rect.y + rect.height - 108f, rect.width - 150f, 48f), choiceHint, hintStyle);
+        GUI.Label(InnerRect(rect, choiceTitleRect), choiceTitle, titleStyle);
+        GUI.Label(InnerRect(rect, choiceARect), choiceA, optionStyle);
+        GUI.Label(InnerRect(rect, choiceBRect), choiceB, optionStyle);
+        GUI.Label(InnerRect(rect, choiceHintRect), choiceHint, hintStyle);
     }
 
     private string GetMemoryPrompt(int index)
@@ -684,21 +742,19 @@ public class FairyMemorySideQuest : MonoBehaviour
 
     private void DrawQuestPanel()
     {
-        float width = 630f;
-        float height = 260f;
-        Rect rect = GameUiStyle.SideQuestRect(width, height);
+        Rect rect = GameUiStyle.SideQuestRect(questPanelSize.x, questPanelSize.y);
         GameUiStyle.DrawDialoguePanel(rect);
 
-        GUIStyle titleStyle = GameUiStyle.LabelStyle(ref questTitleStyle, 22, TextAnchor.UpperLeft, FontStyle.Normal, true);
-        GUIStyle taskStyle = GameUiStyle.LabelStyle(ref questTaskStyle, 22, TextAnchor.UpperLeft, FontStyle.Normal, true);
+        GUIStyle titleStyle = GameUiStyle.LabelStyle(ref questTitleStyle, questTitleFontSize, TextAnchor.UpperLeft, FontStyle.Normal, true);
+        GUIStyle taskStyle = GameUiStyle.LabelStyle(ref questTaskStyle, questTaskFontSize, TextAnchor.UpperLeft, FontStyle.Normal, true);
         taskStyle.normal.textColor = new Color(0.92f, 0.92f, 0.92f);
 
         int visibleFragmentCount = memoryFragmentsConsumed ? 0 : collectedCount;
         int memoryCount = memories != null ? memories.Length : 0;
         string completionMark = collectedCount >= memoryCount ? " done" : string.Empty;
-        GUI.Label(new Rect(rect.x + 120f, rect.y + 90f, rect.width - 44f, 76f), questTitle, titleStyle);
-        GUI.Label(new Rect(rect.x + 120f, rect.y + 130f, rect.width - 44f, 58f), restoreTaskText + completionMark, taskStyle);
-        GUI.Label(new Rect(rect.x + 120f, rect.y + 170f, rect.width - 44f, 58f), "Memory fragments: " + visibleFragmentCount + "/" + memoryCount, taskStyle);
+        GUI.Label(InnerRect(rect, questTitleRect), questTitle, titleStyle);
+        GUI.Label(InnerRect(rect, questTaskRect), restoreTaskText + completionMark, taskStyle);
+        GUI.Label(InnerRect(rect, questFragmentRect), "Memory fragments: " + visibleFragmentCount + "/" + memoryCount, taskStyle);
     }
 
     private void DrawPuzzle()
@@ -708,20 +764,20 @@ public class FairyMemorySideQuest : MonoBehaviour
             return;
         }
 
-        bool sideBySide = puzzleTexture != null && Screen.width >= 920;
+        bool sideBySide = puzzleTexture != null && Screen.width >= puzzleSideBySideScreenWidth;
         float size = sideBySide
-            ? Mathf.Min(Screen.width * 0.44f, Screen.height * 0.68f)
-            : Mathf.Min(Screen.width * 0.72f, Screen.height * 0.58f);
-        float referenceSize = sideBySide ? Mathf.Min(size * 0.62f, 280f) : Mathf.Min(size * 0.42f, 180f);
-        float panelWidth = sideBySide ? size + referenceSize + 76f : size + 40f;
-        float panelHeight = sideBySide ? size + 92f : size + referenceSize + 126f;
+            ? Mathf.Min(Screen.width * puzzleSideBySideSizeRatio.x, Screen.height * puzzleSideBySideSizeRatio.y)
+            : Mathf.Min(Screen.width * puzzleStackedSizeRatio.x, Screen.height * puzzleStackedSizeRatio.y);
+        float referenceSize = sideBySide ? Mathf.Min(size * referenceSideBySideScale, referenceSideBySideMaxSize) : Mathf.Min(size * referenceStackedScale, referenceStackedMaxSize);
+        float panelWidth = sideBySide ? size + referenceSize + puzzleSideBySidePanelPadding.x : size + puzzleStackedPanelPadding.x;
+        float panelHeight = sideBySide ? size + puzzleSideBySidePanelPadding.y : size + referenceSize + puzzleStackedPanelPadding.y;
         Rect panel = new Rect((Screen.width - panelWidth) * 0.5f, (Screen.height - panelHeight) * 0.5f, panelWidth, panelHeight);
         GUI.Box(panel, GUIContent.none);
 
-        GUIStyle hintStyle = GameUiStyle.LabelStyle(ref puzzleHintStyle, 20, TextAnchor.MiddleCenter, FontStyle.Normal, true);
-        GUI.Label(new Rect(panel.x + 16f, panel.y + 10f, panel.width - 32f, 40f), "Use WASD to move tiles", hintStyle);
+        GUIStyle hintStyle = GameUiStyle.LabelStyle(ref puzzleHintStyle, puzzleHintFontSize, TextAnchor.MiddleCenter, FontStyle.Normal, true);
+        GUI.Label(InnerRect(panel, puzzleHintRect), "Use WASD to move tiles", hintStyle);
 
-        Rect grid = new Rect(panel.x + 20f, panel.y + 50f, size, size);
+        Rect grid = new Rect(panel.x + puzzleGridOffset.x, panel.y + puzzleGridOffset.y, size, size);
         DrawReferenceImage(panel, grid, referenceSize, sideBySide);
 
         float tileSize = size / GridSize;
@@ -735,7 +791,8 @@ public class FairyMemorySideQuest : MonoBehaviour
 
             int x = boardIndex % GridSize;
             int y = boardIndex / GridSize;
-            Rect tileRect = new Rect(grid.x + x * tileSize + 1f, grid.y + y * tileSize + 1f, tileSize - 2f, tileSize - 2f);
+            float tileInset = puzzleTileGap * 0.5f;
+            Rect tileRect = new Rect(grid.x + x * tileSize + tileInset, grid.y + y * tileSize + tileInset, tileSize - puzzleTileGap, tileSize - puzzleTileGap);
 
             if (puzzleTexture != null)
             {
@@ -759,14 +816,14 @@ public class FairyMemorySideQuest : MonoBehaviour
         }
 
         Rect referenceRect = sideBySide
-            ? new Rect(grid.xMax + 24f, grid.y + 42f, referenceSize, referenceSize)
-            : new Rect(panel.x + (panel.width - referenceSize) * 0.5f, grid.yMax + 16f, referenceSize, referenceSize);
+            ? new Rect(grid.xMax + referenceSideBySideOffset.x, grid.y + referenceSideBySideOffset.y, referenceSize, referenceSize)
+            : new Rect(panel.x + (panel.width - referenceSize) * 0.5f, grid.yMax + referenceStackedOffsetY, referenceSize, referenceSize);
 
-        GUIStyle labelStyle = GameUiStyle.LabelStyle(ref referenceLabelStyle, 18, TextAnchor.MiddleCenter);
+        GUIStyle labelStyle = GameUiStyle.LabelStyle(ref referenceLabelStyle, referenceLabelFontSize, TextAnchor.MiddleCenter);
 
-        GUI.Label(new Rect(referenceRect.x, referenceRect.y - 28f, referenceRect.width, 24f), "Reference", labelStyle);
+        GUI.Label(new Rect(referenceRect.x + referenceLabelRect.x, referenceRect.y + referenceLabelRect.y, referenceRect.width + referenceLabelRect.width, referenceLabelRect.height), "Reference", labelStyle);
         GUI.Box(referenceRect, GUIContent.none);
-        GUI.DrawTexture(new Rect(referenceRect.x + 4f, referenceRect.y + 4f, referenceRect.width - 8f, referenceRect.height - 8f), puzzleTexture, ScaleMode.ScaleToFit, true);
+        GUI.DrawTexture(new Rect(referenceRect.x + referenceImagePadding, referenceRect.y + referenceImagePadding, referenceRect.width - referenceImagePadding * 2f, referenceRect.height - referenceImagePadding * 2f), puzzleTexture, ScaleMode.ScaleToFit, true);
     }
 
     private void DrawMemoryShowcase()
@@ -777,15 +834,15 @@ public class FairyMemorySideQuest : MonoBehaviour
         }
 
         int count = memoryShowcaseTextures.Length;
-        float gap = 10f;
-        float availableWidth = Mathf.Max(240f, Screen.width - 80f);
+        float gap = memoryShowcaseGap;
+        float availableWidth = Mathf.Max(memoryShowcaseMinWidth, Screen.width - memoryShowcaseScreenPadding);
         float slotWidth = (availableWidth - gap * (count - 1)) / count;
-        float slotHeight = Mathf.Min(Screen.height * 0.32f, slotWidth * 1.25f);
+        float slotHeight = Mathf.Min(Screen.height * memoryShowcaseHeightRatio, slotWidth * memoryShowcaseSlotAspect);
         float totalWidth = slotWidth * count + gap * (count - 1);
         float startX = (Screen.width - totalWidth) * 0.5f;
         float y = Screen.height * 0.5f - slotHeight * 0.5f;
 
-        Rect panelRect = new Rect(startX - 18f, y - 18f, totalWidth + 36f, slotHeight + 36f);
+        Rect panelRect = new Rect(startX - memoryShowcasePanelPadding, y - memoryShowcasePanelPadding, totalWidth + memoryShowcasePanelPadding * 2f, slotHeight + memoryShowcasePanelPadding * 2f);
         GUI.Box(panelRect, GUIContent.none);
 
         for (int i = 0; i < count; i++)
@@ -799,9 +856,36 @@ public class FairyMemorySideQuest : MonoBehaviour
                 continue;
             }
 
-            Rect imageRect = new Rect(slotRect.x + 4f, slotRect.y + 4f, slotRect.width - 8f, slotRect.height - 8f);
+            Rect paddedRect = new Rect(
+                slotRect.x + memoryShowcaseImagePadding,
+                slotRect.y + memoryShowcaseImagePadding,
+                slotRect.width - memoryShowcaseImagePadding * 2f,
+                slotRect.height - memoryShowcaseImagePadding * 2f);
+            Rect imageRect = FitRectToTexture(paddedRect, texture);
             GUI.DrawTexture(imageRect, texture, ScaleMode.ScaleToFit, true);
         }
+    }
+
+    private static Rect FitRectToTexture(Rect bounds, Texture2D texture)
+    {
+        if (texture == null || texture.width <= 0 || texture.height <= 0 || bounds.width <= 0f || bounds.height <= 0f)
+        {
+            return bounds;
+        }
+
+        float textureAspect = (float)texture.width / texture.height;
+        float boundsAspect = bounds.width / bounds.height;
+
+        if (textureAspect > boundsAspect)
+        {
+            float height = bounds.width / textureAspect;
+            float y = bounds.y + (bounds.height - height) * 0.5f;
+            return new Rect(bounds.x, y, bounds.width, height);
+        }
+
+        float width = bounds.height * textureAspect;
+        float x = bounds.x + (bounds.width - width) * 0.5f;
+        return new Rect(x, bounds.y, width, bounds.height);
     }
 
     private void SetPlayerMovementPaused(bool paused)
@@ -827,19 +911,27 @@ public class FairyMemorySideQuest : MonoBehaviour
 
     private void DrawMessageBox(string text)
     {
-        Rect rect = GameUiStyle.SystemPromptRect(920f, 156f);
+        Rect rect = GameUiStyle.SystemPromptRect(messageBoxSize.x, messageBoxSize.y);
         GameUiStyle.DrawDialoguePanel(rect);
 
-        GUIStyle style = GameUiStyle.LabelStyle(ref messageStyle, 24, TextAnchor.MiddleCenter, FontStyle.Normal, true);
-        GUI.Label(new Rect(rect.x + 18f, rect.y + 12f, rect.width - 36f, rect.height - 24f), text, style);
+        GUIStyle style = GameUiStyle.LabelStyle(ref messageStyle, messageFontSize, TextAnchor.MiddleCenter, FontStyle.Normal, true);
+        GUI.Label(InnerRect(rect, messageTextRect), text, style);
     }
 
     private void DrawCenteredLabel(string text, int fontSize)
     {
         GUIStyle style = GameUiStyle.LabelStyle(ref centeredLabelStyle, fontSize, TextAnchor.MiddleCenter, FontStyle.Normal, true);
-        Rect rect = GameUiStyle.InteractionPromptRect(680f, 118f);
+        Rect rect = GameUiStyle.InteractionPromptRect(centeredPromptSize.x, centeredPromptSize.y);
         GameUiStyle.DrawDialoguePanel(rect);
         GUI.Label(rect, text, style);
+    }
+
+    private static Rect InnerRect(Rect parent, Rect localRect)
+    {
+        float y = localRect.y >= 0f ? parent.y + localRect.y : parent.yMax + localRect.y;
+        float width = localRect.width >= 0f ? localRect.width : parent.width + localRect.width;
+        float height = localRect.height >= 0f ? localRect.height : parent.height + localRect.height;
+        return new Rect(parent.x + localRect.x, y, width, height);
     }
 
     private void CheckQuestSetup()

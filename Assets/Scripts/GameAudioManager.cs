@@ -8,8 +8,6 @@ public class GameAudioManager : MonoBehaviour
 
     [Header("Sources")]
     [SerializeField] private AudioSource oneShotSource;
-    [SerializeField] private AudioSource enemyLoopSource;
-    [SerializeField] private AudioSource roarLoopSource;
 
     [Header("One Shot Clips")]
     [SerializeField] private AudioClip fetchClip;
@@ -17,17 +15,11 @@ public class GameAudioManager : MonoBehaviour
     [SerializeField] private AudioClip successClip;
     [SerializeField] private AudioClip knobClip;
 
-    [Header("Loop Clips")]
-    [SerializeField] private AudioClip enemyClip;
-    [SerializeField] private AudioClip roarClip;
-
     private float lastFetchTime = -1000f;
     private float lastFailTime = -1000f;
     private float lastSuccessTime = -1000f;
     private float lastKnobTime = -1000f;
-    private bool enemyLoopRequested;
-    private bool roarLoopRequested;
-
+    // This script manages the playback of one-shot sound effects for game actions such as fetching, failing, succeeding, and interacting with knobs. It uses a single AudioSource to play clips and implements a cooldown to prevent rapid overlapping sounds. The static methods allow other scripts to trigger these sound effects without needing a direct reference to the GameAudioManager instance.
     private void Awake()
     {
         if (instance != null && instance != this)
@@ -37,8 +29,6 @@ public class GameAudioManager : MonoBehaviour
         }
 
         instance = this;
-        ConfigureLoopSource(enemyLoopSource);
-        ConfigureLoopSource(roarLoopSource);
     }
 
     public static void PlayFetch()
@@ -72,60 +62,7 @@ public class GameAudioManager : MonoBehaviour
             instance.PlayOneShot(instance.knobClip, 0.85f, ref instance.lastKnobTime);
         }
     }
-
-    public static void StartEnemyLoop()
-    {
-        if (instance == null)
-        {
-            return;
-        }
-
-        instance.enemyLoopRequested = true;
-        MainMenuController.PauseBackgroundMusicForSceneAudio();
-        instance.PlayLoop(instance.enemyLoopSource, instance.enemyClip, 1f, instance.enemyLoopRequested);
-    }
-
-    public static void StartRoarLoop()
-    {
-        if (instance == null)
-        {
-            return;
-        }
-
-        instance.roarLoopRequested = true;
-        instance.PlayLoop(instance.roarLoopSource, instance.roarClip, 1f, instance.roarLoopRequested);
-    }
-
-    public static void StopEnemyLoop()
-    {
-        if (instance == null)
-        {
-            return;
-        }
-
-        instance.enemyLoopRequested = false;
-        if (instance.enemyLoopSource != null)
-        {
-            instance.enemyLoopSource.Stop();
-        }
-
-        MainMenuController.ResumeBackgroundMusicAfterSceneAudio();
-    }
-
-    public static void StopRoarLoop()
-    {
-        if (instance == null)
-        {
-            return;
-        }
-
-        instance.roarLoopRequested = false;
-        if (instance.roarLoopSource != null)
-        {
-            instance.roarLoopSource.Stop();
-        }
-    }
-
+    // Helper method to play a one-shot clip with volume and cooldown management.
     private void PlayOneShot(AudioClip clip, float volume, ref float lastPlayTime)
     {
         if (clip == null || oneShotSource == null)
@@ -141,37 +78,7 @@ public class GameAudioManager : MonoBehaviour
         lastPlayTime = Time.unscaledTime;
         oneShotSource.PlayOneShot(clip, volume);
     }
-
-    private void PlayLoop(AudioSource source, AudioClip clip, float volume, bool requested)
-    {
-        if (!requested || source == null || clip == null)
-        {
-            return;
-        }
-
-        source.clip = clip;
-        source.volume = volume;
-        source.loop = true;
-        source.spatialBlend = 0f;
-
-        if (!source.isPlaying)
-        {
-            source.Play();
-        }
-    }
-
-    private static void ConfigureLoopSource(AudioSource source)
-    {
-        if (source == null)
-        {
-            return;
-        }
-
-        source.playOnAwake = false;
-        source.loop = true;
-        source.spatialBlend = 0f;
-    }
-
+    // Clean up the singleton instance reference when the object is destroyed.
     private void OnDestroy()
     {
         if (instance == this)

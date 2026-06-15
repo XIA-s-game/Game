@@ -21,11 +21,6 @@ public partial class ChapterOnePuzzle
         sceneReady = true;
         SetUpPuzzleState();
 
-        if (!forestAttackDialogueFinished && !enemiesActivated)
-        {
-            SetHeroVisible(false);
-        }
-
         if (!portalUnlocked)
         {
             if (portalTrigger != null && portalTrigger.gameObject.activeSelf)
@@ -46,7 +41,6 @@ public partial class ChapterOnePuzzle
 
         SetIndicatorVisible(redIndicator, false);
         SetIndicatorVisible(greenIndicator, false);
-        CollectDelayedEnemies();
     }
 
     private void SetUpPuzzleState()
@@ -57,6 +51,7 @@ public partial class ChapterOnePuzzle
 
         referencesReady =
             player != null &&
+            strangeSymbol != null &&
             recognizeHelp != null &&
             strangeAltar != null &&
             askHelp != null &&
@@ -121,30 +116,6 @@ public partial class ChapterOnePuzzle
             SetIndicatorVisible(redIndicator, false);
         }
 
-        if (forestAttackDialogueFinished && fairy != null)
-        {
-            fairy.gameObject.SetActive(false);
-        }
-
-        if (enemiesActivated)
-        {
-            if (!heroCombatFinished)
-            {
-                GameAudioManager.StartRoarLoop();
-            }
-
-            ApplyEnemySceneState();
-        }
-        else if (!forestAttackDialogueFinished)
-        {
-            SetHeroVisible(false);
-        }
-
-        if (heroCombatFinished && hero != null)
-        {
-            SetHeroVisible(true);
-        }
-
         if (portalUnlocked)
         {
             if (portalTrigger != null && !portalTrigger.gameObject.activeSelf)
@@ -174,110 +145,6 @@ public partial class ChapterOnePuzzle
         }
     }
 
-    private void ApplyEnemySceneState()
-    {
-        CollectDelayedEnemies();
-        bool anyEnemyActive = false;
-
-        for (int i = 0; i < delayedEnemies.Count; i++)
-        {
-            GameObject enemy = delayedEnemies[i];
-            if (enemy == null)
-            {
-                continue;
-            }
-
-            bool shouldBeActive = true;
-            enemy.SetActive(shouldBeActive);
-            if (!shouldBeActive)
-            {
-                continue;
-            }
-
-            anyEnemyActive = true;
-            SetAudioSourcesPlayingInHierarchy(enemy.transform, true);
-        }
-
-        for (int i = 0; i < delayedEnemyRenderers.Count; i++)
-        {
-            if (delayedEnemyRenderers[i] != null)
-            {
-                delayedEnemyRenderers[i].enabled = delayedEnemyRenderers[i].gameObject.activeInHierarchy;
-            }
-        }
-
-        for (int i = 0; i < delayedEnemyColliders.Count; i++)
-        {
-            if (delayedEnemyColliders[i] != null)
-            {
-                delayedEnemyColliders[i].enabled = delayedEnemyColliders[i].gameObject.activeInHierarchy;
-            }
-        }
-
-        for (int i = 0; i < delayedEnemyWalkers.Count; i++)
-        {
-            if (delayedEnemyWalkers[i] != null)
-            {
-                delayedEnemyWalkers[i].enabled = delayedEnemyWalkers[i].gameObject.activeInHierarchy;
-            }
-        }
-
-        for (int i = 0; i < delayedEnemyAnimators.Count; i++)
-        {
-            if (delayedEnemyAnimators[i] != null)
-            {
-                delayedEnemyAnimators[i].enabled = delayedEnemyAnimators[i].gameObject.activeInHierarchy;
-            }
-        }
-
-        if (hero == null)
-        {
-            return;
-        }
-
-        SetHeroVisible(true);
-        heroCombatY = hero.position.y;
-
-        if (heroCombatFinished)
-        {
-            heroCombatActive = false;
-            heroAttacking = false;
-            if (heroAnimator != null)
-            {
-                heroAnimator.speed = 0f;
-            }
-
-            GameAudioManager.StopEnemyLoop();
-            return;
-        }
-
-        if (!anyEnemyActive)
-        {
-            GameAudioManager.StopEnemyLoop();
-            FinishHeroCombat();
-            return;
-        }
-
-        GameAudioManager.StartEnemyLoop();
-        heroCombatActive = true;
-        heroAttacking = false;
-        heroTargetEnemy = FindNextHeroTarget();
-        if (heroTargetEnemy != null)
-        {
-            PlayHeroAnimation(heroWalkController, heroWalkStateName);
-        }
-    }
-
-    private void CacheHeroAnimator()
-    {
-        if (heroAnimator != null || hero == null)
-        {
-            return;
-        }
-
-        heroAnimator = hero.GetComponentInChildren<Animator>(true);
-    }
-
     private bool IsPlayerNearTransform(Transform target, float distance)
     {
         return player != null &&
@@ -292,7 +159,7 @@ public partial class ChapterOnePuzzle
             return false;
         }
 
-        float distance = Mathf.Max(storyAreaReachDistance, 6f);
+        float distance = Mathf.Max(storyAreaReachDistance, storyMinimumReachDistance);
         float directDistance = Vector3.Distance(Flatten(player.position), Flatten(target.position));
         if (directDistance <= distance)
         {
@@ -302,7 +169,7 @@ public partial class ChapterOnePuzzle
         if (TryGetTargetBounds(target, out Bounds bounds))
         {
             Vector3 position = player.position;
-            bool nearY = Mathf.Abs(position.y - bounds.center.y) <= Mathf.Max(4f, bounds.extents.y + 4f);
+            bool nearY = Mathf.Abs(position.y - bounds.center.y) <= Mathf.Max(storyVerticalTolerance, bounds.extents.y + storyVerticalTolerance);
             Vector3 closest = bounds.ClosestPoint(new Vector3(position.x, bounds.center.y, position.z));
             float horizontalDistance = Vector3.Distance(Flatten(position), Flatten(closest));
             return nearY && horizontalDistance <= distance;
@@ -321,9 +188,9 @@ public partial class ChapterOnePuzzle
         if (TryGetTargetBounds(target, out Bounds bounds))
         {
             Vector3 position = player.position;
-            bool insideX = position.x >= bounds.min.x - 0.15f && position.x <= bounds.max.x + 0.15f;
-            bool insideZ = position.z >= bounds.min.z - 0.15f && position.z <= bounds.max.z + 0.15f;
-            bool nearY = Mathf.Abs(position.y - bounds.center.y) <= Mathf.Max(4f, bounds.extents.y + 4f);
+            bool insideX = position.x >= bounds.min.x - triggerBoundsPadding && position.x <= bounds.max.x + triggerBoundsPadding;
+            bool insideZ = position.z >= bounds.min.z - triggerBoundsPadding && position.z <= bounds.max.z + triggerBoundsPadding;
+            bool nearY = Mathf.Abs(position.y - bounds.center.y) <= Mathf.Max(storyVerticalTolerance, bounds.extents.y + storyVerticalTolerance);
             return insideX && insideZ && nearY;
         }
 
@@ -393,4 +260,51 @@ public partial class ChapterOnePuzzle
         return hasBounds;
     }
 
+    private static void StopAudioSourcesInHierarchy(Transform root)
+    {
+        // Used when a story object should become silent without changing its hierarchy.
+        if (root == null)
+        {
+            return;
+        }
+
+        AudioSource[] audioSources = root.GetComponentsInChildren<AudioSource>(true);
+        for (int i = 0; i < audioSources.Length; i++)
+        {
+            if (audioSources[i] != null)
+            {
+                audioSources[i].Stop();
+            }
+        }
+    }
+
+    private static void SetAudioSourcesPlayingInHierarchy(Transform root, bool shouldPlay)
+    {
+        if (root == null)
+        {
+            return;
+        }
+
+        AudioSource[] audioSources = root.GetComponentsInChildren<AudioSource>(true);
+        for (int i = 0; i < audioSources.Length; i++)
+        {
+            AudioSource audioSource = audioSources[i];
+            if (audioSource == null)
+            {
+                continue;
+            }
+
+            if (shouldPlay)
+            {
+                if (audioSource.enabled && audioSource.gameObject.activeInHierarchy && !audioSource.isPlaying)
+                {
+                    audioSource.Play();
+                }
+            }
+            else
+            {
+                audioSource.Stop();
+            }
+        }
+    }
 }

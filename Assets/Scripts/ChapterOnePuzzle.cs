@@ -17,16 +17,6 @@ public partial class ChapterOnePuzzle : MonoBehaviour
     }
 
     [SerializeField] private string nextSceneName = "Fae Homes Demo";
-    // Hero animation clips used after the forest attack begins.
-    [SerializeField] private RuntimeAnimatorController heroWalkController;
-    [SerializeField] private RuntimeAnimatorController heroAttackController;
-    [SerializeField] private string heroWalkStateName = "mixamo_com";
-    [SerializeField] private string heroAttackStateName = "mixamo_com";
-    [SerializeField] private float heroMoveSpeed = 5f;
-    [SerializeField] private float heroTurnSpeed = 540f;
-    [SerializeField] private float heroAttackDistance = 2.1f;
-    [SerializeField] private float heroAttackHitDelay = 0.85f;
-    [SerializeField] private float heroInteractDistance = 4f;
     [SerializeField] private float portalInteractDistance = 3f;
     // Ordered block sequence for the altar puzzle. The first required steps must be pushed in order.
     [SerializeField] private PushStep[] pushSteps;
@@ -39,17 +29,18 @@ public partial class ChapterOnePuzzle : MonoBehaviour
     [SerializeField] private string failurePrompt = "Puzzle failed";
     [SerializeField] private string successPrompt = "Puzzle solved";
     // Mainline prompts: recognize help, inspect the altar, then ask the trapped fairy for clues.
+    [SerializeField] private string strangeSymbolPrompt = "What is this strange symbol?";
     [SerializeField] private string recognizeHelpPrompt = "Someone is calling for help. Go check it out.";
     [SerializeField] private string strangeAltarPrompt = "What is this strange altar?";
     [SerializeField] private string askHelpPrompt = "Press E to ask";
     [SerializeField] private string[] helpDialogueLines =
     {
         "Fairy: Please help me. Dark magic trapped me here.",
-        "Player: How can I help?",
+        "Casper: How can I help?",
         "Fairy: Push the stone buttons in the right order to break the spell.",
-        "Player: I saw strange marks nearby. They may be the clue.",
+        "Casper: I saw strange marks nearby. They may be the clue.",
         "Fairy: Yes. The clues are hidden around the forest.",
-        "Player: I will do my best."
+        "Casper: I will do my best."
     };
     [SerializeField] private string[] clueDialogueLines =
     {
@@ -58,35 +49,34 @@ public partial class ChapterOnePuzzle : MonoBehaviour
     [SerializeField] private string[] pageRewardDialogueLines =
     {
         "Fairy: Thank you for saving me. Take this first magic page.",
-        "Player: Thank you."
-    };
-    [SerializeField] private string[] forestAttackDialogueLines =
-    {
-        "Fairy: What was that sound?",
-        "Fairy: The Dark King's monsters are attacking the forest.",
-        "Fairy: Please be careful and take a look first.",
-        "Fairy: Stay safe."
-    };
-    [SerializeField] private string[] heroWarningDialogueLines =
-    {
-        "Hero: Stay back. These monsters are dangerous."
-    };
-    [SerializeField] private string[] heroAfterCombatDialogueLines =
-    {
-        "Player: You are strong. You do not look like you are from here.",
-        "Hero: I was sent to protect the forest. The Dark King is getting stronger.",
-        "Player: Do you know where I can find the second magic page?",
-        "Hero: I know a place. I will open a portal for you."
+        "Fairy: There is a portal over there. It can take you to the place you need to go.",
+        "Fairy: May you become a true magician!"
     };
     [SerializeField] private string firstPageItemName = "First Page";
-    [SerializeField] private string heroInteractPrompt = "Press E to talk";
     [SerializeField] private string portalInteractPrompt = "Press E to travel";
     [SerializeField] private Vector3 cageChildSolvedLocalPosition = new Vector3(0f, -0.99f, 0f);
     [SerializeField] private Vector3 fairySolvedWorldPosition = new Vector3(559.99f, 16.86f, 579.14f);
     [SerializeField] private Vector3 fairySolvedEulerOffset = new Vector3(0f, 180f, 0f);
     [SerializeField] private float resultRotationSpeed = 90f;
     [SerializeField] private float storyAreaReachDistance = 2f;
-    [SerializeField] private float enemyTriggerDistance = 6f;
+    [SerializeField] private float storyMinimumReachDistance = 6f;
+    [SerializeField] private float storyVerticalTolerance = 4f;
+    [SerializeField] private float triggerBoundsPadding = 0.15f;
+    [SerializeField] private float promptDuration = 3f;
+
+    [Header("UI Layout")]
+    [SerializeField] private float interactionPromptScreenY = 0.72f;
+    [SerializeField] private Vector2 interactionPromptSize = new Vector2(520f, 64f);
+    [SerializeField] private Vector2 systemPromptSize = new Vector2(760f, 92f);
+    [SerializeField] private float systemPromptY = 36f;
+    [SerializeField] private float dialoguePanelHeight = 260f;
+    [SerializeField] private UiPadding promptTextPadding;
+    [SerializeField] private UiPadding dialogueTextPadding;
+    [SerializeField] private UiPadding dialogueHintPadding;
+    [SerializeField] private int promptFontSize = 28;
+    [SerializeField] private int systemPromptFontSize = 30;
+    [SerializeField] private int dialogueFontSize = 30;
+    [SerializeField] private int dialogueHintFontSize = 22;
 
     private readonly List<Transform> pushBlocks = new List<Transform>();
     private readonly List<Transform> pushMarkers = new List<Transform>();
@@ -103,26 +93,18 @@ public partial class ChapterOnePuzzle : MonoBehaviour
     [SerializeField] private AudioListener playerAudioListener;
     [SerializeField] private Transform puzzleRoot;
     [SerializeField] private Transform center;
+    [SerializeField] private Transform strangeSymbol;
     [SerializeField] private Transform recognizeHelp;
     [SerializeField] private Transform strangeAltar;
     [SerializeField] private Transform askHelp;
     [SerializeField] private Transform cage;
     [SerializeField] private Transform fairy;
-    [SerializeField] private Transform enemyTrigger;
-    [SerializeField] private Transform hero;
     [SerializeField] private Transform portalTrigger;
     [SerializeField] private GameObject portalDoor;
-    [SerializeField] private GameObject[] delayedEnemyObjects;
-    [SerializeField] private Animator heroAnimator;
     [SerializeField] private Transform redIndicator;
     [SerializeField] private Transform greenIndicator;
-    private readonly List<GameObject> delayedEnemies = new List<GameObject>();
-    private readonly List<Renderer> delayedEnemyRenderers = new List<Renderer>();
-    private readonly List<Collider> delayedEnemyColliders = new List<Collider>();
-    private readonly List<RouteWaypointWalker> delayedEnemyWalkers = new List<RouteWaypointWalker>();
-    private readonly List<Animator> delayedEnemyAnimators = new List<Animator>();
     private int currentIndex;
-    // Story flags keep the mainline in order: altar puzzle, fairy reward, monster attack, hero portal.
+    // Story flags keep the mainline in order: altar puzzle, fairy reward, then portal travel.
     private bool referencesReady;
     private bool sceneReady;
     private bool promptVisible;
@@ -132,6 +114,7 @@ public partial class ChapterOnePuzzle : MonoBehaviour
     private float resultPromptEndsAt;
     private string storyPrompt;
     private float storyPromptEndsAt;
+    private bool strangeSymbolPromptShown;
     private bool recognizeHelpShown;
     private bool strangeAltarPromptShown;
     private bool askHelpPromptVisible;
@@ -143,27 +126,20 @@ public partial class ChapterOnePuzzle : MonoBehaviour
     private bool initialHelpDialogueFinished;
     private bool rescueApplied;
     private bool pageRewardFinished;
-    private bool forestAttackDialogueFinished;
-    private bool delayedEnemiesCollected;
-    private bool enemiesActivated;
-    private bool heroCombatActive;
-    private bool heroAttacking;
-    private bool heroWarningShown;
-    private bool heroCombatFinished;
-    private bool heroPostCombatDialogueFinished;
     private bool portalUnlocked;
-    private bool heroPromptVisible;
     private bool portalPromptVisible;
     private bool firstPageAddedToBackpack;
     private bool interactionInputConsumed;
-    private float heroAttackHitsAt;
-    private float heroCombatY;
-    private GameObject heroTargetEnemy;
-    private readonly HashSet<GameObject> defeatedEnemies = new HashSet<GameObject>();
+
+    private void OnValidate()
+    {
+        FillMissingInspectorDefaults();
+    }
 
     private void Awake()
     {
         // Chapter One owns the player control reset when Enchanted Forest loads.
+        FillMissingInspectorDefaults();
         AquariusMax.Fae.demo.DemoCharacter.ResetControlFlags();
         activeInstance = this;
         SetPlayerControlReferences(false);
@@ -191,19 +167,14 @@ public partial class ChapterOnePuzzle : MonoBehaviour
             activeInstance = null;
         }
 
-        if (enemiesActivated && !heroCombatFinished)
-        {
-            GameAudioManager.StopEnemyLoop();
-        }
     }
 
     private void Update()
     {
-        // Main loop order: prompts, active push motion, puzzle input, enemy attack, hero story, portal.
+        // Main loop order: prompts, active push motion, puzzle input, fairy story, portal.
         interactionInputConsumed = false;
         askHelpPromptVisible = false;
         promptVisible = false;
-        heroPromptVisible = false;
         portalPromptVisible = false;
         RotateResultIndicators();
 
@@ -222,14 +193,6 @@ public partial class ChapterOnePuzzle : MonoBehaviour
 
         UpdatePushPuzzleInteraction();
         if (interactionInputConsumed)
-        {
-            return;
-        }
-
-        UpdateEnemyAmbush();
-        UpdateHeroCombat();
-        UpdateHeroStory();
-        if (helpDialogueActive || interactionInputConsumed)
         {
             return;
         }
@@ -294,5 +257,88 @@ public partial class ChapterOnePuzzle : MonoBehaviour
         }
 
         return Vector3.Distance(flatPoint, Flatten(target.position));
+    }
+
+    private void FillMissingInspectorDefaults()
+    {
+        if (storyMinimumReachDistance <= 0f)
+        {
+            storyMinimumReachDistance = 6f;
+        }
+
+        if (storyVerticalTolerance <= 0f)
+        {
+            storyVerticalTolerance = 4f;
+        }
+
+        if (triggerBoundsPadding <= 0f)
+        {
+            triggerBoundsPadding = 0.15f;
+        }
+
+        if (promptDuration <= 0f)
+        {
+            promptDuration = 3f;
+        }
+
+        if (interactionPromptScreenY <= 0f)
+        {
+            interactionPromptScreenY = 0.72f;
+        }
+
+        if (interactionPromptSize == Vector2.zero)
+        {
+            interactionPromptSize = new Vector2(520f, 64f);
+        }
+
+        if (systemPromptSize == Vector2.zero)
+        {
+            systemPromptSize = new Vector2(760f, 92f);
+        }
+
+        if (systemPromptY == 0f)
+        {
+            systemPromptY = 36f;
+        }
+
+        if (dialoguePanelHeight <= 0f)
+        {
+            dialoguePanelHeight = 260f;
+        }
+
+        if (promptTextPadding.IsZero)
+        {
+            promptTextPadding = UiPadding.Create(14f, 14f, 8f, 16f);
+        }
+
+        if (dialogueTextPadding.IsZero)
+        {
+            dialogueTextPadding = UiPadding.Create(180f, 72f, 130f, 126f);
+        }
+
+        if (dialogueHintPadding.IsZero)
+        {
+            dialogueHintPadding = UiPadding.Create(0f, 160f, 0f, 130f);
+        }
+
+        if (promptFontSize <= 0)
+        {
+            promptFontSize = 28;
+        }
+
+        if (systemPromptFontSize <= 0)
+        {
+            systemPromptFontSize = 30;
+        }
+
+        if (dialogueFontSize <= 0)
+        {
+            dialogueFontSize = 30;
+        }
+
+        if (dialogueHintFontSize <= 0)
+        {
+            dialogueHintFontSize = 22;
+        }
     }
 }

@@ -9,12 +9,28 @@ public class CompassNavigationHUD : MonoBehaviour
     [SerializeField] private bool showCompass = true;
 
     [Header("Layout")]
+    [SerializeField] private float leftOffset = 150f;
+    [SerializeField] private float widthRatio = 0.8f;
     [SerializeField] private float topOffset = 10f;
     [SerializeField] private float panelHeight = 120f;
+    [SerializeField] private float panelMinHeight = 120f;
     [SerializeField] private float degreesVisible = 60f;
     [SerializeField] private int minorTickStep = 5;
     [SerializeField] private int majorTickStep = 30;
     [SerializeField] private int labelStep = 45;
+    [SerializeField] private float tickTop = 8f;
+    [SerializeField] private float tickBaseBottomOffset = 46f;
+    [SerializeField] private Vector2 tickSize = new Vector2(2f, 12f);
+    [SerializeField] private float majorTickHeight = 21f;
+    [SerializeField] private float labelTickHeight = 28f;
+    [SerializeField] private Rect directionLabelRect = new Rect(-90f, 8f, 180f, 108f);
+    [SerializeField] private Rect degreeLabelRect = new Rect(-75f, -48f, 150f, 44f);
+    [SerializeField] private Vector2 centerLineSize = new Vector2(4f, -8f);
+    [SerializeField] private float centerLineTopPadding = 4f;
+    [SerializeField] private Rect centerLabelRect = new Rect(-160f, -62f, 320f, 56f);
+    [SerializeField] private int directionLabelFontSize = 30;
+    [SerializeField] private int degreeLabelFontSize = 25;
+    [SerializeField] private int centerLabelFontSize = 20;
 
     [Header("Colors")]
     [SerializeField] private Color panelColor = new Color(0f, 0f, 0f, 0.42f);
@@ -25,7 +41,8 @@ public class CompassNavigationHUD : MonoBehaviour
     private GUIStyle directionLabelStyle;
     private GUIStyle degreeLabelStyle;
     private GUIStyle centerLabelStyle;
-
+    
+    // Draw the compass interface
     private void OnGUI()
     {
         if (!showCompass || Event.current.type != EventType.Repaint)
@@ -40,7 +57,8 @@ public class CompassNavigationHUD : MonoBehaviour
         DrawTicks(panel, heading);
         DrawCenterMarker(panel, heading);
     }
-
+ 
+    // CCalculate the current orientation angle based on the player's/camera's direction.
     private float GetHeading()
     {
         // Camera forward is preferred so the compass matches what the player is looking at.
@@ -61,25 +79,25 @@ public class CompassNavigationHUD : MonoBehaviour
         return Mathf.Repeat(heading, 360f);
     }
 
+    // Calculate the position of the compass UI.
     private Rect GetPanelRect()
     {
-        float height = Mathf.Max(panelHeight, 120f);
-        return new Rect(150f, topOffset, Screen.width * 0.8f, height);
+        float height = Mathf.Max(panelHeight, panelMinHeight);
+        return new Rect(leftOffset, topOffset, Screen.width * widthRatio, height);
     }
 
     private void DrawTicks(Rect panel, float heading)
     {
         // Tick marks are centered around the current heading rather than drawing the full 360 degrees.
-        float top = 8f;
-        float tickBase = panel.height - 46f;
-        float visibleDegrees = Mathf.Min(degreesVisible, 60f);
+        float tickBase = panel.height - tickBaseBottomOffset;
+        float visibleDegrees = Mathf.Max(1f, degreesVisible);
         float pixelsPerDegree = panel.width / visibleDegrees;
         int startDegree = Mathf.FloorToInt((heading - visibleDegrees * 0.5f) / minorTickStep) * minorTickStep;
         int endDegree = Mathf.CeilToInt((heading + visibleDegrees * 0.5f) / minorTickStep) * minorTickStep;
 
         GUI.BeginGroup(panel);
-        GUIStyle labelStyle = GetLabelStyle(ref directionLabelStyle, 30, TextAnchor.UpperCenter, Color.white);
-        GUIStyle degreeStyle = GetLabelStyle(ref degreeLabelStyle, 25, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.72f));
+        GUIStyle labelStyle = GetLabelStyle(ref directionLabelStyle, directionLabelFontSize, TextAnchor.UpperCenter, Color.white);
+        GUIStyle degreeStyle = GetLabelStyle(ref degreeLabelStyle, degreeLabelFontSize, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.72f));
 
         for (int degree = startDegree; degree <= endDegree; degree += minorTickStep)
         {
@@ -93,31 +111,36 @@ public class CompassNavigationHUD : MonoBehaviour
 
             bool majorTick = Mathf.RoundToInt(normalizedDegree) % majorTickStep == 0;
             bool labelTick = Mathf.RoundToInt(normalizedDegree) % labelStep == 0;
-            float tickHeight = labelTick ? 28f : (majorTick ? 21f : 12f);
-            DrawSolidRect(new Rect(localX - 1f, tickBase - tickHeight, 2f, tickHeight), tickColor);
+            float tickHeight = labelTick ? labelTickHeight : (majorTick ? majorTickHeight : tickSize.y);
+            DrawSolidRect(new Rect(localX - tickSize.x * 0.5f, tickBase - tickHeight, tickSize.x, tickHeight), tickColor);
 
             if (labelTick)
             {
-                GUI.Label(new Rect(localX - 90f, top, 180f, 108f), BuildTickLabel(normalizedDegree), labelStyle);
+                Rect labelRect = directionLabelRect;
+                labelRect.y = tickTop;
+                GUI.Label(OffsetRect(labelRect, localX, 0f), BuildTickLabel(normalizedDegree), labelStyle);
             }
             else if (majorTick)
             {
-                GUI.Label(new Rect(localX - 75f, tickBase - tickHeight - 48f, 150f, 44f), BuildDegreeLabel(normalizedDegree), degreeStyle);
+                GUI.Label(OffsetRect(degreeLabelRect, localX, tickBase - tickHeight), BuildDegreeLabel(normalizedDegree), degreeStyle);
             }
         }
 
         GUI.EndGroup();
     }
-
+    
+    // Draw the intermediate indication mark.
     private void DrawCenterMarker(Rect panel, float heading)
     {
         float centerX = panel.x + panel.width * 0.5f;
-        DrawSolidRect(new Rect(centerX - 2f, panel.y + 4f, 4f, panel.height - 8f), centerColor);
+        float centerHeight = centerLineSize.y >= 0f ? centerLineSize.y : panel.height + centerLineSize.y;
+        DrawSolidRect(new Rect(centerX - centerLineSize.x * 0.5f, panel.y + centerLineTopPadding, centerLineSize.x, centerHeight), centerColor);
 
-        GUIStyle style = GetLabelStyle(ref centerLabelStyle, 20, TextAnchor.MiddleCenter, centerColor);
-        GUI.Label(new Rect(centerX - 160f, panel.y + panel.height - 62f, 320f, 56f), BuildCenterLabel(heading), style);
+        GUIStyle style = GetLabelStyle(ref centerLabelStyle, centerLabelFontSize, TextAnchor.MiddleCenter, centerColor);
+        GUI.Label(OffsetRect(centerLabelRect, centerX, panel.y + panel.height), BuildCenterLabel(heading), style);
     }
-
+    
+    // Get the compass direction label (N, NE, E, etc.) based on the degree value.
     private string GetDirectionLabel(float degree)
     {
         int index = Mathf.RoundToInt(Mathf.Repeat(degree, 360f) / 45f) % directionLabels.Length;
@@ -137,6 +160,12 @@ public class CompassNavigationHUD : MonoBehaviour
         style.normal.textColor = color;
         return style;
     }
+
+    private static Rect OffsetRect(Rect rect, float originX, float originY)
+    {
+        return new Rect(originX + rect.x, originY + rect.y, rect.width, rect.height);
+    }
+
     private static void DrawSolidRect(Rect rect, Color color)
     {
         Color previousColor = GUI.color;
@@ -145,17 +174,20 @@ public class CompassNavigationHUD : MonoBehaviour
         GUI.color = previousColor;
     }
 
+    // Generate the label for major ticks, combining the direction and degree information.
     private string BuildTickLabel(float degree)
     {
         string degreeLabel = BuildDegreeLabel(degree);
         return GetDirectionLabel(degree) + "\n" + degreeLabel;
     }
 
+    // Generate centered text
     private string BuildCenterLabel(float degree)
     {
         return GetDirectionLabel(degree) + "  " + BuildDegreeLabel(degree);
     }
-
+    
+    // Generate angled text.
     private static string BuildDegreeLabel(float degree)
     {
         return Mathf.RoundToInt(Mathf.Repeat(degree, 360f)) + " deg";

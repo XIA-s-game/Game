@@ -10,6 +10,22 @@ public class PlayerInstructionTutorial : MonoBehaviour
     private const float StepPauseSeconds = 0.45f;
     private const float FinalMessageSeconds = 5f;
 
+    [Header("Tutorial UI")]
+    [SerializeField] private float panelMaxWidth = 760f;
+    [SerializeField] private float panelScreenPadding = 48f;
+    [SerializeField] private float panelScreenYRatio = 0.72f;
+    [SerializeField] private float normalPanelHeight = 176f;
+    [SerializeField] private float finalPanelHeight = 146f;
+    [SerializeField] private Rect titleRect = new Rect(24f, 18f, -48f, 32f);
+    [SerializeField] private Rect messageRect = new Rect(24f, 54f, -48f, 64f);
+    [SerializeField] private Rect progressRect = new Rect(24f, -38f, -48f, 24f);
+    [SerializeField] private int titleFontSize = 22;
+    [SerializeField] private int messageFontSize = 20;
+    [SerializeField] private int progressFontSize = 15;
+    [SerializeField] private Color titleColor = new Color(1f, 0.9f, 0.54f);
+    [SerializeField] private Color messageColor = Color.white;
+    [SerializeField] private Color progressColor = new Color(0.82f, 0.86f, 0.9f);
+
     private enum TutorialStep
     {
         // Input gates open step by step so the player sees one instruction at a time.
@@ -59,7 +75,7 @@ public class PlayerInstructionTutorial : MonoBehaviour
         {
             case TutorialStep.Look:
                 lookAmount += Mathf.Abs(Input.GetAxis("Mouse X")) + Mathf.Abs(Input.GetAxis("Mouse Y"));
-                if (lookAmount >= 1.5f)
+                if (CanFinishCurrentStep() && lookAmount >= 1.5f)
                 {
                     DemoCharacter.TutorialAllowMove = true;
                     EnterStep(TutorialStep.Move);
@@ -67,7 +83,7 @@ public class PlayerInstructionTutorial : MonoBehaviour
                 break;
 
             case TutorialStep.Move:
-                if (HasMoveInput())
+                if (CanFinishCurrentStep() && HasMoveInput())
                 {
                     moveHeldSeconds += Time.deltaTime;
                 }
@@ -80,7 +96,7 @@ public class PlayerInstructionTutorial : MonoBehaviour
                 break;
 
             case TutorialStep.Jump:
-                if (Input.GetKeyDown(KeyCode.Space))
+                if (CanFinishCurrentStep() && Input.GetKeyDown(KeyCode.Space))
                 {
                     DemoCharacter.TutorialAllowCrouch = true;
                     EnterStep(TutorialStep.Crouch);
@@ -88,7 +104,7 @@ public class PlayerInstructionTutorial : MonoBehaviour
                 break;
 
             case TutorialStep.Crouch:
-                if (Input.GetKeyDown(KeyCode.V))
+                if (CanFinishCurrentStep() && Input.GetKeyDown(KeyCode.V))
                 {
                     DemoCharacter.TutorialAllowRun = true;
                     EnterStep(TutorialStep.Run);
@@ -96,7 +112,7 @@ public class PlayerInstructionTutorial : MonoBehaviour
                 break;
 
             case TutorialStep.Run:
-                if (DemoCharacter.TutorialRunObserved || HasRunInput())
+                if (CanFinishCurrentStep() && (DemoCharacter.TutorialRunObserved || HasRunInput()))
                 {
                     DemoCharacter.TutorialRunObserved = true;
                     EnterStep(TutorialStep.Interact);
@@ -104,7 +120,7 @@ public class PlayerInstructionTutorial : MonoBehaviour
                 break;
 
             case TutorialStep.Interact:
-                if (Input.GetKeyDown(KeyCode.E))
+                if (CanFinishCurrentStep() && Input.GetKeyDown(KeyCode.E))
                 {
                     EnterStep(TutorialStep.FinalMessage);
                 }
@@ -123,6 +139,15 @@ public class PlayerInstructionTutorial : MonoBehaviour
     {
         step = nextStep;
         stepStartedAt = Time.time;
+        if (step == TutorialStep.Run)
+        {
+            DemoCharacter.TutorialRunObserved = false;
+        }
+    }
+
+    private bool CanFinishCurrentStep()
+    {
+        return Time.time - stepStartedAt >= StepPauseSeconds;
     }
 
     private void CompleteTutorial()
@@ -145,10 +170,6 @@ public class PlayerInstructionTutorial : MonoBehaviour
             ReleaseTutorialInputLock(false);
         }
 
-        if (panelStyle != null && panelStyle.normal.background != null)
-        {
-            Destroy(panelStyle.normal.background);
-        }
     }
 
     private static void StartTutorialInputLock()
@@ -182,54 +203,66 @@ public class PlayerInstructionTutorial : MonoBehaviour
         }
 
         BuildStyles();
-        float width = Mathf.Min(760f, Screen.width - 48f);
-        float height = step == TutorialStep.FinalMessage ? 146f : 176f;
-        Rect panel = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.72f, width, height);
+        float width = Mathf.Min(panelMaxWidth, Screen.width - panelScreenPadding);
+        float height = step == TutorialStep.FinalMessage ? finalPanelHeight : normalPanelHeight;
+        Rect panel = new Rect((Screen.width - width) * 0.5f, Screen.height * panelScreenYRatio, width, height);
         GUI.Box(panel, GUIContent.none, panelStyle);
 
-        Rect titleRect = new Rect(panel.x + 24f, panel.y + 18f, panel.width - 48f, 32f);
-        Rect messageRect = new Rect(panel.x + 24f, panel.y + 54f, panel.width - 48f, 64f);
-        Rect progressRect = new Rect(panel.x + 24f, panel.y + panel.height - 38f, panel.width - 48f, 24f);
-        GUI.Label(titleRect, step == TutorialStep.FinalMessage ? "Your Journey Begins" : "Movement Tutorial", titleStyle);
-        GUI.Label(messageRect, GetStepMessage(), messageStyle);
+        GUI.Label(InnerRect(panel, titleRect), step == TutorialStep.FinalMessage ? "Your Journey Begins" : "Movement Tutorial", titleStyle);
+        GUI.Label(InnerRect(panel, messageRect), GetStepMessage(), messageStyle);
 
         if (step != TutorialStep.FinalMessage)
         {
-            GUI.Label(progressRect, GetProgressText(), progressStyle);
+            GUI.Label(InnerRect(panel, progressRect), GetProgressText(), progressStyle);
         }
     }
 
     private void BuildStyles()
     {
-        if (panelStyle != null)
+        if (panelStyle == null)
         {
-            return;
+            panelStyle = new GUIStyle(GUI.skin.box);
+            panelStyle.padding = new RectOffset(18, 18, 14, 14);
         }
 
-        panelStyle = new GUIStyle(GUI.skin.box);
-        Texture2D panelBackground = new Texture2D(1, 1);
-        panelBackground.SetPixel(0, 0, new Color(0.035f, 0.055f, 0.08f, 0.92f));
-        panelBackground.Apply();
-        panelStyle.normal.background = panelBackground;
         panelStyle.normal.textColor = Color.white;
-        panelStyle.padding = new RectOffset(18, 18, 14, 14);
 
-        titleStyle = new GUIStyle(GUI.skin.label);
-        titleStyle.fontSize = 22;
+        if (titleStyle == null)
+        {
+            titleStyle = new GUIStyle(GUI.skin.label);
+        }
+
+        titleStyle.fontSize = titleFontSize;
         titleStyle.fontStyle = FontStyle.Bold;
         titleStyle.alignment = TextAnchor.MiddleCenter;
-        titleStyle.normal.textColor = new Color(1f, 0.9f, 0.54f);
+        titleStyle.normal.textColor = titleColor;
 
-        messageStyle = new GUIStyle(GUI.skin.label);
-        messageStyle.fontSize = 20;
+        if (messageStyle == null)
+        {
+            messageStyle = new GUIStyle(GUI.skin.label);
+        }
+
+        messageStyle.fontSize = messageFontSize;
         messageStyle.alignment = TextAnchor.MiddleCenter;
         messageStyle.wordWrap = true;
-        messageStyle.normal.textColor = Color.white;
+        messageStyle.normal.textColor = messageColor;
 
-        progressStyle = new GUIStyle(GUI.skin.label);
-        progressStyle.fontSize = 15;
+        if (progressStyle == null)
+        {
+            progressStyle = new GUIStyle(GUI.skin.label);
+        }
+
+        progressStyle.fontSize = progressFontSize;
         progressStyle.alignment = TextAnchor.MiddleCenter;
-        progressStyle.normal.textColor = new Color(0.82f, 0.86f, 0.9f);
+        progressStyle.normal.textColor = progressColor;
+    }
+
+    private static Rect InnerRect(Rect parent, Rect localRect)
+    {
+        float y = localRect.y >= 0f ? parent.y + localRect.y : parent.yMax + localRect.y;
+        float width = localRect.width >= 0f ? localRect.width : parent.width + localRect.width;
+        float height = localRect.height >= 0f ? localRect.height : parent.height + localRect.height;
+        return new Rect(parent.x + localRect.x, y, width, height);
     }
 
     private string GetStepMessage()

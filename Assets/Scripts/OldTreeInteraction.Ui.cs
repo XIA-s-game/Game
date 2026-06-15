@@ -51,25 +51,31 @@ public partial class OldTreeInteraction
 
     private void DrawDialogueBox(string text, bool showChoices, bool showContinueHint)
     {
-        float height = showChoices ? 470f : (showContinueHint ? 260f : 230f);
+        float height = showChoices ? choiceDialogueHeight : (showContinueHint ? continueDialogueHeight : normalDialogueHeight);
         Rect rect = GameUiStyle.DialogueRect(height);
         if (showChoices)
         {
-            float width = Mathf.Min(1280f, Screen.width - 96f);
+            float width = Mathf.Min(choiceDialogueMaxWidth, Screen.width - choiceDialogueHorizontalPadding);
             rect.x = (Screen.width - width) * 0.5f;
             rect.width = width;
         }
 
         GameUiStyle.DrawDialoguePanel(rect);
 
-        GUIStyle textStyle = LabelStyle(ref dialogueTextStyle, 30, TextAnchor.UpperLeft, Color.white, true);
-        float choiceTextOffsetY = showChoices ? 80f : 0f;
-        GUI.Label(new Rect(rect.x + 180f, rect.y + 130f + choiceTextOffsetY, rect.width - 252f, showChoices ? 120f : rect.height - 126f), text, textStyle);
+        GUIStyle textStyle = LabelStyle(ref dialogueTextStyle, dialogueTextFontSize, TextAnchor.UpperLeft, Color.white, true);
+        Rect textRect = dialogueTextRect;
+        if (showChoices)
+        {
+            textRect.y += choiceTextExtraY;
+            textRect.height = choiceTextHeight;
+        }
+
+        GUI.Label(InnerRect(rect, textRect), text, textStyle);
 
         if (showContinueHint)
         {
-            GUIStyle continueStyle = LabelStyle(ref continueHintStyle, 22, TextAnchor.MiddleRight, new Color(0.9f, 0.9f, 0.9f));
-            GUI.Label(new Rect(rect.x, rect.y + rect.height - 130f, rect.width - 160f, 48f), continueHint, continueStyle);
+            GUIStyle continueStyle = LabelStyle(ref continueHintStyle, continueHintFontSize, TextAnchor.MiddleRight, new Color(0.9f, 0.9f, 0.9f));
+            GUI.Label(ContinueHintRect(rect), continueHint, continueStyle);
         }
 
         if (!showChoices)
@@ -77,37 +83,52 @@ public partial class OldTreeInteraction
             return;
         }
 
-        GUIStyle choiceStyle = LabelStyle(ref choiceHintStyle, 22, TextAnchor.MiddleLeft, new Color(0.9f, 0.9f, 0.9f));
-        GUI.Label(new Rect(rect.x + 180f, rect.y + 326f, rect.width - 252f, 38f), chooseHint, choiceStyle);
+        GUIStyle choiceStyle = LabelStyle(ref choiceHintStyle, choiceHintFontSize, TextAnchor.MiddleLeft, new Color(0.9f, 0.9f, 0.9f));
+        GUI.Label(InnerRect(rect, choiceHintRect), chooseHint, choiceStyle);
 
-        GUIStyle optionStyle = LabelStyle(ref choiceHintStyle, 26, TextAnchor.MiddleLeft, Color.white, true);
-        GUI.Label(new Rect(rect.x + 180f, rect.y + 382f, rect.width - 252f, 42f), choiceA, optionStyle);
-        GUI.Label(new Rect(rect.x + 180f, rect.y + 432f, rect.width - 252f, 54f), choiceB, optionStyle);
-        GUI.Label(new Rect(rect.x + 180f, rect.y + 494f, rect.width - 252f, 42f), choiceC, optionStyle);
+        GUIStyle optionStyle = LabelStyle(ref choiceHintStyle, choiceOptionFontSize, TextAnchor.MiddleLeft, Color.white, true);
+        GUI.Label(InnerRect(rect, choiceARect), choiceA, optionStyle);
+        GUI.Label(InnerRect(rect, choiceBRect), choiceB, optionStyle);
+        GUI.Label(InnerRect(rect, choiceCRect), choiceC, optionStyle);
     }
 
     private void DrawRewardChoiceBox()
     {
-        float width = Mathf.Min(900f, Screen.width - 80f);
-        float height = 500f;
-        Rect rect = GameUiStyle.DialogueRect(height);
+        Rect rect = GameUiStyle.DialogueRect(rewardDialogueHeight);
 
         GameUiStyle.DrawDialoguePanel(rect);
 
-        GUIStyle textStyle = LabelStyle(ref rewardTextStyle, 28, TextAnchor.UpperLeft, Color.white, true);
-        GUI.Label(new Rect(rect.x + 180f, rect.y + 280f, rect.width - 252f, 88f), rewardGreeting, textStyle);
+        GUIStyle textStyle = LabelStyle(ref rewardTextStyle, rewardGreetingFontSize, TextAnchor.UpperLeft, Color.white, true);
+        GUI.Label(InnerRect(rect, rewardGreetingRect), rewardGreeting, textStyle);
 
-        GUIStyle optionStyle = LabelStyle(ref choiceHintStyle, 24, TextAnchor.MiddleLeft, Color.white, true);
-        GUI.Label(new Rect(rect.x + 180f, rect.y + 382f, rect.width - 252f, 42f), rewardChoiceA, optionStyle);
-        GUI.Label(new Rect(rect.x + 180f, rect.y + 432f, rect.width - 252f, 42f), rewardChoiceB, optionStyle);
-        GUI.Label(new Rect(rect.x + 180f, rect.y + 494f, rect.width - 252f, 42f), rewardChoiceC, optionStyle);
+        GUIStyle optionStyle = LabelStyle(ref choiceHintStyle, rewardChoiceFontSize, TextAnchor.MiddleLeft, Color.white, true);
+        GUI.Label(InnerRect(rect, rewardChoiceARect), rewardChoiceA, optionStyle);
+        GUI.Label(InnerRect(rect, rewardChoiceBRect), rewardChoiceB, optionStyle);
+        GUI.Label(InnerRect(rect, rewardChoiceCRect), rewardChoiceC, optionStyle);
     }
 
     private void DrawCenteredLabel(string text, int fontSize)
     {
-        Rect rect = GameUiStyle.InteractionPromptRect(520f, 60f);
+        Rect rect = GameUiStyle.InteractionPromptRect(interactionPromptSize.x, interactionPromptSize.y);
         GameUiStyle.DrawDialoguePanel(rect);
-        GUI.Label(rect, text, LabelStyle(ref centeredLabelStyle, fontSize, TextAnchor.MiddleCenter, Color.white));
+        GUI.Label(rect, text, LabelStyle(ref centeredLabelStyle, interactionPromptFontSize, TextAnchor.MiddleCenter, Color.white));
+    }
+
+    private static Rect InnerRect(Rect parent, Rect localRect)
+    {
+        float y = localRect.y >= 0f ? parent.y + localRect.y : parent.yMax + localRect.y;
+        float width = localRect.width >= 0f ? localRect.width : parent.width + localRect.width;
+        float height = localRect.height >= 0f ? localRect.height : parent.height + localRect.height;
+        return new Rect(parent.x + localRect.x, y, width, height);
+    }
+
+    private Rect ContinueHintRect(Rect parent)
+    {
+        return new Rect(
+            parent.x + continueHintX,
+            parent.y + continueHintY,
+            continueHintWidth,
+            continueHintHeight);
     }
 
     private GUIStyle LabelStyle(ref GUIStyle style, int fontSize, TextAnchor alignment, Color color, bool wordWrap = false)

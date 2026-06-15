@@ -479,25 +479,26 @@ public class MainMenuController : MonoBehaviour
 
     private void SyncSettingsControls()
     {
-        volumeSlider.SetValueWithoutNotify(GlobalGameMenuUI.Muted ? 0f : GlobalGameMenuUI.MasterVolume);
-        muteToggle.SetIsOnWithoutNotify(GlobalGameMenuUI.Muted);
-        GlobalGameMenuUI.ApplySavedAudioSettings();
+        volumeSlider.SetValueWithoutNotify(GameAudioSettings.Muted ? 0f : GameAudioSettings.MasterVolume);
+        muteToggle.SetIsOnWithoutNotify(GameAudioSettings.Muted);
+        GameAudioSettings.ApplySavedAudioSettings();
     }
 
     private void HandleVolumeChanged(float value)
     {
-        GlobalGameMenuUI.SetAudioSettings(value, muteToggle.isOn);
+        GameAudioSettings.SetAudioSettings(value, muteToggle.isOn);
     }
 
     private void HandleMuteChanged(bool muted)
     {
-        GlobalGameMenuUI.SetAudioSettings(volumeSlider.value, muted);
+        GameAudioSettings.SetAudioSettings(volumeSlider.value, muted);
     }
 
     private IEnumerator StartGameRoutine(string targetSceneName, bool playOpeningVideo)
     {
         // Start and continue share this load path; only new game plays the opening video.
         startingGame = true;
+        GameSaveManager.MarkSessionStartedFromMainMenu();
         GlobalBackpackUI.EnableForGameSession();
         SetMenuButtonsInteractable(false);
         StopBackgroundMusic();

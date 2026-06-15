@@ -114,7 +114,7 @@ public partial class ChapterTwoPuzzle
 
     private bool IsNearGuard()
     {
-        return IsNear(guardInteract, interactDistance);
+        return IsNear(guardInteract != null ? guardInteract : guard, interactDistance);
     }
 
     private bool IsNearBaker()
