@@ -3060,6 +3060,207 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 2865488484124295819, guid: e9042b4bd285e2a478613f8df46a619e, type: 3}
+--- !u!1 &711808763
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 711808767}
+  - component: {fileID: 711808766}
+  - component: {fileID: 711808765}
+  - component: {fileID: 711808764}
+  m_Layer: 0
+  m_Name: GlobalMenuUI
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &711808764
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 711808763}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 21f9f45e1b934f7a9a55df0d3761a4d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mainMenuSceneName: Mainmenu
+  hintText: Press Esc
+  lockCursorWhenClosed: 1
+  margin: 24
+  bottomPromptY: 132
+  fontScale: 1.2
+  referenceResolution: {x: 1920, y: 1080}
+  interactionPromptMinSize: {x: 640, y: 112}
+  systemPromptMinSize: {x: 920, y: 156}
+  dialogueMaxWidth: 2000
+  dialogueHorizontalPadding: 96
+  dialogueHeightScale: 1.45
+  dialogueMinHeight: 300
+  dialogueBottomOffset: 34
+  dialogueVerticalPadding: 80
+  sideQuestStackGap: 12
+  hintRect:
+    serializedVersion: 2
+    x: 20
+    y: 16
+    width: 190
+    height: 48
+  hintTextPadding:
+    left: 16
+    right: 32
+    top: 5
+    bottom: 10
+  hintFontSize: 19
+  menuPanelSize: {x: 600, y: 500}
+  menuTitlePadding:
+    left: 24
+    right: 30
+    top: 50
+    bottom: 0
+  menuButtonPadding:
+    left: 50
+    right: 50
+    top: 120
+    bottom: 0
+  menuButtonHeight: 54
+  menuButtonGap: 24
+  menuTitleFontSize: 30
+  menuButtonFontSize: 28
+  settingsPanelReferenceSize: {x: 900, y: 620}
+  settingsContentPadding:
+    left: 74
+    right: 74
+    top: 60
+    bottom: 0
+  settingsVolumeLabelY: 156
+  settingsSliderY: 224
+  settingsMuteY: 306
+  settingsTitleFontSize: 24
+  settingsLabelFontSize: 20
+  controlsPanelReferenceSize: {x: 1688, y: 1080}
+  controlsImageReferenceSize: {x: 1380, y: 780}
+  controlsImageOffset: {x: 0, y: -10}
+  controlsImagePath: new/control.png
+  controlsPanelTexture: {fileID: 0}
+  backButtonSize: {x: 150, y: 58}
+  backButtonBottomOffset: 110
+  toggleFontSize: 20
+--- !u!114 &711808765
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 711808763}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c35df77c6c84b44a9f5c06c6b991f4d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  menuSceneName: MainMenu
+  menuSceneAlias: Mainmenu
+  panelWidth: 560
+  panelMaxHeight: 620
+  panelBaseHeight: 150
+  rowHeight: 62
+  bagIconSize: {x: 124, y: 102}
+  bagIconOffset: {x: 148, y: 18}
+  titlePadding:
+    left: 60
+    right: 190
+    top: 24
+    bottom: 0
+  hintPadding:
+    left: 60
+    right: 68
+    top: 86
+    bottom: 0
+  listPadding:
+    left: 60
+    right: 80
+    top: 130
+    bottom: 0
+  titleFontSize: 36
+  hintFontSize: 28
+  itemFontSize: 32
+--- !u!114 &711808766
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 711808763}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 81de10bd7ca84c84a884c4904e83f557, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  player: {fileID: 1886265066}
+  targetCamera: {fileID: 2008397911}
+  showCompass: 1
+  leftOffset: 150
+  widthRatio: 0.8
+  topOffset: 10
+  panelHeight: 120
+  panelMinHeight: 120
+  degreesVisible: 60
+  minorTickStep: 5
+  majorTickStep: 30
+  labelStep: 45
+  tickTop: 8
+  tickBaseBottomOffset: 46
+  tickSize: {x: 2, y: 12}
+  majorTickHeight: 21
+  labelTickHeight: 28
+  directionLabelRect:
+    serializedVersion: 2
+    x: -90
+    y: 8
+    width: 180
+    height: 108
+  degreeLabelRect:
+    serializedVersion: 2
+    x: -75
+    y: -48
+    width: 150
+    height: 44
+  centerLineSize: {x: 4, y: -8}
+  centerLineTopPadding: 4
+  centerLabelRect:
+    serializedVersion: 2
+    x: -160
+    y: -62
+    width: 320
+    height: 56
+  directionLabelFontSize: 30
+  degreeLabelFontSize: 25
+  centerLabelFontSize: 20
+  panelColor: {r: 0, g: 0, b: 0, a: 0.42}
+  tickColor: {r: 1, g: 1, b: 1, a: 0.82}
+  centerColor: {r: 1, g: 0.86, b: 0.25, a: 1}
+--- !u!4 &711808767
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 711808763}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
+  m_LocalPosition: {x: 0, y: 23.28, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &712569114 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 4921688792134890085, guid: 13d65df3f2d59164bb41bbf7799e9dbb, type: 3}
@@ -6505,7 +6706,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9167567314764288708, guid: 520a3c391cd5b374a9f543554d56b015, type: 3}
       propertyPath: m_Name
-      value: AQM_FPS_Character
+      value: Casper
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -9828,6 +10029,7 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 1334574006}
+  - {fileID: 711808767}
   - {fileID: 271621431}
   - {fileID: 1721956549}
   - {fileID: 72318623}

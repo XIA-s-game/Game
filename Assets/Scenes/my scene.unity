@@ -578,11 +578,11 @@ PrefabInstance:
       objectReference: {fileID: 910193859}
     - target: {fileID: 9133629294917509387, guid: 520a3c391cd5b374a9f543554d56b015, type: 3}
       propertyPath: runSpeed
-      value: 10
+      value: 30
       objectReference: {fileID: 0}
     - target: {fileID: 9133629294917509387, guid: 520a3c391cd5b374a9f543554d56b015, type: 3}
       propertyPath: jumpSpeed
-      value: 18
+      value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 9133629294917509387, guid: 520a3c391cd5b374a9f543554d56b015, type: 3}
       propertyPath: walkSpeed
@@ -642,7 +642,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9167567314764288708, guid: 520a3c391cd5b374a9f543554d56b015, type: 3}
       propertyPath: m_Name
-      value: AQM_FPS_Character
+      value: Casper
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -11332,7 +11332,6 @@ GameObject:
   - component: {fileID: 990310011}
   - component: {fileID: 990310012}
   - component: {fileID: 990310013}
-  - component: {fileID: 990310014}
   m_Layer: 0
   m_Name: Global HUD
   m_TagString: Untagged
@@ -11370,6 +11369,65 @@ MonoBehaviour:
   mainMenuSceneName: Mainmenu
   hintText: Press Esc
   lockCursorWhenClosed: 1
+  margin: 24
+  bottomPromptY: 132
+  fontScale: 1.2
+  referenceResolution: {x: 1920, y: 1080}
+  interactionPromptMinSize: {x: 640, y: 112}
+  systemPromptMinSize: {x: 920, y: 156}
+  dialogueMaxWidth: 2000
+  dialogueHorizontalPadding: 96
+  dialogueHeightScale: 1.45
+  dialogueMinHeight: 300
+  dialogueBottomOffset: 34
+  dialogueVerticalPadding: 80
+  sideQuestStackGap: 12
+  hintRect:
+    serializedVersion: 2
+    x: 20
+    y: 16
+    width: 190
+    height: 48
+  hintTextPadding:
+    left: 16
+    right: 32
+    top: 5
+    bottom: 10
+  hintFontSize: 19
+  menuPanelSize: {x: 600, y: 500}
+  menuTitlePadding:
+    left: 24
+    right: 30
+    top: 50
+    bottom: 0
+  menuButtonPadding:
+    left: 50
+    right: 50
+    top: 120
+    bottom: 0
+  menuButtonHeight: 54
+  menuButtonGap: 24
+  menuTitleFontSize: 30
+  menuButtonFontSize: 28
+  settingsPanelReferenceSize: {x: 900, y: 620}
+  settingsContentPadding:
+    left: 74
+    right: 74
+    top: 60
+    bottom: 0
+  settingsVolumeLabelY: 156
+  settingsSliderY: 224
+  settingsMuteY: 306
+  settingsTitleFontSize: 24
+  settingsLabelFontSize: 20
+  controlsPanelReferenceSize: {x: 1688, y: 1080}
+  controlsImageReferenceSize: {x: 1380, y: 780}
+  controlsImageOffset: {x: 0, y: -10}
+  controlsImagePath: new/control.png
+  controlsPanelTexture: {fileID: 0}
+  backButtonSize: {x: 150, y: 58}
+  backButtonBottomOffset: 110
+  toggleFontSize: 20
 --- !u!114 &990310013
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11384,29 +11442,30 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   menuSceneName: MainMenu
   menuSceneAlias: Mainmenu
---- !u!114 &990310014
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 990310010}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6d2614b10619b1047b51a6f239774bc6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  mapCamera: {fileID: 0}
-  player: {fileID: 0}
-  showMap: 1
-  showCompactMap: 1
-  textureSize: 512
-  mapWidth: 340
-  mapHeight: 230
-  expandedWidthRatio: 0.72
-  expandedHeightRatio: 0.72
-  sideQuestPanelHeight: 260
-  playerColor: {r: 1, g: 0.86, b: 0.18, a: 1}
+  panelWidth: 560
+  panelMaxHeight: 620
+  panelBaseHeight: 150
+  rowHeight: 62
+  bagIconSize: {x: 124, y: 102}
+  bagIconOffset: {x: 148, y: 18}
+  titlePadding:
+    left: 60
+    right: 190
+    top: 24
+    bottom: 0
+  hintPadding:
+    left: 60
+    right: 68
+    top: 86
+    bottom: 0
+  listPadding:
+    left: 60
+    right: 80
+    top: 130
+    bottom: 0
+  titleFontSize: 36
+  hintFontSize: 28
+  itemFontSize: 32
 --- !u!1 &990310020
 GameObject:
   m_ObjectHideFlags: 0
@@ -11457,13 +11516,30 @@ MonoBehaviour:
   player: {fileID: 1371781584}
   showMap: 1
   showCompactMap: 1
-  textureSize: 512
+  textureWidth: 640
+  textureHeight: 360
   mapWidth: 340
   mapHeight: 230
   expandedWidthRatio: 0.72
   expandedHeightRatio: 0.72
   sideQuestPanelHeight: 260
   playerColor: {r: 1, g: 0.86, b: 0.18, a: 1}
+  titleRect:
+    serializedVersion: 2
+    x: 14
+    y: 8
+    width: -28
+    height: 30
+  mapImageRect:
+    serializedVersion: 2
+    x: 12
+    y: 42
+    width: -24
+    height: -54
+  titleFontSize: 17
+  compactStackGap: 12
+  expandedMinSize: {x: 520, y: 380}
+  playerMarkerSize: 18
 --- !u!114 &990310023
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11479,12 +11555,43 @@ MonoBehaviour:
   player: {fileID: 1371781584}
   targetCamera: {fileID: 449025606}
   showCompass: 1
+  leftOffset: 150
+  widthRatio: 0.8
   topOffset: 10
   panelHeight: 120
+  panelMinHeight: 120
   degreesVisible: 60
   minorTickStep: 5
   majorTickStep: 30
   labelStep: 45
+  tickTop: 8
+  tickBaseBottomOffset: 46
+  tickSize: {x: 2, y: 12}
+  majorTickHeight: 21
+  labelTickHeight: 28
+  directionLabelRect:
+    serializedVersion: 2
+    x: -90
+    y: 8
+    width: 180
+    height: 108
+  degreeLabelRect:
+    serializedVersion: 2
+    x: -75
+    y: -48
+    width: 150
+    height: 44
+  centerLineSize: {x: 4, y: -8}
+  centerLineTopPadding: 4
+  centerLabelRect:
+    serializedVersion: 2
+    x: -160
+    y: -62
+    width: 320
+    height: 56
+  directionLabelFontSize: 30
+  degreeLabelFontSize: 25
+  centerLabelFontSize: 20
   panelColor: {r: 0, g: 0, b: 0, a: 0.42}
   tickColor: {r: 1, g: 1, b: 1, a: 0.82}
   centerColor: {r: 1, g: 0.86, b: 0.25, a: 1}
@@ -13315,37 +13422,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: dae22f92f6784164fbd03e7706b50490, type: 3}
---- !u!1 &1164343335
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1164343337}
-  m_Layer: 0
-  m_Name: GameMenuUI
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1164343337
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1164343335}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0.4082179, y: -0.2345697, z: 0.1093817, w: 0.8754261}
-  m_LocalPosition: {x: 0, y: 8, z: -2}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1177230789
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -18777,6 +18853,47 @@ MonoBehaviour:
   portal: {fileID: 252499039}
   nextSceneName: 11 1
   portalInteractDistance: 4
+  sideQuestPanelSize: {x: 640, y: 230}
+  sideQuestTextOrigin: {x: 156, y: 8}
+  sideQuestTextWidth: 448
+  sideQuestTitleRect:
+    serializedVersion: 2
+    x: -40
+    y: 65
+    width: 448
+    height: 48
+  sideQuestTaskRect:
+    serializedVersion: 2
+    x: -40
+    y: 112
+    width: 448
+    height: 48
+  sideQuestCountRect:
+    serializedVersion: 2
+    x: 38
+    y: 130
+    width: 300
+    height: 54
+  sideQuestTitleFontSize: 26
+  sideQuestTaskFontSize: 24
+  sideQuestCountFontSize: 32
+  dialoguePanelHeight: 220
+  dialogueTextRect:
+    serializedVersion: 2
+    x: 320
+    y: 118
+    width: -252
+    height: -190
+  dialogueContinueRect:
+    serializedVersion: 2
+    x: -100
+    y: -110
+    width: -252
+    height: 48
+  dialogueFontSize: 34
+  dialogueContinueFontSize: 28
+  promptSize: {x: 440, y: 60}
+  promptFontSize: 28
 --- !u!1001 &1717212254
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -21919,6 +22036,80 @@ MonoBehaviour:
   continueHint: Press C to continue
   answerA: Do not rush, young one.
   answerC: Rude words have consequences.
+  choiceDialogueHeight: 470
+  continueDialogueHeight: 0
+  normalDialogueHeight: 230
+  choiceDialogueMaxWidth: 1280
+  choiceDialogueHorizontalPadding: 96
+  dialogueTextRect:
+    serializedVersion: 2
+    x: 230
+    y: 140
+    width: -252
+    height: -126
+  choiceTextExtraY: 80
+  choiceTextHeight: 120
+  continueHintX: 1300
+  continueHintY: 190
+  continueHintWidth: 400
+  continueHintHeight: 48
+  choiceHintRect:
+    serializedVersion: 2
+    x: 230
+    y: 290
+    width: -252
+    height: 38
+  choiceARect:
+    serializedVersion: 2
+    x: 230
+    y: 360
+    width: -252
+    height: 50
+  choiceBRect:
+    serializedVersion: 2
+    x: 230
+    y: 420
+    width: -252
+    height: 50
+  choiceCRect:
+    serializedVersion: 2
+    x: 230
+    y: 480
+    width: -252
+    height: 50
+  dialogueTextFontSize: 36
+  continueHintFontSize: 28
+  choiceHintFontSize: 30
+  choiceOptionFontSize: 32
+  interactionPromptSize: {x: 520, y: 60}
+  interactionPromptFontSize: 28
+  rewardDialogueHeight: 500
+  rewardGreetingRect:
+    serializedVersion: 2
+    x: 320
+    y: 280
+    width: -252
+    height: 90
+  rewardChoiceARect:
+    serializedVersion: 2
+    x: 320
+    y: 350
+    width: -252
+    height: 50
+  rewardChoiceBRect:
+    serializedVersion: 2
+    x: 320
+    y: 420
+    width: -252
+    height: 50
+  rewardChoiceCRect:
+    serializedVersion: 2
+    x: 320
+    y: 490
+    width: -252
+    height: 50
+  rewardGreetingFontSize: 34
+  rewardChoiceFontSize: 30
 --- !u!4 &1946929760 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 1a21fd2e040894d4a9fa3c2cd9bee170, type: 3}
@@ -24495,7 +24686,6 @@ SceneRoots:
   - {fileID: 990300001}
   - {fileID: 100001}
   - {fileID: 2053076197}
-  - {fileID: 1164343337}
   - {fileID: 2044998181}
   - {fileID: 300000}
   - {fileID: 300001}
