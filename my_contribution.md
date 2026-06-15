@@ -6,7 +6,7 @@ In this project, I was responsible for all core creative and development work. A
 
 I created the main concept, story direction, and world setting of the game. The game is about a magical journey through different fantasy scenes, including a forest, fairies, an old tree, a witch, a hero, Luna, and Meryl. The player explores different areas, solves puzzles, interacts with NPCs, collects important items, and gradually progresses through the story.
 
-The overall concept and story are original. The only gameplay reference I used was the coloured tile mini-game for obtaining the third page, which was inspired by a small level from Eggy Party. All other story flow, scene structure, character interactions, and quest design were planned by me.
+The overall concept and story are original. The only gameplay references I used were the coloured tile mini-game for obtaining the third page, which was inspired by a small level from Eggy Party, and the fairy memory section, which refers to the classic Klotski puzzle game. All other story flow, scene structure, character interactions, and quest design were planned by me.
 
 The inspiration for this game came from my childhood imagination of wanting to have magic and become a magician. I also enjoy puzzle-solving games, so I designed the project around exploration, mystery, fantasy, and several small and large puzzle chapters.
 
