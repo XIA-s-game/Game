@@ -763,10 +763,16 @@ public class MainMenuController : MonoBehaviour
 
     private static string AssetFileUrl(string relativeAssetPath)
     {
-        // UnityWebRequest needs file:// style URLs for project-local Assets files.
+        // Player builds keep loose media in StreamingAssets; editor fallback keeps old Assets paths working.
         if (string.IsNullOrWhiteSpace(relativeAssetPath))
         {
             return string.Empty;
+        }
+
+        string streamingPath = Path.Combine(Application.streamingAssetsPath, relativeAssetPath);
+        if (File.Exists(streamingPath))
+        {
+            return new Uri(streamingPath).AbsoluteUri;
         }
 
         string path = Path.Combine(Application.dataPath, relativeAssetPath);

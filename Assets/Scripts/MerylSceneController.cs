@@ -1,4 +1,6 @@
 using System.Collections;
+using System;
+using System.IO;
 using AquariusMax.Fae.demo;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -40,6 +42,8 @@ public class MerylSceneController : MonoBehaviour
     [SerializeField] private GameObject endObject;
     // Final video clip.
     [SerializeField] private VideoClip endingVideoClip;
+    // Fallback mp4 path included in StreamingAssets for player builds.
+    [SerializeField] private string endingVideoPath = "new/final/ending.mp4";
 
     // Runtime player object.
     private GameObject player;
@@ -441,8 +445,11 @@ public class MerylSceneController : MonoBehaviour
         ReleaseActiveVideoTexture();
 
         videoPlayer.Stop();
-        videoPlayer.source = VideoSource.VideoClip;
-        videoPlayer.clip = endingVideoClip;
+        string endingUrl = AssetFileUrl(endingVideoPath);
+        bool useClip = endingVideoClip != null;
+        videoPlayer.source = useClip ? VideoSource.VideoClip : VideoSource.Url;
+        videoPlayer.clip = useClip ? endingVideoClip : null;
+        videoPlayer.url = useClip ? string.Empty : endingUrl;
         videoPlayer.renderMode = VideoRenderMode.RenderTexture;
         videoPlayer.targetTexture = activeVideoTexture;
         videoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
@@ -632,8 +639,25 @@ public class MerylSceneController : MonoBehaviour
 
     private bool CanPlayEndingVideo()
     {
-        // Ending can only play if the clip is assigned.
-        return endingVideoClip != null;
+        // Ending can play from an assigned clip or the StreamingAssets fallback mp4.
+        return endingVideoClip != null || !string.IsNullOrEmpty(AssetFileUrl(endingVideoPath));
+    }
+
+    private static string AssetFileUrl(string relativeAssetPath)
+    {
+        if (string.IsNullOrWhiteSpace(relativeAssetPath))
+        {
+            return string.Empty;
+        }
+
+        string streamingPath = Path.Combine(Application.streamingAssetsPath, relativeAssetPath);
+        if (File.Exists(streamingPath))
+        {
+            return new Uri(streamingPath).AbsoluteUri;
+        }
+
+        string assetPath = Path.Combine(Application.dataPath, relativeAssetPath);
+        return File.Exists(assetPath) ? new Uri(assetPath).AbsoluteUri : string.Empty;
     }
 
     private void DisableCamera(Camera camera)
