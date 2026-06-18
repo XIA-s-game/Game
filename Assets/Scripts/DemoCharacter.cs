@@ -1,112 +1,171 @@
-// Controls the fae demo player and exposes a few locks used by puzzle cutscenes.
+﻿// Controls the fae demo player and exposes a few locks used by puzzle cutscenes.
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace AquariusMax.Fae.demo
 {
-    // influenced by Unity
+    // Based on the original FAE demo controller, with project-specific locks added.
     [RequireComponent(typeof(CharacterController))]
     public class DemoCharacter : MonoBehaviour
     {
+        // Full input lock used by menus, dialogue, and quizzes.
         public static bool LockPlayerInput;
+        // Movement-only lock used while scripted movement is playing.
         public static bool LockMovementInput;
+        // Forces walk animation while another script moves the player.
         public static bool ForceWalkAnimation;
+        // Optional touch-style look input.
         public static bool UseLookPadInput;
+        // Look input supplied by the virtual pad.
         public static Vector2 LookPadInput;
+        // True while the first-scene tutorial is running.
         public static bool TutorialActive;
+        // Tutorial gate for mouse look.
         public static bool TutorialAllowLook = true;
+        // Tutorial gate for movement.
         public static bool TutorialAllowMove = true;
+        // Tutorial gate for jumping.
         public static bool TutorialAllowJump = true;
+        // Tutorial gate for crouching.
         public static bool TutorialAllowCrouch = true;
+        // Tutorial gate for running.
         public static bool TutorialAllowRun = true;
+        // Set once the player has successfully used run.
         public static bool TutorialRunObserved;
 
+        // Camera controlled by mouse look.
         [SerializeField]
         Camera cam;
 
+        // Multiplier applied to Unity gravity.
         [SerializeField]
         float gravityModifier = 2f;
+        // Normal movement speed.
         [SerializeField]
         float walkSpeed = 5f;
+        // Shift movement speed.
         [SerializeField]
         float runSpeed = 10f;
+        // Initial upward velocity for jumps.
         [SerializeField]
         float jumpSpeed = 10f;
+        // Extra downward force after a jump peaks.
         [SerializeField]
         float landingForce = 10f;
 
+        // Horizontal mouse sensitivity.
         [SerializeField]
         float mouseXSensitivity = 1.25f;
+        // Vertical mouse sensitivity.
         [SerializeField]
         float mouseYSensitivity = 1.25f;
 
+        // Animator for the visible player model.
         [SerializeField]
         Animator animator;
 
+        // Animator float parameter for movement speed.
         [SerializeField]
         string speedParameter = "Speed";
+        // Animator bool parameter for movement.
         [SerializeField]
         string movingParameter = "IsMoving";
+        // Animator bool parameter for running.
         [SerializeField]
         string runningParameter = "IsRunning";
+        // Animator bool parameter for grounded state.
         [SerializeField]
         string groundedParameter = "Grounded";
+        // Animator trigger parameter for jumping.
         [SerializeField]
         string jumpTriggerParameter = "Jump";
+        // Animator idle state name.
         [SerializeField]
         string idleStateName = "Idle";
+        // Animator walk state name.
         [SerializeField]
         string walkStateName = "Walk";
+        // Animator run state name.
         [SerializeField]
         string runStateName = "Run";
+        // Animator jump state name.
         [SerializeField]
         string jumpStateName = "Jump";
+        // Key used for crouch.
         [SerializeField]
         KeyCode crouchKey = KeyCode.V;
+        // Animator crouch state name.
         [SerializeField]
         string crouchStateName = "Crouch";
+        // Movement speed while crouching.
         [SerializeField]
         float crouchSpeed = 2.5f;
+        // CharacterController height multiplier while crouched.
         [SerializeField]
         float crouchHeightMultiplier = 0.55f;
+        // CharacterController radius multiplier while crouched.
         [SerializeField]
         float crouchRadiusMultiplier = 0.8f;
+        // Safety timeout for crouch.
         [SerializeField]
         float maxCrouchSeconds = 3f;
+        // If true, one key press toggles crouch on/off.
         [SerializeField]
         bool toggleCrouch = true;
+        // Optional forward obstacle blocking.
         [SerializeField]
         bool blockSolidObstacles = false;
+        // Uses body probes to reduce clipping.
         [SerializeField]
         bool usePreciseBodyCollision = true;
+        // Radius for body probe casts.
         [SerializeField]
         float bodyProbeRadius = 0.12f;
+        // Fits CharacterController to renderer bounds on start.
         [SerializeField]
         bool fitControllerToVisibleCharacter = true;
+        // Extra space around fitted controller.
         [SerializeField]
         float controllerFitPadding = 0.08f;
+        // Ground probe length below the controller.
         [SerializeField]
         float groundedCheckDistance = 0.42f;
 
+        // Cached CharacterController.
         CharacterController charControl;
 
+        // Target yaw for the character body.
         Quaternion characterTargetRot;
+        // Target local pitch for the camera.
         Quaternion cameraTargetRot;
+        // Animator parameters available on this controller.
         HashSet<int> animatorParameters = new HashSet<int>();
 
+        // Current walk/run choice.
         bool isWalking = true;
+        // Current movement input.
         Vector2 moveInput = Vector2.zero;
+        // Current movement velocity.
         Vector3 move = Vector3.zero;
+        // Jump key state captured this frame.
         bool jumpPressed = false;
+        // True while the jump animation/air state is active.
         bool isJumping = false;
+        // True while crouch is active.
         bool isCrouching = false;
+        // Time when crouch should auto-end.
         float crouchEndsAt = -1f;
 
+        // Last CharacterController collision result.
         CollisionFlags collisionFlags;
+        // Animator state hash currently being watched.
         int currentAnimationStateHash;
+        // Standing controller height, restored after crouch.
         float standingControllerHeight;
+        // Standing controller radius, restored after crouch.
         float standingControllerRadius;
+        // Standing controller center, restored after crouch.
         Vector3 standingControllerCenter;
 
         void Start()

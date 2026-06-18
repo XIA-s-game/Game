@@ -1,11 +1,12 @@
+// Guides the player through the first-scene controls and unlocks them step by step.
 using AquariusMax.Fae.demo;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class PlayerInstructionTutorial : MonoBehaviour
 {
-    // Tutorial only runs on new-game loads of Enchanted Forest A.
-    private const string TutorialSceneName = "Enchanted Forest A";
+    // Tutorial only runs on new-game loads of Chapter1_MagicForest.
+    private const string TutorialSceneName = "Chapter1_MagicForest";
     private const string TutorialNextLoadKey = "Tutorial.EnabledForNextLoad";
     private const float StepPauseSeconds = 0.45f;
     private const float FinalMessageSeconds = 5f;
@@ -134,7 +135,7 @@ public class PlayerInstructionTutorial : MonoBehaviour
                 break;
         }
     }
-
+    // Helper method to transition to the next tutorial step, recording the time it started and enabling any necessary input for that step. This centralizes the logic for moving through the tutorial and ensures consistent timing between steps.
     private void EnterStep(TutorialStep nextStep)
     {
         step = nextStep;
@@ -144,25 +145,25 @@ public class PlayerInstructionTutorial : MonoBehaviour
             DemoCharacter.TutorialRunObserved = false;
         }
     }
-
+    // Helper method to check if enough time has passed since the current step started to allow it to be completed. This prevents players from rushing through the tutorial without reading the instructions.
     private bool CanFinishCurrentStep()
     {
         return Time.time - stepStartedAt >= StepPauseSeconds;
     }
-
+    // Helper method to mark the tutorial as complete, releasing the input lock and destroying this component. This allows the player to have full control again and removes the tutorial UI from the screen.
     private void CompleteTutorial()
     {
         step = TutorialStep.Complete;
         ReleaseTutorialInputLock(false);
         Destroy(this);
     }
-
+    // Static method to enable or disable the tutorial for the next game load by setting a PlayerPrefs value. This can be called from the main menu or other scripts to control whether new players see the tutorial or returning players can skip it.
     public static void SetTutorialEnabledForNextLoad(bool enabled)
     {
         PlayerPrefs.SetInt(TutorialNextLoadKey, enabled ? 1 : 0);
         PlayerPrefs.Save();
     }
-
+    // Clean up the tutorial input lock if this object is destroyed for any reason, such as scene unload or manual destruction. This ensures that the player doesn't get stuck without controls if the tutorial is interrupted.
     private void OnDestroy()
     {
         if (tutorialEnabled)
@@ -171,7 +172,7 @@ public class PlayerInstructionTutorial : MonoBehaviour
         }
 
     }
-
+    // Helper method to set the tutorial input lock flags on the DemoCharacter, allowing the tutorial system to control when the player can look, move, jump, crouch, and run. This is called at the start of the tutorial to restrict input and can be released at the end to give full control back to the player.
     private static void StartTutorialInputLock()
     {
         // Uses DemoCharacter tutorial flags so movement rules stay inside the player controller.
@@ -256,7 +257,7 @@ public class PlayerInstructionTutorial : MonoBehaviour
         progressStyle.alignment = TextAnchor.MiddleCenter;
         progressStyle.normal.textColor = progressColor;
     }
-
+    // Helper method to check if enough time has passed since the current step started to allow it to be completed. This prevents players from rushing through the tutorial without reading the instructions.
     private static Rect InnerRect(Rect parent, Rect localRect)
     {
         float y = localRect.y >= 0f ? parent.y + localRect.y : parent.yMax + localRect.y;
@@ -264,7 +265,7 @@ public class PlayerInstructionTutorial : MonoBehaviour
         float height = localRect.height >= 0f ? localRect.height : parent.height + localRect.height;
         return new Rect(parent.x + localRect.x, y, width, height);
     }
-
+    // Helper method to get the instructional message for the current tutorial step. This centralizes the text for each step and allows for easy updates or localization in the future.
     private string GetStepMessage()
     {
         switch (step)
@@ -292,13 +293,13 @@ public class PlayerInstructionTutorial : MonoBehaviour
     {
         return "Tutorial Progress  " + ((int)step + 1) + " / 6";
     }
-
+    // Helper method to check if the player is providing any movement input, which is used in the Move tutorial step to detect when the player has successfully moved. This checks both horizontal and vertical input axes for significant input.
     private static bool HasMoveInput()
     {
         return Mathf.Abs(Input.GetAxisRaw("Horizontal")) > 0.1f ||
             Mathf.Abs(Input.GetAxisRaw("Vertical")) > 0.1f;
     }
-
+    // Helper method to check if the player is holding the run input, which is either Shift key. This is used in the Run tutorial step to detect when the player has successfully performed a sprinting movement.
     private static bool HasRunInput()
     {
         return HasMoveInput() &&

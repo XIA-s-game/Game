@@ -4,36 +4,64 @@ using UnityEngine;
 public static class GameUiStyle
 {
     // Built with AI assistance to keep shared menu layout consistent across scenes.
+    // Shared outer margin for generated UI.
     public static float Margin { get; private set; } = 24f;
+    // Default bottom prompt baseline.
     public static float BottomPromptY { get; private set; } = 132f;
+    // Global text scale used by helper styles.
     public static float FontScale { get; private set; } = 1.2f;
+    // Reference screen size for layout values.
     public static Vector2 UiReferenceResolution { get; private set; } = new Vector2(1920f, 1080f);
+    // Shared main menu button size.
     public static Vector2 MainMenuButtonSize { get; private set; } = new Vector2(450f, 82f);
+    // Main menu start button offset.
     public static Vector2 MainMenuStartButton { get; private set; } = new Vector2(0f, 46f);
+    // Main menu intro button offset.
     public static Vector2 MainMenuIntroButton { get; private set; } = new Vector2(0f, -45f);
+    // Main menu controls button offset.
     public static Vector2 MainMenuControlsButton { get; private set; } = new Vector2(0f, -136f);
+    // Main menu settings button offset.
     public static Vector2 MainMenuSettingsButton { get; private set; } = new Vector2(0f, -227f);
+    // Main menu credits button offset.
     public static Vector2 MainMenuCreditsButton { get; private set; } = new Vector2(0f, -318f);
+    // Main menu exit button offset.
     public static Vector2 MainMenuExitButton { get; private set; } = new Vector2(0f, -409f);
 
+    // Minimum interaction prompt size.
     private static Vector2 interactionPromptMinSize = new Vector2(640f, 112f);
+    // Minimum system prompt size.
     private static Vector2 systemPromptMinSize = new Vector2(920f, 156f);
+    // Largest width used by dialogue panels.
     private static float dialogueMaxWidth = 1280f;
+    // Horizontal space reserved around dialogue panels.
     private static float dialogueHorizontalPadding = 96f;
+    // Multiplier applied to requested dialogue height.
     private static float dialogueHeightScale = 1.45f;
+    // Smallest allowed dialogue height.
     private static float dialogueMinHeight = 300f;
+    // Distance from bottom screen edge to dialogue panels.
     private static float dialogueBottomOffset = 34f;
+    // Vertical space reserved around dialogue panels.
     private static float dialogueVerticalPadding = 80f;
+    // Gap for right-side stacked quest panels.
     private static float sideQuestStackGap = 12f;
 
+    // Standard panel artwork.
     private static Texture2D panelTexture;
+    // Dialogue panel artwork.
     private static Texture2D dialoguePanelTexture;
+    // Backpack icon artwork.
     private static Texture2D bagTexture;
+    // Main menu panel artwork.
     private static Texture2D menuTexture;
 
+    // Fallback Resources path for standard panel art.
     private const string PanelTexturePath = "new/panel.png";
+    // Fallback Resources path for dialogue art.
     private const string DialoguePanelTexturePath = "new/dialogue_panel.png";
+    // Fallback Resources path for bag art.
     private const string BagTexturePath = "new/bag.png";
+    // Fallback Resources path for menu art.
     private const string MenuTexturePath = "new/menu.png";
 
     public static void SetLayout(
@@ -226,7 +254,13 @@ public static class GameUiStyle
 
     private static Texture2D LoadTexture(string relativeAssetPath, Color fallbackColor)
     {
-        // Falls back to a solid texture if the art file is missing during testing.
+        // Resources are included in player builds; direct file paths are only an editor fallback.
+        Texture2D resourceTexture = LoadResourceTexture(relativeAssetPath);
+        if (resourceTexture != null)
+        {
+            return resourceTexture;
+        }
+
         string path = Path.Combine(Application.dataPath, relativeAssetPath);
         if (!File.Exists(path))
         {
@@ -243,6 +277,17 @@ public static class GameUiStyle
 
         texture.hideFlags = HideFlags.HideAndDontSave;
         return texture;
+    }
+
+    private static Texture2D LoadResourceTexture(string relativeAssetPath)
+    {
+        if (string.IsNullOrWhiteSpace(relativeAssetPath))
+        {
+            return null;
+        }
+
+        string resourcePath = Path.ChangeExtension(relativeAssetPath.Replace('\\', '/'), null);
+        return Resources.Load<Texture2D>(resourcePath);
     }
 
     private static Texture2D CreateSolidTexture(Color color)

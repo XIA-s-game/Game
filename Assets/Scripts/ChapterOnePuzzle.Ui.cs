@@ -1,9 +1,13 @@
+// Draws Chapter One prompts, fairy dialogue, and puzzle result feedback.
 using UnityEngine;
 
 public partial class ChapterOnePuzzle
 {
+    // Cached style for prompt labels.
     private GUIStyle promptBoxStyle;
+    // Cached style for fairy dialogue body text.
     private GUIStyle dialogueTextStyle;
+    // Cached style for the continue hint.
     private GUIStyle dialogueHintStyle;
 
     private void OnGUI()
@@ -45,6 +49,7 @@ public partial class ChapterOnePuzzle
 
     private void DrawPromptBox(string text, float y)
     {
+        // System prompts sit near the top; interaction prompts sit near the lower screen area.
         Rect rect = y <= 60f
             ? GameUiStyle.SystemPromptRect(systemPromptSize.x, systemPromptSize.y)
             : GameUiStyle.InteractionPromptRect(interactionPromptSize.x, interactionPromptSize.y);
@@ -72,6 +77,7 @@ public partial class ChapterOnePuzzle
 
     private void ShowResult(string text)
     {
+        // Result prompts also trigger shared success/failure audio.
         resultPrompt = text;
         resultPromptEndsAt = Time.time + 3f;
         if (string.Equals(text, failurePrompt, System.StringComparison.OrdinalIgnoreCase))

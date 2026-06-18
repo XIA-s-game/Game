@@ -8,42 +8,66 @@ using UnityEngine.Video;
 public class MerylSceneController : MonoBehaviour
 {
     // Built with AI assistance to keep shared menu layout consistent across scenes.
-    private const string MenuSceneName = "Mainmenu";
+    // Scene loaded after the ending video.
+    private const string MenuSceneName = "MainMenu";
 
     [Header("Player Setup")]
     // Visible hero is attached to the player controller used in the final scene.
     [SerializeField] private Transform visibleHero;
+    // Camera used by the player controller.
     [SerializeField] private Camera playerCamera;
+    // Scene camera disabled after the player is ready.
     [SerializeField] private Camera sceneMainCamera;
 
     [Header("Scene Flow")]
-    // Fall recovery and LT trigger settings for the 11 1 scene.
+    // Fall recovery and LT trigger settings for the Chapter5_MoonlitGlade scene.
     [SerializeField] private float respawnFallY = -10f;
+    // Small lift added when placing the player on the ground.
     [SerializeField] private float spawnLift = 0.02f;
+    // Ray start height for finding ground.
     [SerializeField] private float groundRayStartHeight = 25f;
+    // Ray length for finding ground.
     [SerializeField] private float groundRayDistance = 80f;
+    // Distance needed to trigger the ending object.
     [SerializeField] private float ltTriggerDistance = 1.5f;
+    // How long the player must fall before respawn.
     [SerializeField] private float fallRespawnDelay = 5f;
 
     [Header("Scene References")]
     // Ending video is dragged here; the overlay UI is built at runtime.
     [SerializeField] private GameObject playerObject;
+    // Object that triggers the ending sequence.
     [SerializeField] private GameObject endObject;
+    // Final video clip.
     [SerializeField] private VideoClip endingVideoClip;
 
+    // Runtime player object.
     private GameObject player;
+    // Player CharacterController.
     private CharacterController playerController;
+    // Player movement script.
     private DemoCharacter demoCharacter;
+    // RenderTexture used by the ending video.
     private RenderTexture activeVideoTexture;
+    // Runtime fullscreen video overlay.
     private GameObject videoOverlayObject;
+    // RawImage that displays the ending video.
     private RawImage videoImage;
+    // Runtime VideoPlayer.
     private VideoPlayer videoPlayer;
+    // Runtime video audio source.
     private AudioSource videoAudioSource;
+    // True once the video reaches the end.
     private bool videoFinished;
+    // Stops the ending trigger from running twice.
     private bool lt1Triggered;
+    // True after player setup has completed.
     private bool bootstrapComplete;
+    // Time when the player first fell below the threshold.
     private float fallBelowThresholdStartedAt = -1f;
+    // Initial player position for respawn.
     private Vector3 initialPlayerPosition;
+    // True once the initial position is cached.
     private bool hasInitialPlayerPosition;
 
     private enum FlowState
@@ -53,10 +77,12 @@ public class MerylSceneController : MonoBehaviour
         Lt1Sequence
     }
 
+    // Current final-scene flow state.
     private FlowState flowState = FlowState.Bootstrapping;
 
     private void Awake()
     {
+        // Keep a runtime shortcut to the dragged player object.
         player = playerObject;
 
         if (playerObject == null)
@@ -70,10 +96,12 @@ public class MerylSceneController : MonoBehaviour
 
     private IEnumerator Start()
     {
+        // Build the playable final scene before allowing free movement.
         SetupPlayerForMeryl();
 
         if (player != null)
         {
+            // Cache controller and camera once the player is active.
             playerController = player.GetComponent<CharacterController>();
             ApplyPlayerCamera(player);
         }
@@ -87,27 +115,33 @@ public class MerylSceneController : MonoBehaviour
 
     private void Update()
     {
+        // Wait until Start has finished the final scene setup.
         if (!bootstrapComplete || player == null)
         {
             return;
         }
 
+        // If the player falls too low for a few seconds, send them back to the start.
         if (player.transform.position.y < respawnFallY)
         {
             if (fallBelowThresholdStartedAt < 0f)
             {
+                // Start timing the fall.
                 fallBelowThresholdStartedAt = Time.time;
             }
             else if (Time.time - fallBelowThresholdStartedAt >= fallRespawnDelay)
             {
+                // Long fall means the player is probably stuck outside the scene.
                 RespawnPlayerToStart();
             }
         }
         else
         {
+            // Player recovered before the respawn delay finished.
             fallBelowThresholdStartedAt = -1f;
         }
 
+        // Final trigger starts the ending sequence once.
         if (!lt1Triggered && flowState == FlowState.FreeRoam && IsNearObject(endObject, ltTriggerDistance))
         {
             StartCoroutine(HandleLt1Sequence());
@@ -125,12 +159,14 @@ public class MerylSceneController : MonoBehaviour
 
         player = playerObject;
         player.SetActive(true);
+        // Hero model is parented under the shared player controller.
         Transform hero = visibleHero;
         if (hero != null)
         {
             hero.SetParent(player.transform, false);
             hero.gameObject.SetActive(true);
 
+            // Disable any cameras that came with the hero model.
             Camera[] cameras = hero.GetComponentsInChildren<Camera>(true);
             for (int i = 0; i < cameras.Length; i++)
             {
@@ -140,6 +176,7 @@ public class MerylSceneController : MonoBehaviour
                 }
             }
 
+            // Disable extra listeners so Unity keeps only one active listener.
             AudioListener[] listeners = hero.GetComponentsInChildren<AudioListener>(true);
             for (int i = 0; i < listeners.Length; i++)
             {
@@ -149,6 +186,7 @@ public class MerylSceneController : MonoBehaviour
                 }
             }
 
+            // Use the hero animator on the shared movement controller.
             Animator animator = hero.GetComponent<Animator>();
             if (animator != null)
             {
@@ -168,6 +206,7 @@ public class MerylSceneController : MonoBehaviour
         ResetDemoCharacterState();
         if (!hasInitialPlayerPosition)
         {
+            // First valid player position becomes the respawn point.
             initialPlayerPosition = player.transform.position;
             hasInitialPlayerPosition = true;
         }
@@ -175,6 +214,7 @@ public class MerylSceneController : MonoBehaviour
 
     private void ApplyPlayerCamera(GameObject playerObject)
     {
+        // The scene uses the assigned player camera as the only active camera.
         Camera activePlayerCamera = playerCamera;
         if (activePlayerCamera == null)
         {
@@ -187,6 +227,7 @@ public class MerylSceneController : MonoBehaviour
         activePlayerCamera.enabled = true;
         activePlayerCamera.tag = "MainCamera";
 
+        // Make sure the player camera owns the scene audio listener.
         AudioListener listener = activePlayerCamera.GetComponent<AudioListener>();
         if (listener != null)
         {
@@ -201,6 +242,7 @@ public class MerylSceneController : MonoBehaviour
 
     private void DisableSceneMainCamera(Camera playerCamera)
     {
+        // The original scene camera should not compete with the player camera.
         if (sceneMainCamera != null && sceneMainCamera != playerCamera)
         {
             DisableCamera(sceneMainCamera);
@@ -211,6 +253,7 @@ public class MerylSceneController : MonoBehaviour
 
     private void SetupDemoCharacter(GameObject playerObject)
     {
+        // Find the movement controller on the player hierarchy.
         demoCharacter = playerObject.GetComponentInChildren<DemoCharacter>(true);
         if (demoCharacter == null)
         {
@@ -222,6 +265,7 @@ public class MerylSceneController : MonoBehaviour
 
         if (visibleHero != null)
         {
+            // Reuse the visible hero animator for movement animation.
             Animator heroAnimator = visibleHero.GetComponent<Animator>();
             if (heroAnimator != null)
             {
@@ -232,12 +276,14 @@ public class MerylSceneController : MonoBehaviour
 
     private void ResetDemoCharacterState()
     {
+        // Clear any locks left by menus, cutscenes, or previous scenes.
         DemoCharacter.ResetControlFlags();
         ClearPlayerMotionState();
     }
 
     private void ClearPlayerMotionState()
     {
+        // Stops old velocity from carrying into respawn or cutscene snaps.
         if (demoCharacter == null)
         {
             return;
@@ -248,6 +294,7 @@ public class MerylSceneController : MonoBehaviour
 
     private void SetPlayerLocked(bool locked)
     {
+        // Shared helper for final cutscene input locking.
         DemoCharacter.SetControlLocked(locked);
 
         if (!locked)
@@ -265,6 +312,7 @@ public class MerylSceneController : MonoBehaviour
         }
 
         fallBelowThresholdStartedAt = -1f;
+        // Respawn at cached start if possible, otherwise use current position.
         Vector3 spawnPosition = hasInitialPlayerPosition ? initialPlayerPosition : player.transform.position;
         TeleportPlayer(spawnPosition);
 
@@ -278,6 +326,7 @@ public class MerylSceneController : MonoBehaviour
 
     private void TeleportPlayer(Vector3 targetPosition)
     {
+        // CharacterController must be disabled before changing transform position.
         if (player == null)
         {
             return;
@@ -288,6 +337,7 @@ public class MerylSceneController : MonoBehaviour
             playerController = player.GetComponent<CharacterController>();
         }
 
+        // Keep the previous controller enabled state.
         bool controllerWasEnabled = playerController != null && playerController.enabled;
         if (playerController != null)
         {
@@ -305,7 +355,9 @@ public class MerylSceneController : MonoBehaviour
 
     private Vector3 GetGroundedPositionAt(Vector3 worldPosition)
     {
+        // Start with the requested position, then adjust it to the ground.
         Vector3 position = worldPosition;
+        // CharacterController foot offset keeps the capsule from sinking into the floor.
         float controllerFootOffset = 0f;
 
         if (playerController == null && player != null)
@@ -318,6 +370,7 @@ public class MerylSceneController : MonoBehaviour
             controllerFootOffset = playerController.center.y - playerController.height * 0.5f;
         }
 
+        // Raycast down from above the target to find usable ground.
         Vector3 rayStart = new Vector3(worldPosition.x, worldPosition.y + groundRayStartHeight, worldPosition.z);
         if (Physics.Raycast(rayStart, Vector3.down, out RaycastHit hit, groundRayDistance, Physics.AllLayers, QueryTriggerInteraction.Ignore))
         {
@@ -331,11 +384,13 @@ public class MerylSceneController : MonoBehaviour
 
     private bool IsNearObject(GameObject targetObject, float distance)
     {
+        // Only compare horizontal distance so height differences do not block the ending trigger.
         if (player == null || targetObject == null)
         {
             return false;
         }
 
+        // Flatten both positions to the XZ plane.
         Vector3 playerPosition = player.transform.position;
         Vector3 targetPosition = targetObject.transform.position;
         playerPosition.y = 0f;
@@ -350,7 +405,9 @@ public class MerylSceneController : MonoBehaviour
         flowState = FlowState.Lt1Sequence;
 
         SetPlayerLocked(true);
+        // End object doubles as the snap point for the final cutscene.
         GameObject lt1Target = endObject;
+        // Move the player to the end object, adjusted to ground height.
         Vector3 targetPosition = lt1Target != null ? GetGroundedPositionAt(lt1Target.transform.position) : player.transform.position;
         TeleportPlayer(targetPosition);
         yield return null;
@@ -393,6 +450,7 @@ public class MerylSceneController : MonoBehaviour
         videoPlayer.SetTargetAudioSource(0, videoAudioSource);
         videoPlayer.Prepare();
 
+        // Avoid waiting forever if the video cannot prepare.
         float prepareDeadline = Time.unscaledTime + 5f;
         while (!videoPlayer.isPrepared && !videoFinished && Time.unscaledTime < prepareDeadline)
         {
@@ -405,6 +463,7 @@ public class MerylSceneController : MonoBehaviour
             yield break;
         }
 
+        // Match the render texture to the video size when Unity reports it.
         int textureWidth = videoPlayer.width > 0 ? (int)videoPlayer.width : 1920;
         int textureHeight = videoPlayer.height > 0 ? (int)videoPlayer.height : 1080;
         activeVideoTexture = new RenderTexture(textureWidth, textureHeight, 0, RenderTextureFormat.ARGB32);
@@ -417,12 +476,14 @@ public class MerylSceneController : MonoBehaviour
 
         videoPlayer.Play();
 
+        // Some clips do not report length correctly, so fall back to a short timeout.
         float videoDuration = (float)videoPlayer.length;
         if (videoDuration <= 0f || videoDuration > 600f)
         {
             videoDuration = 10f;
         }
 
+        // Stop waiting after the estimated end in case the loop event does not fire.
         float playDeadline = Time.unscaledTime + videoDuration + 1f;
         while (!videoFinished && Time.unscaledTime < playDeadline)
         {
@@ -464,6 +525,7 @@ public class MerylSceneController : MonoBehaviour
 
     private void ReleaseActiveVideoTexture()
     {
+        // RenderTexture is created at runtime and must be released manually.
         if (activeVideoTexture == null)
         {
             return;
@@ -476,11 +538,13 @@ public class MerylSceneController : MonoBehaviour
 
     private void HandleVideoFinished(VideoPlayer source)
     {
+        // VideoPlayer event callback.
         videoFinished = true;
     }
 
     private void HandleVideoError(VideoPlayer source, string message)
     {
+        // Treat video errors as finished so the game can return to menu.
         videoFinished = true;
     }
 
@@ -493,14 +557,17 @@ public class MerylSceneController : MonoBehaviour
 
         Canvas.ForceUpdateCanvases();
 
+        // Image rect fills the overlay while preserving the video aspect ratio.
         RectTransform imageRect = videoImage.rectTransform;
         RectTransform canvasRect = videoOverlayObject != null ? videoOverlayObject.GetComponent<RectTransform>() : null;
+        // Default aspect if the VideoPlayer has not reported dimensions yet.
         float aspect = 16f / 9f;
         if (videoPlayer != null && videoPlayer.width > 0 && videoPlayer.height > 0)
         {
             aspect = (float)videoPlayer.width / videoPlayer.height;
         }
 
+        // Use height as the anchor so the video fills vertically.
         float targetHeight = canvasRect != null ? canvasRect.rect.height : Screen.height;
         float targetWidth = targetHeight * aspect;
 
@@ -520,17 +587,21 @@ public class MerylSceneController : MonoBehaviour
         }
 
         videoOverlayObject = new GameObject("Ending Video Overlay", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        // Fullscreen overlay is drawn above all other UI.
         Canvas canvas = videoOverlayObject.GetComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 5000;
 
+        // Scale overlay UI consistently across resolutions.
         CanvasScaler scaler = videoOverlayObject.GetComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920f, 1080f);
         scaler.matchWidthOrHeight = 0.5f;
 
+        // Black background hides the scene behind the video.
         GameObject blackBackground = new GameObject("Black Background", typeof(Image));
         blackBackground.transform.SetParent(videoOverlayObject.transform, false);
+        // Stretch the black image to the whole screen.
         RectTransform backgroundRect = blackBackground.GetComponent<RectTransform>();
         backgroundRect.anchorMin = Vector2.zero;
         backgroundRect.anchorMax = Vector2.one;
@@ -538,10 +609,12 @@ public class MerylSceneController : MonoBehaviour
         backgroundRect.offsetMax = Vector2.zero;
         blackBackground.GetComponent<Image>().color = Color.black;
 
+        // RawImage receives the RenderTexture from VideoPlayer.
         GameObject videoObject = new GameObject("Ending Video Image", typeof(RawImage));
         videoObject.transform.SetParent(videoOverlayObject.transform, false);
         videoImage = videoObject.GetComponent<RawImage>();
 
+        // Video components live on the overlay so cleanup is simple.
         videoPlayer = videoOverlayObject.AddComponent<VideoPlayer>();
         videoAudioSource = videoOverlayObject.AddComponent<AudioSource>();
         videoAudioSource.playOnAwake = false;
@@ -559,11 +632,13 @@ public class MerylSceneController : MonoBehaviour
 
     private bool CanPlayEndingVideo()
     {
+        // Ending can only play if the clip is assigned.
         return endingVideoClip != null;
     }
 
     private void DisableCamera(Camera camera)
     {
+        // Disable listener first to avoid duplicate AudioListener warnings.
         AudioListener extraListener = camera.GetComponent<AudioListener>();
         if (extraListener != null)
         {

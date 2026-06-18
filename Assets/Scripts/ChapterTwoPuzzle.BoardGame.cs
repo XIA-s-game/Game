@@ -114,7 +114,7 @@ public partial class ChapterTwoPuzzle
         Quaternion faceUp = Quaternion.FromToRotation(localNormal, Vector3.up);
         return Quaternion.AngleAxis(Random.Range(0, 4) * 90f, Vector3.up) * faceUp;
     }
-
+    // Draws the board game UI prompt based on the current phase, or the normal interaction prompt if near the guard.
     private int GetFacePointingUp()
     {
         if (dice == null)
@@ -165,7 +165,7 @@ public partial class ChapterTwoPuzzle
         index = Mathf.Clamp(index, 1, 20);
         yield return MovePlayerToTransform(boardTiles[index]);
     }
-
+    // Helper method to show a system prompt with the specified message and duration. This is used for board game messages and can be reused for other system prompts as needed.
     private IEnumerator MovePlayerToTransform(Transform targetTransform)
     {
         // Temporarily moves the player along the board without normal character input.
@@ -204,7 +204,7 @@ public partial class ChapterTwoPuzzle
         AquariusMax.Fae.demo.DemoCharacter.ForceWalkAnimation = false;
         SetBoardWalkAnimation(animator, false);
     }
-
+    
     private void BeginBoardMove()
     {
         // Disables CharacterController during scripted tile movement to avoid collision jitter.

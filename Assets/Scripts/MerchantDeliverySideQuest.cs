@@ -4,100 +4,169 @@ using UnityEngine;
 public class MerchantDeliverySideQuest : MonoBehaviour
 {
     [Header("Scene References")]
+    // Player used for side quest distance checks.
     [SerializeField] private Transform player;
+    // Merchant who starts and finishes the quest.
     [SerializeField] private Transform merchant;
+    // Worker found near the broken cart.
     [SerializeField] private Transform worker;
+    // Repair tools pickup.
     [SerializeField] private Transform tools;
+    // Broken cart object repaired during the quest.
     [SerializeField] private GameObject cart;
 
     [Header("Items")]
+    // Backpack name for the repair tools.
     [SerializeField] private string repairToolItemName = "Repair Tools";
+    // Backpack reward name.
     [SerializeField] private string rewardItemName = "Glow Berry";
 
     [Header("Interaction")]
+    // Distance for merchant, worker, tools, and cart interactions.
     [SerializeField] private float interactDistance = 4f;
+    // Main interaction key.
     [SerializeField] private KeyCode interactKey = KeyCode.E;
 
     [Header("Side Quest UI")]
+    // Compact quest panel size.
     [SerializeField] private Vector2 sideQuestPanelSize = new Vector2(600f, 170f);
+    // Taller panel height when two tasks are visible.
     [SerializeField] private float sideQuestExpandedHeight = 240f;
+    // Title text rect.
     [SerializeField] private Rect sideQuestTitleRect = new Rect(22f, 18f, 556f, 56f);
+    // First task text rect.
     [SerializeField] private Rect sideQuestFirstTaskRect = new Rect(22f, 86f, 556f, 54f);
+    // Second task text rect.
     [SerializeField] private Rect sideQuestSecondTaskRect = new Rect(22f, 154f, 556f, 54f);
+    // Quest title font size.
     [SerializeField] private int sideQuestTitleFontSize = 26;
+    // Quest task font size.
     [SerializeField] private int sideQuestItemFontSize = 24;
 
     [Header("Merchant UI")]
+    // Interaction prompt box size.
     [SerializeField] private Vector2 interactionPromptSize = new Vector2(420f, 60f);
+    // Interaction prompt font size.
     [SerializeField] private int interactionPromptFontSize = 34;
+    // Dialogue/message panel height.
     [SerializeField] private float messagePanelHeight = 260f;
+    // Message text rect inside the panel.
     [SerializeField] private Rect messageTextRect = new Rect(180f, 118f, -252f, 90f);
+    // Message font size.
     [SerializeField] private int messageFontSize = 30;
+    // Message alignment.
     [SerializeField] private TextAnchor messageAlignment = TextAnchor.UpperLeft;
+    // Continue hint rect.
     [SerializeField] private Rect continueHintRect = new Rect(36f, -72f, -72f, 48f);
+    // Continue hint font size.
     [SerializeField] private int continueHintFontSize = 22;
+    // Maximum choice panel width.
     [SerializeField] private float choicePanelMaxWidth = 900f;
+    // Choice panel screen padding.
     [SerializeField] private float choicePanelScreenPadding = 80f;
+    // Vertical offset for the choice panel.
     [SerializeField] private float choicePanelCenterOffsetY = -180f;
+    // Choice panel height.
     [SerializeField] private float choicePanelHeight = 360f;
+    // Choice panel title rect.
     [SerializeField] private Rect choiceTitleRect = new Rect(36f, 28f, -72f, 68f);
+    // Accept choice rect.
     [SerializeField] private Rect choiceAcceptRect = new Rect(56f, 124f, -112f, 78f);
+    // Leave choice rect.
     [SerializeField] private Rect choiceLeaveRect = new Rect(56f, 222f, -112f, 78f);
+    // Choice title font size.
     [SerializeField] private int choiceTitleFontSize = 32;
+    // Choice option font size.
     [SerializeField] private int choiceOptionFontSize = 28;
 
     [Header("Merchant Text")]
+    // Hint shown while dialogue waits for C.
     [SerializeField] private string continueHintText = "Press C to continue";
+    // Prompt when near the merchant.
     [SerializeField] private string merchantTalkPrompt = "Press E to talk";
+    // Prompt when near repair tools.
     [SerializeField] private string pickUpPrompt = "Press E to pick up";
+    // Prompt when near the broken cart.
     [SerializeField] private string repairPrompt = "Press E to repair";
+    // Choice panel title.
     [SerializeField] private string choiceTitleText = "Choose";
+    // Accept quest choice text.
     [SerializeField] private string choiceAcceptText = "A: I will check";
+    // Decline quest choice text.
     [SerializeField] private string choiceLeaveText = "B: Leave";
 
+    // True after the player accepts the merchant's request.
     private bool questAccepted;
+    // True after the cart repair task is shown.
     private bool repairTaskAdded;
+    // True while the merchant choice panel is open.
     private bool merchantChoiceVisible;
+    // True while a merchant or worker conversation is active.
     private bool merchantConversationRunning;
+    // Player is close to the merchant.
     private bool nearMerchant;
+    // Player is close to the worker.
     private bool nearWorker;
+    // Player is close to the repair tools.
     private bool nearTools;
+    // Current timed message waits for C instead of auto-closing.
     private bool timedMessageWaitsForContinue;
+    // Player has picked up repair tools.
     private bool hasRepairTools;
+    // Repair coroutine is running.
     private bool repairingCart;
+    // Cart repair has finished.
     private bool repairCompleted;
+    // Merchant has already given the reward.
     private bool merchantRewardGiven;
+    // Whole side quest is finished.
     private bool questCompleted;
+    // Current line in active conversation.
     private int conversationIndex;
+    // Current timed message text.
     private string timedMessage;
+    // Time when timed message closes.
     private float timedMessageEndsAt;
+    // Conversation currently being shown.
     private string[] activeConversation;
+    // Whether the continue hint should draw.
     private bool showContinueHint;
+    // Cached quest title style.
     private GUIStyle questTitleStyle;
+    // Cached quest task style.
     private GUIStyle questItemStyle;
+    // Cached interaction prompt style.
     private GUIStyle promptStyle;
+    // Cached message style.
     private GUIStyle messageStyle;
+    // Cached continue hint style.
     private GUIStyle continueHintStyle;
+    // Cached choice title style.
     private GUIStyle choiceTitleStyle;
+    // Cached choice option style.
     private GUIStyle choiceOptionStyle;
     [Header("Merchant Dialogue")]
+    // First conversation with the merchant.
     [SerializeField] private string[] merchantConversation =
     {
         "Casper: What happened?",
         "Merchant: My apple delivery is late. Can you check on it?"
     };
 
+    // First conversation with the worker.
     [SerializeField] private string[] workerConversation =
     {
         "Worker: The cart broke down halfway here.",
         "Casper: I can help repair it."
     };
 
+    // Worker dialogue after the cart is repaired.
     [SerializeField] private string[] workerRepairCompleteConversation =
     {
         "Worker: Thank you. The cart is fixed."
     };
 
+    // Merchant reward dialogue after the repair is done.
     [SerializeField] private string[] merchantRewardConversation =
     {
         "Merchant: Thank you for helping. Please take this glow berry."

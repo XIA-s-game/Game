@@ -1,3 +1,4 @@
+// Main controller for Chapter One: push puzzle, fairy rescue, portal unlock, and save restore.
 using System.Collections.Generic;
 using AquariusMax.Fae.demo;
 using UnityEngine;
@@ -5,19 +6,25 @@ using UnityEngine.SceneManagement;
 
 public partial class ChapterOnePuzzle : MonoBehaviour
 {
+    // Active scene instance used by the save manager.
     private static ChapterOnePuzzle activeInstance;
 
     [System.Serializable]
-    // One push step connects a stone block with the marker it should move toward.
     private class PushStep
     {
+        // Stone block moved by the player.
         public Transform block;
+        // Marker or clue object used for interaction distance.
         public Transform marker;
+        // Optional solved local position; zero means use the starting position.
         public Vector3 solvedLocalPosition;
     }
 
-    [SerializeField] private string nextSceneName = "Fae Homes Demo";
+    [Header("Scene Flow")]
+    [SerializeField] private string nextSceneName = "Chapter2_ForestMaze_and_Chapter3_ForestTreehouse";
     [SerializeField] private float portalInteractDistance = 3f;
+
+    [Header("Push Puzzle")]
     // Ordered block sequence for the altar puzzle. The first required steps must be pushed in order.
     [SerializeField] private PushStep[] pushSteps;
     [SerializeField] private int requiredOrderedPushCount = 6;
@@ -28,6 +35,8 @@ public partial class ChapterOnePuzzle : MonoBehaviour
     [SerializeField] private string pushPrompt = "Press E to push";
     [SerializeField] private string failurePrompt = "Puzzle failed";
     [SerializeField] private string successPrompt = "Puzzle solved";
+
+    [Header("Story Text")]
     // Mainline prompts: recognize help, inspect the altar, then ask the trapped fairy for clues.
     [SerializeField] private string strangeSymbolPrompt = "What is this strange symbol?";
     [SerializeField] private string recognizeHelpPrompt = "Someone is calling for help. Go check it out.";
@@ -54,9 +63,13 @@ public partial class ChapterOnePuzzle : MonoBehaviour
     };
     [SerializeField] private string firstPageItemName = "First Page";
     [SerializeField] private string portalInteractPrompt = "Press E to travel";
+
+    [Header("Solved Scene State")]
     [SerializeField] private Vector3 cageChildSolvedLocalPosition = new Vector3(0f, -0.99f, 0f);
     [SerializeField] private Vector3 fairySolvedWorldPosition = new Vector3(559.99f, 16.86f, 579.14f);
     [SerializeField] private Vector3 fairySolvedEulerOffset = new Vector3(0f, 180f, 0f);
+
+    [Header("Distances")]
     [SerializeField] private float resultRotationSpeed = 90f;
     [SerializeField] private float storyAreaReachDistance = 2f;
     [SerializeField] private float storyMinimumReachDistance = 6f;
@@ -80,6 +93,7 @@ public partial class ChapterOnePuzzle : MonoBehaviour
 
     private readonly List<Transform> pushBlocks = new List<Transform>();
     private readonly List<Transform> pushMarkers = new List<Transform>();
+
     // Runtime puzzle state, rebuilt from the Inspector push steps on scene setup.
     private Vector3[] solvedBlockPositions;
     private Vector3[] initialLocalPositions;
@@ -107,6 +121,7 @@ public partial class ChapterOnePuzzle : MonoBehaviour
     // Story flags keep the mainline in order: altar puzzle, fairy reward, then portal travel.
     private bool referencesReady;
     private bool sceneReady;
+    // Prompt visibility flags are reset every frame and rebuilt by story/puzzle checks.
     private bool promptVisible;
     private int movingBlockIndex = -1;
     private bool movingWrongBlock;
@@ -129,6 +144,7 @@ public partial class ChapterOnePuzzle : MonoBehaviour
     private bool portalUnlocked;
     private bool portalPromptVisible;
     private bool firstPageAddedToBackpack;
+    // Prevents one key press from triggering dialogue, puzzle, and portal actions in the same frame.
     private bool interactionInputConsumed;
 
     private void OnValidate()
@@ -138,7 +154,7 @@ public partial class ChapterOnePuzzle : MonoBehaviour
 
     private void Awake()
     {
-        // Chapter One owns the player control reset when Enchanted Forest loads.
+        // Chapter One owns the player control reset when Chapter1_MagicForest loads.
         FillMissingInspectorDefaults();
         AquariusMax.Fae.demo.DemoCharacter.ResetControlFlags();
         activeInstance = this;
@@ -157,9 +173,9 @@ public partial class ChapterOnePuzzle : MonoBehaviour
 
     private void OnDisable()
     {
-        if (SceneManager.GetActiveScene().name == "Enchanted Forest A")
+        if (SceneManager.GetActiveScene().name == "Chapter1_MagicForest")
         {
-            Debug.LogWarning("ChapterOnePuzzle was disabled while Enchanted Forest A is active.", this);
+            Debug.LogWarning("ChapterOnePuzzle was disabled while Chapter1_MagicForest is active.", this);
         }
 
         if (activeInstance == this)
@@ -213,7 +229,7 @@ public partial class ChapterOnePuzzle : MonoBehaviour
     public static void ApplySaveState(bool puzzleSolved)
     {
         // Continue game restores only the completed puzzle state; unfinished attempts reset cleanly.
-        if (activeInstance == null || SceneManager.GetActiveScene().name != "Enchanted Forest A")
+        if (activeInstance == null || SceneManager.GetActiveScene().name != "Chapter1_MagicForest")
         {
             return;
         }

@@ -1,9 +1,11 @@
+// Keeps Chapter One scene references, player controls, bounds checks, and solved state in sync.
 using UnityEngine;
 
 public partial class ChapterOnePuzzle
 {
     private void RestorePlayerAfterDialogue()
     {
+        // Dialogue should never leave the player stuck with tutorial or cutscene locks.
         AquariusMax.Fae.demo.DemoCharacter.ResetControlFlags();
         if (demoCharacter != null)
         {
@@ -13,6 +15,7 @@ public partial class ChapterOnePuzzle
 
     private void SetUpChapterOneScene()
     {
+        // Scene setup runs once, but puzzle state can still refresh every frame after that.
         if (sceneReady)
         {
             return;
@@ -45,6 +48,7 @@ public partial class ChapterOnePuzzle
 
     private void SetUpPuzzleState()
     {
+        // Rebuild lightweight runtime caches from Inspector references.
         LoadPushStepReferences();
         SetSolvedBlockPositions();
         IgnorePlayerPushBlockCollisions();
@@ -61,6 +65,7 @@ public partial class ChapterOnePuzzle
 
     private void SetPlayerControlReferences(bool clearMotionState)
     {
+        // Chapter One uses the Fae demo controller and camera directly after scene load.
         if (demoCharacter == null)
         {
             return;
@@ -96,6 +101,7 @@ public partial class ChapterOnePuzzle
 
     private bool HasPushPuzzleReady()
     {
+        // Puzzle input waits until every pushed block has cached runtime state.
         int expectedPushCount = pushSteps != null ? pushSteps.Length : 0;
         return player != null &&
             expectedPushCount > 0 &&
@@ -107,6 +113,7 @@ public partial class ChapterOnePuzzle
 
     private void ApplySavedSceneState()
     {
+        // Saved progress either restores the solved rescue state or resets an unfinished attempt.
         ApplySavedPushState();
 
         if (rescueApplied)
@@ -154,6 +161,7 @@ public partial class ChapterOnePuzzle
 
     private bool IsPlayerNearStoryTarget(Transform target)
     {
+        // Story targets may be large props, so bounds checks are more forgiving than point distance.
         if (player == null || target == null)
         {
             return false;

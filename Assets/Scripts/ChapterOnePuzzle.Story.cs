@@ -1,3 +1,4 @@
+// Runs chapter one story beats, rewards, and portal unlocks.
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -214,10 +215,10 @@ public partial class ChapterOnePuzzle
             portalDoor.SetActive(true);
         }
     }
-
+    // Final story interaction checks for player near the portal and loads the next scene when they interact with it.
     private void UpdatePortalInteraction()
     {
-        // Final Chapter One interaction moves the player to Fae Homes Demo.
+        // Final Chapter One interaction moves the player to Chapter2_ForestMaze_and_Chapter3_ForestTreehouse.
         portalPromptVisible = false;
         if (!portalUnlocked || helpDialogueActive)
         {

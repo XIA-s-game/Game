@@ -6,36 +6,60 @@ public class GlobalMinimapUI : MonoBehaviour
     [Header("Scene References")]
     // Each scene drags its own map camera and player instead of relying on scene-name checks.
     [SerializeField] private Camera mapCamera;
+    // Player marker follows this transform.
     [SerializeField] private Transform player;
 
     [Header("Display")]
+    // Master switch for the map.
     [SerializeField] private bool showMap = true;
+    // Allows the small map to be hidden while keeping expanded mode available.
     [SerializeField] private bool showCompactMap = true;
 
     [Header("Render")]
+    // Render texture width.
     [SerializeField] private int textureWidth = 640;
+    // Render texture height.
     [SerializeField] private int textureHeight = 360;
+    // Compact map width.
     [SerializeField] private float mapWidth = 340f;
+    // Compact map height.
     [SerializeField] private float mapHeight = 230f;
+    // Expanded map width as a portion of screen width.
     [SerializeField] private float expandedWidthRatio = 0.72f;
+    // Expanded map height as a portion of screen height.
     [SerializeField] private float expandedHeightRatio = 0.72f;
+    // Space reserved above the map for side quest UI.
     [SerializeField] private float sideQuestPanelHeight = 260f;
+    // Color of the round player marker.
     [SerializeField] private Color playerColor = new Color(1f, 0.86f, 0.18f, 1f);
 
     [Header("Map UI")]
+    // Title text rectangle inside the map panel.
     [SerializeField] private Rect titleRect = new Rect(14f, 8f, -28f, 30f);
+    // Rendered map image rectangle inside the map panel.
     [SerializeField] private Rect mapImageRect = new Rect(12f, 42f, -24f, -54f);
+    // Font size for the map title.
     [SerializeField] private int titleFontSize = 17;
+    // Gap from the side quest panel to the compact map.
     [SerializeField] private float compactStackGap = 12f;
+    // Minimum size for the expanded map.
     [SerializeField] private Vector2 expandedMinSize = new Vector2(520f, 380f);
+    // Size of the player marker dot.
     [SerializeField] private float playerMarkerSize = 18f;
 
+    // Texture rendered by the map camera.
     private RenderTexture mapTexture;
+    // World-space area covered by the map camera.
     private Rect mapWorldRect;
+    // True after the map camera area has been read.
     private bool hasMapView;
+    // True when the large map is open.
     private bool mapExpanded;
+    // Small round texture used for the player marker.
     private Texture2D markerTexture;
+    // Cached title label style.
     private GUIStyle titleStyle;
+    // Marks the map texture as needing one render.
     private bool mapNeedsRender;
 
     private void Awake() 

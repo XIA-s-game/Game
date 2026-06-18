@@ -24,72 +24,112 @@ public class NpcCryInteraction : MonoBehaviour
     [Header("Player")]
     // Player reference used for all distance checks and ladder movement.
     [SerializeField] private Transform player;
+    // Default interaction distance for Luna.
     [SerializeField] private float interactDistance = 3f;
+    // Main interaction key.
     [SerializeField] private KeyCode interactKey = KeyCode.E;
+    // Dialogue continue key.
     [SerializeField] private KeyCode continueKey = KeyCode.C;
 
     [Header("Luna")]
     // Luna returns to this point after the first conversation.
     [SerializeField] private Transform lunaHome;
+    // Animator used to make Luna stand/fly.
     [SerializeField] private Animator lunaAnimator;
+    // Talk prompt near Luna.
     [SerializeField] private string prompt = "Press E to talk";
+    // Animator parameter for Luna's stand state.
     [SerializeField] private string standParameter = "Stand";
+    // Animator state name for Luna standing.
     [SerializeField] private string standStateName = "Stand";
+    // Height offset while Luna floats home.
     [SerializeField] private float lunaFlyHeight = 1.2f;
 
     [Header("Witch")]
     // The witch gives the feather task and unlocks the ladder step.
     [SerializeField] private Transform witch;
+    // Witch animator.
     [SerializeField] private Animator witchAnimator;
+    // Interaction distance for the witch.
     [SerializeField] private float witchInteractDistance = 6f;
+    // Controller used to switch the witch to a standing pose.
     [SerializeField] private RuntimeAnimatorController witchStandController;
+    // State name inside the witch stand controller.
     [SerializeField] private string witchStandStateName = "mixamo_com";
 
     [Header("Feathers")]
     // Feathers are collected only for the active side quest and are removed after the witch accepts them.
     [SerializeField] private Transform[] feathers;
+    // Backpack item name for feathers.
     [SerializeField] private string featherItemName = "Feather";
+    // Pickup distance for feather objects.
     [SerializeField] private float featherPickupDistance = 6f;
+    // Material color used to highlight active feathers.
     [SerializeField] private Color featherHighlightColor = new Color(1f, 0.92f, 0.2f, 1f);
 
     [Header("Ladder And Key")]
     // Ladder and key are hidden until the feather step is complete.
     [SerializeField] private Transform ladder;
+    // Position the player moves to after climbing.
     [SerializeField] private Transform climbTarget;
+    // Key object in the nest.
     [SerializeField] private Transform keyObject;
+    // Backpack item name for Luna's key.
     [SerializeField] private string keyItemName = "Key";
+    // Distance needed to use the ladder.
     [SerializeField] private float ladderInteractDistance = 4f;
+    // Distance needed to pick up the key.
     [SerializeField] private float keyPickupDistance = 6f;
+    // Time used for the ladder movement.
     [SerializeField] private float climbDuration = 2.2f;
 
     [Header("Reward And Portal")]
     // The fourth page reward opens the scene transition portal.
     [SerializeField] private string fourthPageItemName = "Fourth Page";
+    // Portal to the next scene.
     [SerializeField] private Transform portal;
-    [SerializeField] private string nextSceneName = "11 1";
+    // Scene loaded after the portal interaction.
+    [SerializeField] private string nextSceneName = "Chapter5_MoonlitGlade";
+    // Distance needed to use the portal.
     [SerializeField] private float portalInteractDistance = 4f;
 
     [Header("Side Quest UI")]
+    // Side quest tracker size.
     [SerializeField] private Vector2 sideQuestPanelSize = new Vector2(640f, 230f);
+    // Origin for side quest text inside the panel.
     [SerializeField] private Vector2 sideQuestTextOrigin = new Vector2(156f, 8f);
+    // Width for side quest text.
     [SerializeField] private float sideQuestTextWidth = 448f;
+    // Title rect inside the side quest panel.
     [SerializeField] private Rect sideQuestTitleRect = new Rect(0f, 58f, 448f, 48f);
+    // Task rect inside the side quest panel.
     [SerializeField] private Rect sideQuestTaskRect = new Rect(0f, 112f, 448f, 48f);
+    // Feather count rect inside the side quest panel.
     [SerializeField] private Rect sideQuestCountRect = new Rect(38f, 146f, 300f, 54f);
+    // Side quest title font size.
     [SerializeField] private int sideQuestTitleFontSize = 26;
+    // Side quest task font size.
     [SerializeField] private int sideQuestTaskFontSize = 24;
+    // Feather count font size.
     [SerializeField] private int sideQuestCountFontSize = 32;
 
     [Header("Dialogue UI")]
+    // Bottom dialogue panel height.
     [SerializeField] private float dialoguePanelHeight = 220f;
+    // Dialogue body rect.
     [SerializeField] private Rect dialogueTextRect = new Rect(180f, 118f, -252f, -190f);
+    // Continue hint rect.
     [SerializeField] private Rect dialogueContinueRect = new Rect(180f, -86f, -252f, 48f);
+    // Dialogue font size.
     [SerializeField] private int dialogueFontSize = 30;
+    // Continue hint font size.
     [SerializeField] private int dialogueContinueFontSize = 22;
+    // Interaction prompt size.
     [SerializeField] private Vector2 promptSize = new Vector2(440f, 60f);
+    // Interaction prompt font size.
     [SerializeField] private int promptFontSize = 28;
 
-
+    // First conversation with Luna.
     private readonly string[] lunaIntroLines =
     {
         "Luna: I lost my house key.",
@@ -99,17 +139,20 @@ public class NpcCryInteraction : MonoBehaviour
         "Luna: Thank you."
     };
 
+    // First witch conversation.
     private readonly string[] witchFirstLines =
     {
         "Witch: I can help, but bring me four feathers first.",
         "Casper: I will find them."
     };
 
+    // Witch reminder while feathers are missing.
     private readonly string[] witchNeedFeathersLines =
     {
         "Witch: Did you bring the feathers?"
     };
 
+    // Witch dialogue after all feathers are collected.
     private readonly string[] witchCompleteLines =
     {
         "Witch: These feathers look familiar.",
@@ -118,30 +161,46 @@ public class NpcCryInteraction : MonoBehaviour
         "Casper: Thank you."
     };
 
+    // Luna reward dialogue.
     private readonly string[] lunaCompleteLines =
     {
         "Casper: I found your key in the nest.",
         "Luna: Thank you. Please take this fourth magic page."
     };
 
+    // Short line after the key is found.
     private readonly string[] keyDiscoveryLines =
     {
         "Casper: The key really was in the nest."
     };
 
+    // Shared highlight material for active feathers.
     private Material highlightMaterial;
+    // Original feather materials, restored after collection.
     private readonly Dictionary<Renderer, Material[]> originalFeatherMaterials = new Dictionary<Renderer, Material[]>();
+    // Dialogue lines currently being shown.
     private string[] dialogueLines;
+    // Current dialogue line index.
     private int dialogueIndex;
+    // Callback after dialogue closes.
     private Action dialogueComplete;
+    // Current Luna quest state.
     private QuestState state = QuestState.NotStarted;
+    // Per-feather collection flags.
     private bool[] featherCollected;
+    // True while dialogue is open.
     private bool isDialogueOpen;
+    // True while the ladder movement is running.
     private bool isClimbing;
+    // Stops the key discovery line repeating.
     private bool keyDiscoveryDialogueShown;
+    // Cached dialogue text style.
     private GUIStyle dialogueStyle;
+    // Cached continue hint style.
     private GUIStyle hintStyle;
+    // Cached prompt style.
     private GUIStyle promptStyle;
+    // Cached side quest title style.
     private GUIStyle titleStyle;
 
     private void Awake()
@@ -740,6 +799,7 @@ public class NpcCryInteraction : MonoBehaviour
         return Vector3.Distance(closestPoint, position);
     }
 
+    // Number of feather objects assigned in the scene.
     private int FeatherCount => feathers != null ? feathers.Length : 0;
 
 }

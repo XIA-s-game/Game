@@ -209,7 +209,7 @@ public partial class ChapterTwoPuzzle
 
     private void PickFourthPage()
     {
-        // The page inside the locked house unlocks the portal to my scene.
+        // The page inside the locked house unlocks the portal to Chapter4_Forest_Swamp.
         fourthPagePicked = true;
         waitingForFourthPagePickup = false;
         AddInventoryItem(thirdPageItemName);

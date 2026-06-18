@@ -1,11 +1,17 @@
+// Draws the old tree dialogue, choices, side quest, and reward UI.
 using UnityEngine;
 
 public partial class OldTreeInteraction
 {
+    // Cached style for main dialogue text.
     private GUIStyle dialogueTextStyle;
+    // Cached style for continue hints.
     private GUIStyle continueHintStyle;
+    // Cached style for choice hints and options.
     private GUIStyle choiceHintStyle;
+    // Cached style for reward text.
     private GUIStyle rewardTextStyle;
+    // Cached style for the centered talk prompt.
     private GUIStyle centeredLabelStyle;
 
     private void OnGUI()

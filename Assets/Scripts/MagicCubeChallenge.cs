@@ -5,39 +5,66 @@ using UnityEngine;
 public class MagicCubeChallenge : MonoBehaviour
 {
     [Header("Scene References")]
+    // Player moved into and out of the arena.
     [SerializeField] private Transform player;
+    // Object the player stands near to start the challenge.
     [SerializeField] private Transform interactObject;
+    // Parent object for all generated floor tiles.
     [SerializeField] private Transform arenaRoot;
+    // Optional floor renderer used by the arena.
     [SerializeField] private Renderer arenaFloor;
 
     [Header("Rules")]
+    // Distance needed to start the challenge.
     [SerializeField] private float interactDistance = 4f;
+    // Key used to start the challenge.
     [SerializeField] private KeyCode interactKey = KeyCode.E;
+    // Number of tiles per side.
     [SerializeField] private int gridSize = 30;
+    // Width/depth of each tile.
     [SerializeField] private float tileSize = 1.35f;
+    // Y offset below the arena that counts as falling.
     [SerializeField] private float failY = -8f;
+    // Time used by the fall animation.
     [SerializeField] private float fallAnimationSeconds = 1.25f;
+    // Distance moved during the fall animation.
     [SerializeField] private float fallAnimationDistance = 16f;
+    // Center point of the generated arena.
     [SerializeField] private Vector3 arenaCenter = new Vector3(0f, 300f, 0f);
+    // Height of each generated tile.
     [SerializeField] private float tileHeight = 0.16f;
+    // Small lift so the player lands on top of tiles.
     [SerializeField] private float playerGroundOffset = 0.01f;
 
     [Header("Start Prompt")]
+    // Instruction shown when the game starts.
     [SerializeField] private string startPromptText = "Stand on the target colored block. When the countdown ends, all other colored blocks will disappear.";
+    // Duration for the start instruction.
     [SerializeField] private float startPromptSeconds = 5f;
+    // Size of the start prompt panel.
     [SerializeField] private Vector2 startPromptSize = new Vector2(920f, 140f);
+    // Font size for the start prompt.
     [SerializeField] private int startPromptFontSize = 26;
 
     [Header("Game UI")]
+    // Size of the round countdown prompt.
     [SerializeField] private Vector2 roundPromptSize = new Vector2(560f, 64f);
+    // Font size for round prompt text.
     [SerializeField] private int roundPromptFontSize = 26;
+    // Size of the result panel.
     [SerializeField] private Vector2 resultPanelSize = new Vector2(480f, 220f);
+    // Result title area.
     [SerializeField] private Rect resultTitleRect = new Rect(20f, 22f, -40f, 44f);
+    // Restart instruction area.
     [SerializeField] private Rect resultRestartRect = new Rect(20f, 96f, -40f, 34f);
+    // Exit instruction area.
     [SerializeField] private Rect resultExitRect = new Rect(20f, 132f, -40f, 34f);
+    // Result title font size.
     [SerializeField] private int resultTitleFontSize = 28;
+    // Result instruction font size.
     [SerializeField] private int resultPromptFontSize = 22;
 
+    // Colors used when generating the tile grid.
     private static readonly Color[] TileColors =
     {
         Color.red,
@@ -51,6 +78,7 @@ public class MagicCubeChallenge : MonoBehaviour
         Color.white
     };
 
+    // Display names for the tile colors.
     private static readonly string[] ColorNames =
     {
         "Red",
@@ -64,27 +92,48 @@ public class MagicCubeChallenge : MonoBehaviour
         "White"
     };
 
+    // Countdown lengths for each round.
     private readonly int[] roundSeconds = { 30, 20, 15, 10, 5 };
+    // Target color per round.
     private readonly int[] targetColorIndices = { 0, 3, 4, 1, 6 };
+    // Generated tile objects.
     private readonly List<GameObject> tiles = new List<GameObject>();
+    // Color index assigned to each generated tile.
     private readonly List<int> tileColorIndices = new List<int>();
 
+    // Player position before entering the challenge.
     private Vector3 returnPosition;
+    // Player rotation before entering the challenge.
     private Quaternion returnRotation;
+    // Materials matching TileColors.
     private Material[] colorMaterials;
+    // Shared white material for neutral tiles.
     private Material whiteMaterial;
+    // Current round number.
     private int currentRound;
+    // Time when the current round countdown ends.
     private float roundEndsAt;
+    // True while the challenge owns the player.
     private bool active;
+    // True while waiting for the round timer.
     private bool waitingForRound;
+    // True after the player falls or picks the wrong tile.
     private bool failed;
+    // True after all rounds are complete.
     private bool won;
+    // True while the result panel is visible.
     private bool showingResult;
+    // Stops the blue key reward being given twice.
     private bool rewardGiven;
+    // Running fall animation coroutine.
     private Coroutine fallRoutine;
+    // Cached prompt style.
     private GUIStyle promptStyle;
+    // Cached result title style.
     private GUIStyle titleStyle;
+    // Cached start prompt style.
     private GUIStyle startPromptStyle;
+    // Time when the start prompt disappears.
     private float startPromptEndsAt;
 
     private void Awake()

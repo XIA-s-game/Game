@@ -1,3 +1,4 @@
+// Handles the old tree reward choices and the mushroom gift pickup.
 using UnityEngine;
 
 public partial class OldTreeInteraction

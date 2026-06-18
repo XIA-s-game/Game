@@ -7,23 +7,33 @@ using UnityEngine.UI;
 
 public class OldManCardChallenge : MonoBehaviour
 {
+    // Shared reward flag so other chapter scripts know the green key was earned.
     public static bool hasGreenKey;
 
     [Header("Scene")]
     // Player and old man references drive the talk prompt before the card game starts.
     public Transform oldMan;
+    // Exact point used for interaction distance.
     public Transform oldManInteractPoint;
+    // Player transform for distance checks and input locking.
     public Transform player;
+    // Distance needed to talk to the old man.
     public float interactDistance = 4f;
 
     [Header("Cards")]
     // Four visible card objects are treated as fixed slots for the shuffle challenge.
     public GameObject card_bird;
+    // Castle card object.
     public GameObject card_castle;
+    // Cleaning card object.
     public GameObject card_clean;
+    // Dragon card object.
     public GameObject card_dragon;
+    // Rotation used to flip a card over.
     public Vector3 flipEuler = new Vector3(0f, 180f, 0f);
+    // Time for one flip.
     public float flipSeconds = 0.45f;
+    // Delay between shuffle steps.
     public float stepSeconds = 0.68f;
 
     [Header("Camera And Control")]
@@ -32,17 +42,29 @@ public class OldManCardChallenge : MonoBehaviour
     public Camera challengeViewCamera;
 
     [Header("UI")]
+    // Legacy UI text field for dialogue if assigned.
     public Text dialogueText;
+    // Legacy UI text field for hints if assigned.
     public Text hintText;
+    // Shows the old man's intro without needing player input.
     [SerializeField] private bool showIntroOnStart;
+    // Delay before the optional intro starts.
     [SerializeField] private float previewDelaySeconds = 0.2f;
+    // Height of the bottom dialogue panel.
     [SerializeField] private float dialoguePanelHeight = 190f;
+    // Dialogue text offset inside the panel.
     [SerializeField] private Vector2 dialogueTextOffset = new Vector2(132f, 22f);
+    // Dialogue text inset/padding.
     [SerializeField] private Vector2 dialogueTextInset = new Vector2(128f, 44f);
+    // Padding for the hint line.
     [SerializeField] private Vector2 dialogueHintPadding = new Vector2(18f, 18f);
+    // Dialogue font size.
     [SerializeField] private int dialogueFontSize = 26;
+    // Hint font size.
     [SerializeField] private int dialogueHintFontSize = 22;
+    // Prompt box size before the challenge starts.
     [SerializeField] private Vector2 promptBoxSize = new Vector2(520f, 60f);
+    // Prompt font size.
     [SerializeField] private int promptFontSize = 24;
 
     private enum State
@@ -57,25 +79,37 @@ public class OldManCardChallenge : MonoBehaviour
 
     private enum CardType
     {
+        // Bird picture card.
         Bird,
+        // Castle picture card.
         Castle,
+        // Cleaning picture card.
         Clean,
+        // Dragon picture card.
         Dragon
     }
 
     private enum StepKind
     {
+        // Swap one pair of cards.
         Swap,
+        // Swap two pairs at the same time.
         DoubleSwap,
+        // Rotate all card slots clockwise.
         RotateRight,
+        // Rotate all card slots counter-clockwise.
         RotateLeft
     }
 
     private sealed class CardData
     {
+        // Logical card type.
         public readonly CardType type;
+        // Name shown to the player.
         public readonly string displayName;
+        // Scene object for this card.
         public readonly GameObject obj;
+        // Current slot index after shuffling.
         public int slotIndex;
 
         public CardData(CardType type, string displayName, GameObject obj, int slotIndex)
@@ -89,10 +123,15 @@ public class OldManCardChallenge : MonoBehaviour
 
     private struct ShuffleStep
     {
+        // Kind of shuffle movement.
         public readonly StepKind kind;
+        // First slot index used by this step.
         public readonly int a;
+        // Second slot index used by this step.
         public readonly int b;
+        // Third slot index, used by double swap.
         public readonly int c;
+        // Fourth slot index, used by double swap.
         public readonly int d;
 
         private ShuffleStep(StepKind kind, int a, int b, int c, int d)
@@ -125,6 +164,7 @@ public class OldManCardChallenge : MonoBehaviour
         }
     }
 
+    // Hand-authored shuffle patterns for the card memory challenge.
     private static readonly ShuffleStep[][] PresetSequences =
     {
         // Preset shuffles keep the challenge readable instead of randomizing every card every frame.
@@ -203,35 +243,61 @@ public class OldManCardChallenge : MonoBehaviour
         }
     };
 
+    // Current card data list.
     private readonly List<CardData> cards = new List<CardData>();
+    // Original card slot positions.
     private readonly Vector3[] slotPositions = new Vector3[4];
+    // Original card slot rotations.
     private readonly Quaternion[] slotRotations = new Quaternion[4];
+    // Card objects in slot order.
     private GameObject[] cardObjects;
 
+    // Current card-game state.
     private State state = State.Exploring;
+    // Dialogue lines currently being shown.
     private string[] activeLines;
+    // Current dialogue line index.
     private int lineIndex;
+    // Callback after dialogue finishes.
     private System.Action dialogueFinished;
+    // Callback if the player accepts a choice.
     private System.Action acceptChoice;
+    // Callback if the player declines a choice.
     private System.Action declineChoice;
+    // True after the player has lost a run.
     private bool hasFailedChallenge;
+    // True once cards and slots have been cached.
     private bool initializedCards;
+    // Stops multiple card submissions.
     private bool hasSubmittedChoice;
+    // Card the old man asks the player to find.
     private CardType targetCardType;
+    // Player camera that was active before the card view.
     private Camera playerCameraDuringChallenge;
+    // AudioListener on the challenge camera.
     private AudioListener challengeViewAudioListener;
+    // Cameras disabled while the challenge camera is active.
     private readonly List<CameraState> disabledCameraStates = new List<CameraState>();
+    // Running challenge coroutine.
     private Coroutine runningChallenge;
+    // Current dialogue text copied to IMGUI.
     private string currentDialogueText;
+    // Current hint text copied to IMGUI.
     private string currentHintText;
+    // Cached dialogue panel style.
     private GUIStyle dialoguePanelStyle;
+    // Cached hint/prompt style.
     private GUIStyle hintPanelStyle;
 
     private struct CameraState
     {
+        // Camera that was disabled.
         public readonly Camera camera;
+        // Whether the camera was enabled before the challenge.
         public readonly bool cameraEnabled;
+        // AudioListener paired with the camera.
         public readonly AudioListener listener;
+        // Whether the listener was enabled before the challenge.
         public readonly bool listenerEnabled;
 
         public CameraState(Camera camera, bool cameraEnabled, AudioListener listener, bool listenerEnabled)

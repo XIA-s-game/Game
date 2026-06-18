@@ -11,20 +11,30 @@ public static class GameSaveManager
     [Serializable]
     public class SaveData
     {
-        public string sceneName = "Enchanted Forest A";
+        // Scene to load when continuing.
+        public string sceneName = "Chapter1_MagicForest";
+        // Saved player position.
         public SerializableVector3 playerPosition;
+        // True when playerPosition contains useful data.
         public bool hasPlayerPosition;
+        // True when this save should resume instead of starting fresh.
         public bool continueMode;
+        // Chapter one solved state.
         public bool enchantedPuzzleSolved;
+        // Backpack item names saved as parallel arrays for JsonUtility.
         public string[] backpackItems = Array.Empty<string>();
+        // Backpack item counts saved as parallel arrays for JsonUtility.
         public int[] backpackCounts = Array.Empty<int>();
     }
 
     [Serializable]
     public struct SerializableVector3
     {
+        // Saved x coordinate.
         public float x;
+        // Saved y coordinate.
         public float y;
+        // Saved z coordinate.
         public float z;
 
         public SerializableVector3(Vector3 value)
@@ -40,14 +50,20 @@ public static class GameSaveManager
         }
     }
 
+    // PlayerPrefs key for the save json.
     private const string SaveKey = "GameSave.Current";
+    // PlayerPrefs key for continue mode.
     private const string ContinueModeKey = "GameSave.ContinueMode";
+    // PlayerPrefs key that controls first-scene tutorial playback.
     private const string TutorialNextLoadKey = "Tutorial.EnabledForNextLoad";
+    // Player transform registered by the active scene.
     private static Transform registeredPlayer;
+    // Prevents saving before the game is properly started from the menu.
     private static bool sessionStartedFromMainMenu;
 
+    // True when a save json exists.
     public static bool HasSave => PlayerPrefs.HasKey(SaveKey);
-    // Continue mode is enabled when loading from a save, allowing the game to resume in the saved scene with saved progress. It is disabled when starting a new game or when no valid save data is present.
+    // True when loading should apply saved state.
     public static bool ContinueMode
     {
         get => PlayerPrefs.GetInt(ContinueModeKey, 0) == 1;
@@ -198,8 +214,7 @@ public static class GameSaveManager
     // Check if the given scene name corresponds to a menu scene where the cursor should be unlocked and visible.
     private static bool IsMenuScene(string sceneName)
     {
-        return string.Equals(sceneName, "Mainmenu", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(sceneName, "MainMenu", StringComparison.OrdinalIgnoreCase);
+        return string.Equals(sceneName, "MainMenu", StringComparison.OrdinalIgnoreCase);
     }
     // Set a flag to enable or disable the tutorial for the next load, which can be checked by the tutorial system to determine whether to play tutorial prompts.
     private static void WriteTutorialFlag(bool enabled)

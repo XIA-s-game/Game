@@ -6,72 +6,125 @@ using UnityEngine.SceneManagement;
 public class GlobalHudUI : MonoBehaviour
 {
     // Shared in-game Esc menu drawn in gameplay scenes.
-    [SerializeField] private string mainMenuSceneName = "Mainmenu";
+    [SerializeField] private string mainMenuSceneName = "MainMenu";
+    // Small reminder shown in the corner during gameplay.
     [SerializeField] private string hintText = "Press Esc";
+    // Re-locks the cursor when the menu closes.
     [SerializeField] private bool lockCursorWhenClosed = true;
 
     [Header("Global Dialogue Layout")]
+    // Shared screen margin for generated UI panels.
     [SerializeField] private float margin = 24f;
+    // Y position used by bottom prompts.
     [SerializeField] private float bottomPromptY = 132f;
+    // Global font multiplier applied through GameUiStyle.
     [SerializeField] private float fontScale = 1.2f;
+    // Reference size used by rect scaling helpers.
     [SerializeField] private Vector2 referenceResolution = new Vector2(1920f, 1080f);
+    // Minimum size for interaction prompt panels.
     [SerializeField] private Vector2 interactionPromptMinSize = new Vector2(640f, 112f);
+    // Minimum size for system prompt panels.
     [SerializeField] private Vector2 systemPromptMinSize = new Vector2(920f, 156f);
+    // Maximum width for dialogue panels.
     [SerializeField] private float dialogueMaxWidth = 1280f;
+    // Horizontal padding around dialogue panels.
     [SerializeField] private float dialogueHorizontalPadding = 96f;
+    // Height multiplier for dialogue panels.
     [SerializeField] private float dialogueHeightScale = 1.45f;
+    // Minimum dialogue panel height.
     [SerializeField] private float dialogueMinHeight = 300f;
+    // Distance from screen bottom to dialogue panel.
     [SerializeField] private float dialogueBottomOffset = 34f;
+    // Vertical padding used inside dialogue panels.
     [SerializeField] private float dialogueVerticalPadding = 80f;
+    // Gap between stacked side quest UI and nearby widgets.
     [SerializeField] private float sideQuestStackGap = 12f;
 
     [Header("Top Left Hint")]
+    // Corner hint panel rect.
     [SerializeField] private Rect hintRect = new Rect(20f, 16f, 190f, 48f);
+    // Padding for the corner hint text.
     [SerializeField] private UiPadding hintTextPadding;
+    // Font size for the corner hint.
     [SerializeField] private int hintFontSize = 15;
 
     [Header("Pause Menu")]
+    // Size of the main pause panel.
     [SerializeField] private Vector2 menuPanelSize = new Vector2(520f, 390f);
+    // Padding for the pause title.
     [SerializeField] private UiPadding menuTitlePadding;
+    // Padding used by the menu button column.
     [SerializeField] private UiPadding menuButtonPadding;
+    // Height for each pause menu button.
     [SerializeField] private float menuButtonHeight = 54f;
+    // Gap between pause menu buttons.
     [SerializeField] private float menuButtonGap = 14f;
+    // Font size for the pause title.
     [SerializeField] private int menuTitleFontSize = 22;
+    // Font size for pause buttons.
     [SerializeField] private int menuButtonFontSize = 18;
 
     [Header("Settings Panel")]
+    // Size of the settings panel at reference resolution.
     [SerializeField] private Vector2 settingsPanelReferenceSize = new Vector2(900f, 620f);
+    // Padding for settings controls.
     [SerializeField] private UiPadding settingsContentPadding;
+    // Y position for the volume label.
     [SerializeField] private float settingsVolumeLabelY = 156f;
+    // Y position for the volume slider.
     [SerializeField] private float settingsSliderY = 224f;
+    // Y position for the mute toggle.
     [SerializeField] private float settingsMuteY = 306f;
+    // Font size for settings title.
     [SerializeField] private int settingsTitleFontSize = 24;
+    // Font size for settings labels.
     [SerializeField] private int settingsLabelFontSize = 20;
 
     [Header("Controls Panel")]
+    // Size of the controls panel at reference resolution.
     [SerializeField] private Vector2 controlsPanelReferenceSize = new Vector2(1688f, 1080f);
+    // Size of the controls image at reference resolution.
     [SerializeField] private Vector2 controlsImageReferenceSize = new Vector2(1380f, 780f);
+    // Position offset for the controls image.
     [SerializeField] private Vector2 controlsImageOffset = new Vector2(0f, -10f);
+    // Resources path for the controls image.
     [SerializeField] private string controlsImagePath = "new/control.png";
+    // Optional texture assigned directly in the Inspector.
     [SerializeField] private Texture2D controlsPanelTexture;
 
     [Header("Back Button")]
+    // Size of the back button.
     [SerializeField] private Vector2 backButtonSize = new Vector2(150f, 58f);
+    // Distance from the panel bottom to the back button.
     [SerializeField] private float backButtonBottomOffset = 110f;
+    // Font size for toggles and simple buttons.
     [SerializeField] private int toggleFontSize = 20;
 
+    // Cached style for the corner hint.
     private GUIStyle hintStyle;
+    // Cached style for panel titles.
     private GUIStyle titleStyle;
+    // Cached style for menu buttons.
     private GUIStyle buttonStyle;
+    // Cached style for settings labels.
     private GUIStyle labelStyle;
+    // Cached style for toggles.
     private GUIStyle toggleStyle;
+    // Controls texture loaded from Resources.
     private Texture2D loadedControlsTexture;
+    // True while the Esc menu is open.
     private bool menuOpen;
+    // True while the settings page is open.
     private bool settingsOpen;
+    // True while the controls page is open.
     private bool controlsOpen;
+    // Cursor lock state before opening the menu.
     private bool cursorWasLocked;
+    // Cursor visibility before opening the menu.
     private bool cursorWasVisible;
+    // Current slider value for master volume.
     private float volumeValue = 1f;
+    // Current mute toggle value.
     private bool muted;
 
     private void OnValidate()
@@ -535,6 +588,12 @@ public class GlobalHudUI : MonoBehaviour
             return loadedControlsTexture;
         }
 
+        Texture2D resourceTexture = LoadResourceTexture(controlsImagePath);
+        if (resourceTexture != null)
+        {
+            return resourceTexture;
+        }
+
         string path = Path.Combine(Application.dataPath, controlsImagePath);
         if (!File.Exists(path))
         {
@@ -551,5 +610,16 @@ public class GlobalHudUI : MonoBehaviour
         }
 
         return loadedControlsTexture;
+    }
+
+    private static Texture2D LoadResourceTexture(string relativeAssetPath)
+    {
+        if (string.IsNullOrWhiteSpace(relativeAssetPath))
+        {
+            return null;
+        }
+
+        string resourcePath = Path.ChangeExtension(relativeAssetPath.Replace('\\', '/'), null);
+        return Resources.Load<Texture2D>(resourcePath);
     }
 }

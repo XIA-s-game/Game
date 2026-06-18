@@ -5,34 +5,58 @@ using UnityEngine;
 public class PianoMemoryChallenge : MonoBehaviour
 {
     [Header("Scene References")]
+    // Player used for distance checks.
     [SerializeField] private Transform player;
+    // Piano interaction point.
     [SerializeField] private Transform piano;
+    // AudioSource used to play generated note clips.
     [SerializeField] private AudioSource audioSource;
 
     [Header("Rules")]
+    // Distance needed to start the challenge.
     [SerializeField] private float interactDistance = 5f;
+    // Key used to start the challenge.
     [SerializeField] private KeyCode interactKey = KeyCode.E;
+    // How long each note plays.
     [SerializeField] private float noteSeconds = 0.42f;
+    // Gap between notes in the preview sequence.
     [SerializeField] private float noteGapSeconds = 0.16f;
+    // Volume for generated piano notes.
     [SerializeField] private float noteVolume = 1f;
 
     [Header("Piano UI")]
+    // Height of the piano panel.
     [SerializeField] private float panelHeight = 280f;
+    // Offset for the title text.
     [SerializeField] private Vector2 titleOffset = new Vector2(20f, 128f);
+    // Size for the title text area.
     [SerializeField] private Vector2 titleSize = new Vector2(40f, 34f);
+    // Title font size.
     [SerializeField] private int titleFontSize = 26;
+    // Offset for result text.
     [SerializeField] private Vector2 resultPromptOffset = new Vector2(20f, 106f);
+    // Size for result text.
     [SerializeField] private Vector2 resultPromptSize = new Vector2(40f, 30f);
+    // Result prompt font size.
     [SerializeField] private int resultPromptFontSize = 22;
+    // X position for the first key button.
     [SerializeField] private float keyStartX = 32f;
+    // Y position for piano key buttons.
     [SerializeField] private float keyY = 200f;
+    // Right padding for the key row.
     [SerializeField] private float keyAreaRightPadding = 32f;
+    // Gap between key buttons.
     [SerializeField] private float keyGap = 8f;
+    // Height of each key button.
     [SerializeField] private float keyHeight = 64f;
+    // Font size for key labels.
     [SerializeField] private int keyFontSize = 20;
 
+    // Labels shown on the eight piano keys.
     private static readonly string[] KeyNames = { "1 Do", "2 Re", "3 Mi", "4 Fa", "5 Sol", "6 La", "7 Si", "8 Do" };
+    // Frequencies used to generate each note clip.
     private static readonly float[] NoteFrequencies = { 261.63f, 293.66f, 329.63f, 349.23f, 392f, 440f, 493.88f, 523.25f };
+    // Top-row number keys for note input.
     private static readonly KeyCode[] NumberKeys =
     {
         KeyCode.Alpha1,
@@ -44,6 +68,7 @@ public class PianoMemoryChallenge : MonoBehaviour
         KeyCode.Alpha7,
         KeyCode.Alpha8
     };
+    // Numpad keys for note input.
     private static readonly KeyCode[] KeypadKeys =
     {
         KeyCode.Keypad1,
@@ -55,6 +80,7 @@ public class PianoMemoryChallenge : MonoBehaviour
         KeyCode.Keypad7,
         KeyCode.Keypad8
     };
+    // Fixed note sequences for each round.
     private static readonly int[][] Rounds =
     {
         new[] { 0, 2 },
@@ -64,17 +90,29 @@ public class PianoMemoryChallenge : MonoBehaviour
         new[] { 0, 2, 4, 7, 5, 6 }
     };
 
+    // Generated audio clips by note index.
     private readonly Dictionary<int, AudioClip> noteClips = new Dictionary<int, AudioClip>();
+    // True while the piano UI is open.
     private bool active;
+    // True while the game is playing the preview sequence.
     private bool playingSequence;
+    // True after a wrong note.
     private bool failed;
+    // True after all rounds are cleared.
     private bool won;
+    // Stops the red key reward being given twice.
     private bool rewardGiven;
+    // Current round index.
     private int roundIndex;
+    // Current note index within the player answer.
     private int inputIndex;
+    // Prevents the same E press that enabled the object from starting the game.
     private bool interactReleasedSinceEnable;
+    // Cached prompt style.
     private GUIStyle promptStyle;
+    // Cached title style.
     private GUIStyle titleStyle;
+    // Cached key button style.
     private GUIStyle keyButtonStyle;
 
     private void Awake()

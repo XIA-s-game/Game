@@ -2,24 +2,35 @@ using UnityEngine;
 
 public class GameAudioManager : MonoBehaviour
 {
+    // Prevents the same short sound from stacking too hard.
     private const float OneShotCooldown = 0.06f;
 
+    // Current shared audio manager.
     private static GameAudioManager instance;
 
     [Header("Sources")]
+    // AudioSource used for all short UI and quest sounds.
     [SerializeField] private AudioSource oneShotSource;
 
     [Header("One Shot Clips")]
+    // Sound for collecting an item.
     [SerializeField] private AudioClip fetchClip;
+    // Sound for a failed action or puzzle.
     [SerializeField] private AudioClip failClip;
+    // Sound for a completed action or puzzle.
     [SerializeField] private AudioClip successClip;
+    // Sound for small clue or interaction feedback.
     [SerializeField] private AudioClip knobClip;
 
+    // Last time the fetch sound played.
     private float lastFetchTime = -1000f;
+    // Last time the fail sound played.
     private float lastFailTime = -1000f;
+    // Last time the success sound played.
     private float lastSuccessTime = -1000f;
+    // Last time the knob sound played.
     private float lastKnobTime = -1000f;
-    // This script manages the playback of one-shot sound effects for game actions such as fetching, failing, succeeding, and interacting with knobs. It uses a single AudioSource to play clips and implements a cooldown to prevent rapid overlapping sounds. The static methods allow other scripts to trigger these sound effects without needing a direct reference to the GameAudioManager instance.
+
     private void Awake()
     {
         if (instance != null && instance != this)

@@ -1,3 +1,4 @@
+// Builds and controls the main menu, cover sequence, opening video, settings, and game start flow.
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -13,13 +14,15 @@ public class MainMenuController : MonoBehaviour
 {
     // Built with AI assistance to keep shared menu layout consistent across scenes.
     // Main menu owns cover art, opening video, settings, controls, and start/continue buttons.
+    // Skips the cover after returning to the menu from another scene.
     private static bool skipCoverOnce;
+    // Static music objects survive menu reloads so the background track does not restart unnecessarily.
     private static AudioSource backgroundSource;
     private static AudioClip backgroundClip;
 
     [Header("Scene Names")]
-    [SerializeField] private string menuSceneName = "Mainmenu";
-    [SerializeField] private string gameSceneName = "Enchanted Forest A";
+    [SerializeField] private string menuSceneName = "MainMenu";
+    [SerializeField] private string gameSceneName = "Chapter1_MagicForest";
 
     [Header("Audio And Video")]
     [SerializeField] private string backgroundAudioPath = "Audio/background.mp3";
@@ -84,6 +87,7 @@ public class MainMenuController : MonoBehaviour
     private bool coverSequenceStarted;
     private bool coverSequenceComplete;
     private bool startingGame;
+    // Sprites created from runtime-loaded textures are kept alive for the menu lifetime.
     private readonly List<Sprite> runtimeSprites = new List<Sprite>();
 
     private void Awake()
@@ -129,7 +133,7 @@ public class MainMenuController : MonoBehaviour
 
         StartCoroutine(LoadBackgroundMusic());
     }
-
+    // Apply a responsive layout to the menu UI elements, stretching background images to fill the canvas and setting aspect fitters to envelope parent mode for consistent display across different screen resolutions and aspect ratios.
     private void ApplyResponsiveLayout()
     {
         // Fullscreen media stretches to the canvas so cover art and video fill different resolutions.
@@ -149,7 +153,7 @@ public class MainMenuController : MonoBehaviour
             openingVideoAspectFitter.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
         }
     }
-
+    // Check that all required Inspector references are assigned, logging an error with missing fields if any are null. This helps catch setup issues in the Unity Editor before runtime.
     private bool HasRequiredInspectorReferences()
     {
         // UI hierarchy should be dragged in the Inspector; missing references stop menu startup.
@@ -201,6 +205,7 @@ public class MainMenuController : MonoBehaviour
 
     private static void StretchToCanvas(RectTransform rectTransform)
     {
+        // Anchors fullscreen menu art and video to all edges of the canvas.
         if (rectTransform == null)
         {
             return;
@@ -244,6 +249,7 @@ public class MainMenuController : MonoBehaviour
 
     private void ApplyPanelTexture(GameObject panel, Texture2D texture)
     {
+        // Panels may keep their Image on the root or on a child named Background.
         if (panel == null || texture == null)
         {
             return;
@@ -280,6 +286,7 @@ public class MainMenuController : MonoBehaviour
 
     private Sprite CreateSprite(Texture2D texture)
     {
+        // Runtime sprites must be stored so Unity does not release their backing object too early.
         Sprite sprite = Sprite.Create(
             texture,
             new Rect(0f, 0f, texture.width, texture.height),
@@ -303,6 +310,7 @@ public class MainMenuController : MonoBehaviour
 
     public void StartGame()
     {
+        // First click opens the continue/new-game choice panel.
         if (startingGame)
         {
             return;
@@ -319,6 +327,7 @@ public class MainMenuController : MonoBehaviour
 
     public void ContinueGame()
     {
+        // Continue loads the saved scene directly and skips the opening video.
         if (startingGame)
         {
             return;
@@ -336,6 +345,7 @@ public class MainMenuController : MonoBehaviour
 
     public void StartNewGame()
     {
+        // New game clears saves and plays the opening video before loading Chapter One.
         if (startingGame)
         {
             return;
@@ -415,6 +425,7 @@ public class MainMenuController : MonoBehaviour
 
     public static void PauseBackgroundMusicForSceneAudio()
     {
+        // Cutscenes can pause menu music while they play their own audio.
         if (backgroundSource != null && backgroundSource.isPlaying)
         {
             backgroundSource.Pause();
@@ -423,6 +434,7 @@ public class MainMenuController : MonoBehaviour
 
     public static void ResumeBackgroundMusicAfterSceneAudio()
     {
+        // Scene audio callers can resume the static menu music source afterward.
         if (backgroundSource != null && backgroundSource.clip != null && !backgroundSource.isPlaying)
         {
             backgroundSource.UnPause();
@@ -479,6 +491,7 @@ public class MainMenuController : MonoBehaviour
 
     private void SyncSettingsControls()
     {
+        // Settings UI mirrors saved audio state before the panel becomes visible.
         volumeSlider.SetValueWithoutNotify(GameAudioSettings.Muted ? 0f : GameAudioSettings.MasterVolume);
         muteToggle.SetIsOnWithoutNotify(GameAudioSettings.Muted);
         GameAudioSettings.ApplySavedAudioSettings();
@@ -704,9 +717,16 @@ public class MainMenuController : MonoBehaviour
 
     private IEnumerator LoadTextureIfNeeded(string relativeAssetPath, Action<Texture2D> applyTexture, bool shouldLoad)
     {
-        // Runtime file loading keeps the original menu image paths working.
+        // Build-safe Resources loading is tried before the old editor file path fallback.
         if (!shouldLoad)
         {
+            yield break;
+        }
+
+        Texture2D resourceTexture = LoadResourceTexture(relativeAssetPath);
+        if (resourceTexture != null)
+        {
+            applyTexture(resourceTexture);
             yield break;
         }
 
@@ -730,8 +750,20 @@ public class MainMenuController : MonoBehaviour
         }
     }
 
+    private static Texture2D LoadResourceTexture(string relativeAssetPath)
+    {
+        if (string.IsNullOrWhiteSpace(relativeAssetPath))
+        {
+            return null;
+        }
+
+        string resourcePath = Path.ChangeExtension(relativeAssetPath.Replace('\\', '/'), null);
+        return Resources.Load<Texture2D>(resourcePath);
+    }
+
     private static string AssetFileUrl(string relativeAssetPath)
     {
+        // UnityWebRequest needs file:// style URLs for project-local Assets files.
         if (string.IsNullOrWhiteSpace(relativeAssetPath))
         {
             return string.Empty;
@@ -743,6 +775,7 @@ public class MainMenuController : MonoBehaviour
 
     private static void StopBackgroundMusic()
     {
+        // Stops menu music before scene load or video playback.
         if (backgroundSource != null)
         {
             backgroundSource.Stop();
@@ -751,6 +784,7 @@ public class MainMenuController : MonoBehaviour
 
     private void SetMenuButtonsInteractable(bool interactable)
     {
+        // Prevents duplicate clicks while the start flow is already running.
         startGameButton.interactable = interactable;
         introButton.interactable = interactable;
         controlsButton.interactable = interactable;

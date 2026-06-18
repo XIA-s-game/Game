@@ -6,30 +6,51 @@ public class GlobalBackpackUI : MonoBehaviour
 {
     // Shared backpack display and item counts for all gameplay scenes.
     [SerializeField] private string menuSceneName = "MainMenu";
-    [SerializeField] private string menuSceneAlias = "Mainmenu";
+    // Optional second name if a menu scene needs an alias.
+    [SerializeField] private string menuSceneAlias = "";
 
     [Header("Backpack UI")]
+    // Width of the backpack panel.
     [SerializeField] private float panelWidth = 560f;
+    // Maximum height before the list area stops growing.
     [SerializeField] private float panelMaxHeight = 620f;
+    // Base height before item rows are added.
     [SerializeField] private float panelBaseHeight = 150f;
+    // Height used by each item row.
     [SerializeField] private float rowHeight = 62f;
+    // Size of the bag button/icon.
     [SerializeField] private Vector2 bagIconSize = new Vector2(124f, 102f);
+    // Screen offset for the bag icon.
     [SerializeField] private Vector2 bagIconOffset = new Vector2(148f, 18f);
+    // Padding for the backpack title.
     [SerializeField] private UiPadding titlePadding;
+    // Padding for the small hint line.
     [SerializeField] private UiPadding hintPadding;
+    // Padding for the item list.
     [SerializeField] private UiPadding listPadding;
+    // Font size for the title.
     [SerializeField] private int titleFontSize = 32;
+    // Font size for the hint line.
     [SerializeField] private int hintFontSize = 18;
+    // Font size for item rows.
     [SerializeField] private int itemFontSize = 24;
 
+    // Current backpack instance.
     private static GlobalBackpackUI instance;
+    // Backpack can only open after gameplay starts.
     private static bool enabledForGameSession;
+    // Dialogues and choices can temporarily block backpack input.
     private static bool inputBlocked;
 
+    // Item name to amount.
     private readonly Dictionary<string, int> itemCounts = new Dictionary<string, int>();
+    // Keeps item display order stable.
     private readonly List<string> itemOrder = new List<string>();
+    // True while the backpack panel is open.
     private bool inventoryOpen;
+    // Cached item label style.
     private GUIStyle labelStyle;
+    // Cached title style.
     private GUIStyle titleStyle;
 
     private void OnValidate()
@@ -265,7 +286,8 @@ public class GlobalBackpackUI : MonoBehaviour
     private bool IsMenuSceneName(string sceneName)
     {
         return string.Equals(sceneName, menuSceneName, System.StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(sceneName, menuSceneAlias, System.StringComparison.OrdinalIgnoreCase);
+            (!string.IsNullOrWhiteSpace(menuSceneAlias) &&
+                string.Equals(sceneName, menuSceneAlias, System.StringComparison.OrdinalIgnoreCase));
     }
 
     private void DrawBackpack()
