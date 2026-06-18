@@ -4,20 +4,39 @@ using UnityEngine;
 public class FairyMemorySideQuest : MonoBehaviour
 {
     [Header("Scene References")]
+    // Player used for distance checks.
     [SerializeField] private Transform player;
+    // Tree house area where the side quest starts.
     [SerializeField] private Transform treeHouse;
-    [SerializeField] private Transform[] memories;
+    // Drag the wooden horse memory object here.
+    [SerializeField] private Transform woodenHorseMemory;
+    // Drag the fox doll memory object here.
+    [SerializeField] private Transform foxDollMemory;
+    // Drag the tea cup memory object here.
+    [SerializeField] private Transform teaCupMemory;
+    // Drag the colored pencil memory object here.
+    [SerializeField] private Transform coloredPencilMemory;
+    // Drag the dinosaur model memory object here.
+    [SerializeField] private Transform dinosaurMemory;
 
     [Header("Tree House Choice")]
+    // Distance needed to show the tree house choice.
     [SerializeField] private float enterDistance = 5.5f;
+    // Allowed height difference below the tree house marker.
     [SerializeField] private float verticalToleranceBelow = 1.2f;
+    // Allowed height difference above the tree house marker.
     [SerializeField] private float verticalToleranceAbove = 4.5f;
+    // Title for the choice panel.
     [SerializeField] private string choiceTitle = "System Choice";
+    // Text for accepting the memory quest.
     [SerializeField] private string choiceA = "A: Explore fairy memory fragments";
+    // Text for skipping the memory quest.
     [SerializeField] private string choiceB = "B: Skip and keep exploring";
+    // Hint under the choice options.
     [SerializeField] private string choiceHint = "Press A / B to choose";
 
     [Header("Memory Text")]
+    // Names matched to the memory objects.
     [SerializeField] private string[] memoryNames =
     {
         "Wooden Horse",
@@ -26,6 +45,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         "Colored Pencil",
         "Dinosaur Model"
     };
+    // Short text shown when each memory is found.
     [SerializeField] private string[] memoryLines =
     {
         "This wooden horse is an old memory.",
@@ -34,111 +54,201 @@ public class FairyMemorySideQuest : MonoBehaviour
         "These pencils came from far away.",
         "This dinosaur model was made together."
     };
+    // Distance needed to search a memory object.
     [SerializeField] private float interactDistance = 3.5f;
+    // Key used to search memory objects.
     [SerializeField] private KeyCode interactKey = KeyCode.E;
+    // Prompt near a memory object.
     [SerializeField] private string interactPrompt = "Press E to search";
+    // Side quest title.
     [SerializeField] private string questTitle = "Side Quest: Fairy Memory Fragments";
+    // Main task text in the quest tracker.
     [SerializeField] private string restoreTaskText = "Restore the fairy memory";
+    // Backpack item name for memory fragments.
     [SerializeField] private string inventoryName = "Memory Fragment";
+    // Feedback after collecting one fragment.
     [SerializeField] private string fragmentRewardText = "Memory Fragment +1";
+    // Feedback after all fragments are found.
     [SerializeField] private string allFragmentsFoundText = "All memory fragments found. Complete the final challenge.";
+    // Message shown when the sliding puzzle starts.
     [SerializeField] private string unlockText = "Memory puzzle unlocked. Use WASD to restore the picture.";
+    // Prefix shown after the memory is restored.
     [SerializeField] private string completedText = "Memory restored:";
+    // Duration for short messages.
     [SerializeField] private float messageSeconds = 3f;
+    // Image used by the final sliding puzzle.
     [SerializeField] private Texture2D puzzleImage;
+    // Images shown after the puzzle is completed.
     [SerializeField] private Texture2D[] memoryImages;
+    // How long the memory showcase stays visible.
     [SerializeField] private float memoryShowcaseSeconds = 10f;
 
     [Header("Choice UI")]
+    // Maximum width of the choice panel.
     [SerializeField] private float choicePanelMaxWidth = 980f;
+    // Screen padding for the choice panel.
     [SerializeField] private float choicePanelScreenPadding = 80f;
+    // Vertical offset for the choice panel.
     [SerializeField] private float choicePanelCenterOffsetY = -220f;
+    // Height of the choice panel.
     [SerializeField] private float choicePanelHeight = 440f;
+    // Choice title rect.
     [SerializeField] private Rect choiceTitleRect = new Rect(42f, 110f, -72f, 68f);
+    // Accept option rect.
     [SerializeField] private Rect choiceARect = new Rect(140f, 160f, -104f, 92f);
+    // Skip option rect.
     [SerializeField] private Rect choiceBRect = new Rect(140f, 250f, -104f, 92f);
+    // Choice hint rect.
     [SerializeField] private Rect choiceHintRect = new Rect(0f, -108f, -150f, 48f);
+    // Choice title font size.
     [SerializeField] private int choiceTitleFontSize = 30;
+    // Choice option font size.
     [SerializeField] private int choiceOptionFontSize = 28;
+    // Choice hint font size.
     [SerializeField] private int choiceHintFontSize = 22;
 
     [Header("Quest UI")]
+    // Side quest panel size.
     [SerializeField] private Vector2 questPanelSize = new Vector2(630f, 260f);
+    // Quest title rect.
     [SerializeField] private Rect questTitleRect = new Rect(120f, 90f, -44f, 76f);
+    // Quest task rect.
     [SerializeField] private Rect questTaskRect = new Rect(120f, 130f, -44f, 58f);
+    // Fragment count rect.
     [SerializeField] private Rect questFragmentRect = new Rect(120f, 170f, -44f, 58f);
+    // Quest title font size.
     [SerializeField] private int questTitleFontSize = 22;
+    // Quest task font size.
     [SerializeField] private int questTaskFontSize = 22;
 
     [Header("Puzzle UI")]
+    // Screen width where puzzle/reference switch to side-by-side layout.
     [SerializeField] private float puzzleSideBySideScreenWidth = 920f;
+    // Puzzle size ratio in side-by-side layout.
     [SerializeField] private Vector2 puzzleSideBySideSizeRatio = new Vector2(0.44f, 0.68f);
+    // Puzzle size ratio in stacked layout.
     [SerializeField] private Vector2 puzzleStackedSizeRatio = new Vector2(0.72f, 0.58f);
+    // Reference image scale for side-by-side layout.
     [SerializeField] private float referenceSideBySideScale = 0.62f;
+    // Max reference size in side-by-side layout.
     [SerializeField] private float referenceSideBySideMaxSize = 280f;
+    // Reference image scale for stacked layout.
     [SerializeField] private float referenceStackedScale = 0.42f;
+    // Max reference size in stacked layout.
     [SerializeField] private float referenceStackedMaxSize = 180f;
+    // Panel padding for side-by-side puzzle layout.
     [SerializeField] private Vector2 puzzleSideBySidePanelPadding = new Vector2(76f, 92f);
+    // Panel padding for stacked puzzle layout.
     [SerializeField] private Vector2 puzzleStackedPanelPadding = new Vector2(40f, 126f);
+    // Hint text rect above the puzzle.
     [SerializeField] private Rect puzzleHintRect = new Rect(16f, 10f, -32f, 40f);
+    // Grid offset inside the puzzle panel.
     [SerializeField] private Vector2 puzzleGridOffset = new Vector2(20f, 50f);
+    // Gap between puzzle tiles.
     [SerializeField] private float puzzleTileGap = 2f;
+    // Reference image offset in side-by-side layout.
     [SerializeField] private Vector2 referenceSideBySideOffset = new Vector2(24f, 42f);
+    // Reference image vertical offset in stacked layout.
     [SerializeField] private float referenceStackedOffsetY = 16f;
+    // Label rect for the reference image.
     [SerializeField] private Rect referenceLabelRect = new Rect(0f, -28f, 0f, 24f);
+    // Padding around the reference image.
     [SerializeField] private float referenceImagePadding = 4f;
+    // Puzzle hint font size.
     [SerializeField] private int puzzleHintFontSize = 20;
+    // Reference label font size.
     [SerializeField] private int referenceLabelFontSize = 18;
 
     [Header("Memory Showcase UI")]
+    // Screen padding for the memory image showcase.
     [SerializeField] private float memoryShowcaseScreenPadding = 80f;
+    // Minimum width for one showcase slot.
     [SerializeField] private float memoryShowcaseMinWidth = 240f;
+    // Gap between showcase images.
     [SerializeField] private float memoryShowcaseGap = 10f;
+    // Showcase height as a portion of screen height.
     [SerializeField] private float memoryShowcaseHeightRatio = 0.32f;
+    // Aspect ratio for each showcase slot.
     [SerializeField] private float memoryShowcaseSlotAspect = 1.25f;
+    // Padding inside the showcase panel.
     [SerializeField] private float memoryShowcasePanelPadding = 18f;
+    // Padding around each showcase image.
     [SerializeField] private float memoryShowcaseImagePadding = 4f;
 
     [Header("Prompt UI")]
+    // Message panel size.
     [SerializeField] private Vector2 messageBoxSize = new Vector2(920f, 156f);
+    // Message text rect.
     [SerializeField] private Rect messageTextRect = new Rect(18f, 12f, -36f, -24f);
+    // Message font size.
     [SerializeField] private int messageFontSize = 24;
+    // Centered prompt size.
     [SerializeField] private Vector2 centeredPromptSize = new Vector2(680f, 118f);
+    // Font size for memory prompts.
     [SerializeField] private int memoryPromptFontSize = 28;
+    // Font size for the puzzle exit prompt.
     [SerializeField] private int puzzleExitPromptFontSize = 22;
 
+    // Sliding puzzle grid width and height.
     private const int GridSize = 4;
+    // Total tile count in the sliding puzzle.
     private const int TileCount = GridSize * GridSize;
 
+    // Message queue so rewards do not overwrite each other.
     private readonly List<string> queuedMessages = new List<string>();
-    private readonly Dictionary<Transform, Collider[]> memoryColliderCache = new Dictionary<Transform, Collider[]>();
-    private readonly Dictionary<Transform, Renderer[]> memoryRendererCache = new Dictionary<Transform, Renderer[]>();
+    // Per-memory collection flags.
     private bool[] collected;
+    // True after the player accepts this side quest.
     private bool active;
+    // True after the final memory puzzle is solved.
     private bool completed;
+    // True while the tree house choice is visible.
     private bool choiceVisible;
+    // True after the player makes the tree house choice.
     private bool choiceResolved;
+    // True while the sliding puzzle is open.
     private bool puzzleActive;
+    // True while completed memory images are being shown.
     private bool memoryShowcaseActive;
+    // Starts the puzzle after the current message closes.
     private bool puzzleStartPending;
+    // Stops collected fragments being removed twice.
     private bool memoryFragmentsConsumed;
+    // Number of found fragments.
     private int collectedCount;
+    // Index of the memory object currently in range.
     private int nearbyMemoryIndex = -1;
+    // Current message text.
     private string currentMessage;
+    // Time when the current message closes.
     private float messageEndsAt;
+    // Time when the memory showcase closes.
     private float memoryShowcaseEndsAt;
+    // Runtime puzzle texture.
     private Texture2D puzzleTexture;
+    // Textures used by the memory showcase.
     private Texture2D[] memoryShowcaseTextures;
+    // Sliding puzzle board, storing tile indices.
     private int[] board;
+    // Current empty tile index.
     private int emptyIndex;
+    // Cached choice title style.
     private GUIStyle choiceTitleStyle;
+    // Cached choice option style.
     private GUIStyle choiceOptionStyle;
+    // Cached choice hint style.
     private GUIStyle choiceHintStyle;
+    // Cached quest title style.
     private GUIStyle questTitleStyle;
+    // Cached quest task style.
     private GUIStyle questTaskStyle;
+    // Cached puzzle hint style.
     private GUIStyle puzzleHintStyle;
+    // Cached reference label style.
     private GUIStyle referenceLabelStyle;
+    // Cached message style.
     private GUIStyle messageStyle;
+    // Cached centered prompt style.
     private GUIStyle centeredLabelStyle;
 
     public bool IsCompleted
@@ -163,12 +273,13 @@ public class FairyMemorySideQuest : MonoBehaviour
         SetPlayerMovementPaused(false);
         CheckQuestSetup();
 
-        if (collected == null || collected.Length != memories.Length)
+        int memoryCount = GetMemoryCount();
+        if (collected == null || collected.Length != memoryCount)
         {
-            collected = new bool[memories.Length];
+            collected = new bool[memoryCount];
         }
 
-        if (collectedCount >= memories.Length && !memoryShowcaseActive)
+        if (collectedCount >= memoryCount && !memoryShowcaseActive)
         {
             puzzleActive = true;
             puzzleStartPending = false;
@@ -283,7 +394,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         QueueMessage(GetMemoryLine(index));
         QueueMessage(fragmentRewardText);
 
-        if (collectedCount >= memories.Length && !puzzleStartPending && !puzzleActive)
+        if (collectedCount >= GetMemoryCount() && !puzzleStartPending && !puzzleActive)
         {
             puzzleStartPending = true;
             QueueMessage(allFragmentsFoundText);
@@ -453,21 +564,22 @@ public class FairyMemorySideQuest : MonoBehaviour
 
     private int FindNearbyMemoryIndex()
     {
-        if (player == null || memories == null)
+        if (player == null)
         {
             return -1;
         }
 
         int bestIndex = -1;
         float bestDistance = interactDistance;
-        for (int i = 0; i < memories.Length; i++)
+        int memoryCount = GetMemoryCount();
+        for (int i = 0; i < memoryCount; i++)
         {
             if (collected != null && i < collected.Length && collected[i])
             {
                 continue;
             }
 
-            Transform memory = memories[i];
+            Transform memory = GetMemoryTransform(i);
             if (memory == null)
             {
                 continue;
@@ -484,91 +596,43 @@ public class FairyMemorySideQuest : MonoBehaviour
         return bestIndex;
     }
 
-    private float GetDistanceToMemory(Vector3 position, Transform memory)
+    private static float GetDistanceToMemory(Vector3 position, Transform memory)
     {
-        float bestDistance = Vector3.Distance(position, memory.position);
-
-        Collider[] colliders = GetMemoryColliders(memory);
-        for (int i = 0; i < colliders.Length; i++)
-        {
-            Collider itemCollider = colliders[i];
-            if (itemCollider == null)
-            {
-                continue;
-            }
-
-            if (!CanUseClosestPoint(itemCollider))
-            {
-                continue;
-            }
-
-            bestDistance = Mathf.Min(bestDistance, Vector3.Distance(position, itemCollider.ClosestPoint(position)));
-        }
-
-        Renderer[] renderers = GetMemoryRenderers(memory);
-        for (int i = 0; i < renderers.Length; i++)
-        {
-            Renderer itemRenderer = renderers[i];
-            if (itemRenderer == null)
-            {
-                continue;
-            }
-
-            bestDistance = Mathf.Min(bestDistance, Vector3.Distance(position, itemRenderer.bounds.ClosestPoint(position)));
-        }
-
-        return bestDistance;
-    }
-
-    private static bool CanUseClosestPoint(Collider itemCollider)
-    {
-        if (itemCollider is BoxCollider || itemCollider is SphereCollider || itemCollider is CapsuleCollider)
-        {
-            return true;
-        }
-
-        MeshCollider meshCollider = itemCollider as MeshCollider;
-        return meshCollider != null && meshCollider.convex;
-    }
-
-    private Collider[] GetMemoryColliders(Transform memory)
-    {
-        if (!memoryColliderCache.TryGetValue(memory, out Collider[] colliders))
-        {
-            colliders = memory.GetComponentsInChildren<Collider>(true);
-            memoryColliderCache[memory] = colliders;
-        }
-
-        return colliders;
-    }
-
-    private Renderer[] GetMemoryRenderers(Transform memory)
-    {
-        if (!memoryRendererCache.TryGetValue(memory, out Renderer[] renderers))
-        {
-            renderers = memory.GetComponentsInChildren<Renderer>(true);
-            memoryRendererCache[memory] = renderers;
-        }
-
-        return renderers;
+        return Vector3.Distance(position, memory.position);
     }
 
     private void SetMemorySlots()
     {
-        int count = memories != null ? memories.Length : 0;
-        if (count == 0)
-        {
-            if (collected == null || collected.Length != 0)
-            {
-                collected = new bool[0];
-            }
-
-            return;
-        }
-
+        int count = GetMemoryCount();
         if (collected == null || collected.Length != count)
         {
             collected = new bool[count];
+        }
+    }
+
+    private const int MemoryCount = 5;
+
+    private static int GetMemoryCount()
+    {
+        return MemoryCount;
+    }
+
+    private Transform GetMemoryTransform(int index)
+    {
+        switch (index)
+        {
+            case 0:
+                return woodenHorseMemory;
+            case 1:
+                return foxDollMemory;
+            case 2:
+                return teaCupMemory;
+            case 3:
+                return coloredPencilMemory;
+            case 4:
+                return dinosaurMemory;
+            default:
+                return null;
         }
     }
 
@@ -750,7 +814,7 @@ public class FairyMemorySideQuest : MonoBehaviour
         taskStyle.normal.textColor = new Color(0.92f, 0.92f, 0.92f);
 
         int visibleFragmentCount = memoryFragmentsConsumed ? 0 : collectedCount;
-        int memoryCount = memories != null ? memories.Length : 0;
+        int memoryCount = GetMemoryCount();
         string completionMark = collectedCount >= memoryCount ? " done" : string.Empty;
         GUI.Label(InnerRect(rect, questTitleRect), questTitle, titleStyle);
         GUI.Label(InnerRect(rect, questTaskRect), restoreTaskText + completionMark, taskStyle);
@@ -942,11 +1006,7 @@ public class FairyMemorySideQuest : MonoBehaviour
 
     private void ValidateMemoryText()
     {
-        int count = memories != null ? memories.Length : 0;
-        if (count == 0)
-        {
-            return;
-        }
+        int count = GetMemoryCount();
 
         if (memoryNames == null || memoryNames.Length != count || memoryLines == null || memoryLines.Length != count)
         {
