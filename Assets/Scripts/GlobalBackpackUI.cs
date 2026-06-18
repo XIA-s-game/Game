@@ -41,11 +41,11 @@ public class GlobalBackpackUI : MonoBehaviour
     private static bool enabledForGameSession;
     // Dialogues and choices can temporarily block backpack input.
     private static bool inputBlocked;
+    // Shared item data survives scene loads even when each scene has its own UI object.
+    private static readonly Dictionary<string, int> sharedItemCounts = new Dictionary<string, int>();
+    // Shared display order for the backpack list.
+    private static readonly List<string> sharedItemOrder = new List<string>();
 
-    // Item name to amount.
-    private readonly Dictionary<string, int> itemCounts = new Dictionary<string, int>();
-    // Keeps item display order stable.
-    private readonly List<string> itemOrder = new List<string>();
     // True while the backpack panel is open.
     private bool inventoryOpen;
     // Cached item label style.
@@ -66,27 +66,18 @@ public class GlobalBackpackUI : MonoBehaviour
             return;
         }
 
-        if (instance != null)
-        {
-            instance.Add(itemName, amount);
-            GameAudioManager.PlayFetch();
-        }
+        AddShared(itemName, amount);
+        GameAudioManager.PlayFetch();
     }
 
     public static void SetItemCount(string itemName, int count)
     {
-        if (instance != null)
-        {
-            instance.SetCount(itemName, count);
-        }
+        SetSharedCount(itemName, count);
     }
 
     public static void RemoveItem(string itemName, int amount = 1)
     {
-        if (instance != null)
-        {
-            instance.Remove(itemName, amount);
-        }
+        RemoveShared(itemName, amount);
     }
     
     // Remove all quantities of a certain item.
@@ -122,45 +113,28 @@ public class GlobalBackpackUI : MonoBehaviour
 
     public static void ClearAllItems()
     {
-        if (instance == null)
-        {
-            return;
-        }
-
-        instance.itemCounts.Clear();
-        instance.itemOrder.Clear();
+        sharedItemCounts.Clear();
+        sharedItemOrder.Clear();
     }
 
     public static void ExportItems(out string[] itemNames, out int[] itemAmounts)
     {
         // Save system exports the current backpack as parallel arrays for JsonUtility.
-        if (instance == null)
+        itemNames = new string[sharedItemOrder.Count];
+        itemAmounts = new int[sharedItemOrder.Count];
+        for (int i = 0; i < sharedItemOrder.Count; i++)
         {
-            itemNames = new string[0];
-            itemAmounts = new int[0];
-            return;
-        }
-
-        itemNames = new string[instance.itemOrder.Count];
-        itemAmounts = new int[instance.itemOrder.Count];
-        for (int i = 0; i < instance.itemOrder.Count; i++)
-        {
-            string itemName = instance.itemOrder[i];
+            string itemName = sharedItemOrder[i];
             itemNames[i] = itemName;
-            itemAmounts[i] = instance.itemCounts.TryGetValue(itemName, out int amount) ? amount : 0;
+            itemAmounts[i] = sharedItemCounts.TryGetValue(itemName, out int amount) ? amount : 0;
         }
     }
 
     public static void ImportItems(string[] itemNames, int[] itemAmounts)
     {
         // Continue game rebuilds backpack contents from saved item names and counts.
-        if (instance == null)
-        {
-            return;
-        }
-
-        instance.itemCounts.Clear();
-        instance.itemOrder.Clear();
+        sharedItemCounts.Clear();
+        sharedItemOrder.Clear();
 
         if (itemNames == null || itemAmounts == null)
         {
@@ -172,7 +146,7 @@ public class GlobalBackpackUI : MonoBehaviour
         {
             if (!string.IsNullOrEmpty(itemNames[i]) && itemAmounts[i] > 0)
             {
-                instance.SetCount(itemNames[i], itemAmounts[i]);
+                SetSharedCount(itemNames[i], itemAmounts[i]);
             }
         }
     }
@@ -232,21 +206,31 @@ public class GlobalBackpackUI : MonoBehaviour
 
     private void Add(string itemName, int amount)
     {
+        AddShared(itemName, amount);
+    }
+
+    private static void AddShared(string itemName, int amount)
+    {
         if (string.IsNullOrEmpty(itemName) || amount <= 0)
         {
             return;
         }
 
-        if (!itemCounts.ContainsKey(itemName))
+        if (!sharedItemCounts.ContainsKey(itemName))
         {
-            itemCounts.Add(itemName, 0);
-            itemOrder.Add(itemName);
+            sharedItemCounts.Add(itemName, 0);
+            sharedItemOrder.Add(itemName);
         }
 
-        itemCounts[itemName] += amount;
+        sharedItemCounts[itemName] += amount;
     }
 
     private void SetCount(string itemName, int count)
+    {
+        SetSharedCount(itemName, count);
+    }
+
+    private static void SetSharedCount(string itemName, int count)
     {
         if (string.IsNullOrEmpty(itemName))
         {
@@ -255,27 +239,32 @@ public class GlobalBackpackUI : MonoBehaviour
 
         if (count <= 0)
         {
-            itemCounts.Remove(itemName);
-            itemOrder.Remove(itemName);
+            sharedItemCounts.Remove(itemName);
+            sharedItemOrder.Remove(itemName);
             return;
         }
 
-        if (!itemCounts.ContainsKey(itemName))
+        if (!sharedItemCounts.ContainsKey(itemName))
         {
-            itemOrder.Add(itemName);
+            sharedItemOrder.Add(itemName);
         }
 
-        itemCounts[itemName] = count;
+        sharedItemCounts[itemName] = count;
     }
 
     private void Remove(string itemName, int amount)
     {
-        if (string.IsNullOrEmpty(itemName) || amount <= 0 || !itemCounts.ContainsKey(itemName))
+        RemoveShared(itemName, amount);
+    }
+
+    private static void RemoveShared(string itemName, int amount)
+    {
+        if (string.IsNullOrEmpty(itemName) || amount <= 0 || !sharedItemCounts.ContainsKey(itemName))
         {
             return;
         }
 
-        SetCount(itemName, itemCounts[itemName] - amount);
+        SetSharedCount(itemName, sharedItemCounts[itemName] - amount);
     }
 
     private bool IsMenuScene()
@@ -298,7 +287,7 @@ public class GlobalBackpackUI : MonoBehaviour
         }
 
         float width = panelWidth;
-        float height = Mathf.Min(panelMaxHeight, panelBaseHeight + Mathf.Max(1, itemOrder.Count) * rowHeight);
+        float height = Mathf.Min(panelMaxHeight, panelBaseHeight + Mathf.Max(1, sharedItemOrder.Count) * rowHeight);
         Rect rect = GameUiStyle.BackpackRect(width, height);
 
         GameUiStyle.DrawPanel(rect);
@@ -311,16 +300,16 @@ public class GlobalBackpackUI : MonoBehaviour
 
         float listY = rect.y + listPadding.top;
 
-        if (itemOrder.Count == 0)
+        if (sharedItemOrder.Count == 0)
         {
             GUI.Label(new Rect(rect.x + listPadding.left, listY, rect.width - listPadding.left - listPadding.right, 54f), "Empty", GameUiStyle.LabelStyle(ref labelStyle, itemFontSize, TextAnchor.MiddleLeft));
             return;
         }
 
-        for (int i = 0; i < itemOrder.Count; i++)
+        for (int i = 0; i < sharedItemOrder.Count; i++)
         {
-            string itemName = itemOrder[i];
-            if (!itemCounts.TryGetValue(itemName, out int count))
+            string itemName = sharedItemOrder[i];
+            if (!sharedItemCounts.TryGetValue(itemName, out int count))
             {
                 continue;
             }
